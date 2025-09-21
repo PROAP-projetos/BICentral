@@ -37,4 +37,4 @@ build/
 .idea/
 
 # Ignore arquivos com credenciais locais
-application-local.properties
+application.properties
