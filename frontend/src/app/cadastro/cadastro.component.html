@@ -1,0 +1,12 @@
+<h2>Cadastro de Usuário</h2>
+<form (ngSubmit)="cadastrar()">
+  <div>
+    <label for="username">Usuário:</label>
+    <input type="text" id="username" [(ngModel)]="usuario.username" name="username" required>
+  </div>
+  <div>
+    <label for="password">Senha:</label>
+    <input type="password" id="password" [(ngModel)]="usuario.password" name="password" required>
+  </div>
+  <button type="submit">Cadastrar</button>
+</form>
