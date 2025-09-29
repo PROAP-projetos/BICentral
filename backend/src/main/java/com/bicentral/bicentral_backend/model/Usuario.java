@@ -1,41 +1,34 @@
 package com.bicentral.bicentral_backend.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 
 @Entity
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+
 public class Usuario {
-    //Definição da classe
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String username;
+    private String email;
     private String password;
 
-    //Getters e Setters
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
+    public static Usuario cadastrarUsuario(Long id, String username, String email, String password) {
+        Usuario user = new Usuario();
+        user.setId(id);
+        user.setUsername(username);
+        user.setEmail(password);
+        user.setPassword(password);
+        return user;
     }
 }
