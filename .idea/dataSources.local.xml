@@ -6,5 +6,10 @@
       <user-name>postgres</user-name>
       <schema-mapping />
     </data-source>
+    <data-source name="postgres@aws-1-sa-east-1.pooler.supabase.com" uuid="a680dc37-f4a8-4b6c-aae6-e996a853305a">
+      <database-info product="" version="" jdbc-version="" driver-name="" driver-version="" dbms="POSTGRES" />
+      <user-name>postgres.kjtqroslasckbnatjmqc</user-name>
+      <schema-mapping />
+    </data-source>
   </component>
 </project>

@@ -20,6 +20,7 @@ export class CadastroComponent {
 
   usuario = {
     username: '',
+    email: '',
     password: ''
   };
 
