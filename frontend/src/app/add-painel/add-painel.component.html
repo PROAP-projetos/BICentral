@@ -1,0 +1,50 @@
+<div class="container">
+  <h1>Adicionar Novo Painel Power BI</h1>
+
+  <form (ngSubmit)="salvarPainel()" #painelForm="ngForm">
+
+    <div class="form-group">
+      <label for="nomePainel">Nome do Painel:</label>
+      <input
+        type="text"
+        id="nomePainel"
+        name="nomePainel"
+        [(ngModel)]="painel.nome"
+        placeholder="Ex: Vendas e Faturamento Mensal"
+        required>
+    </div>
+
+    <div class="form-group">
+      <label for="linkPowerBi">Link de Incorporação (Embed) do Power BI:</label>
+      <input
+        type="text"
+        id="linkPowerBi"
+        name="linkPowerBi"
+        [(ngModel)]="painel.linkPowerBi"
+        placeholder="https://app.powerbi.com/view?r=..."
+        required>
+    </div>
+
+    <button type="submit" [disabled]="!painelForm.valid">
+      Salvar Painel
+    </button>
+  </form>
+
+  <div *ngIf="mensagem" class="message" [ngClass]="{'success': !erro, 'error': erro}">
+    {{ mensagem }}
+  </div>
+
+</div>
+
+<style>
+  .container { max-width: 650px; margin: 20px auto; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); background: white; }
+  h1 { color: #1a73e8; border-bottom: 2px solid #e8e8e8; padding-bottom: 10px; margin-bottom: 20px; }
+  .form-group { margin-bottom: 15px; }
+  label { display: block; margin-bottom: 5px; font-weight: 600; color: #333; }
+  input[type="text"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+  button { background-color: #1a73e8; color: white; padding: 10px 15px; border-radius: 4px; cursor: pointer; transition: background-color 0.3s; }
+  button:disabled { background-color: #a0a0a0; cursor: not-allowed; }
+  .message { padding: 10px; margin-top: 15px; border-radius: 4px; font-weight: bold; }
+  .success { background-color: #e6ffed; color: #00701c; border: 1px solid #00c853; }
+  .error { background-color: #ffeaea; color: #d90000; border: 1px solid #ff1744; }
+</style>
