@@ -1,0 +1,9 @@
+<div class="container">
+  <div class="card">
+    <div *ngIf="message">
+      <h2 *ngIf="verificationSuccess">Verificação bem-sucedida!</h2>
+      <h2 *ngIf="!verificationSuccess">Erro na verificação</h2>
+      <p>{{ message }}</p>
+    </div>
+  </div>
+</div>

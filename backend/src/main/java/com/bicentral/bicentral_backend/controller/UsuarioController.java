@@ -5,6 +5,12 @@ import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.repository.query.Param;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import com.bicentral.bicentral_backend.service.UsuarioService;
+import com.bicentral.bicentral_backend.model.Usuario;
+import jakarta.validation.Valid;
+
 
 @RestController
 @RequestMapping("/api/auth")
