@@ -1,1 +1,47 @@
-/* You can add global styles to this file, and also import other style files */
+/* src/styles.css - Estilos Globais */
+
+:root {
+  /* Cores principais */
+  --color-primary: #004a80; /* Azul principal (menu, login, etc.) */
+  --color-primary-hover: #005a99; /* Para estados de hover do azul */
+  --color-accent: #00897b; /* Outra cor de destaque secundária */
+
+  /* Cores de Destaque */
+  --color-nav-hover-text: #ffff00; /* AMARELO para o hover dos links */
+  --color-nav-button-bg: #00b875; /* Fundo do botão Cadastre-se */
+  /* Layout e Texto */
+  --color-background: #f5f7fa; /* Fundo claro da página */
+  --color-surface: #ffffff; /* Fundo de cards, painéis */
+  --color-text: #1a1a1a; /* Cor principal do texto */
+  --color-text-muted: #6c757d; /* Texto secundário */
+
+  /* Cores de status (útil para mensagens/alertas) */
+  --color-success: #008577;
+  --color-warning: #ffc107;
+  --color-error: #f44336;
+  --color-info: #3e6d9a;
+}
+
+body {
+  margin: 0;
+  /* Garante que a fonte seja aplicada em toda a aplicação */
+  font-family: "Inter", Arial, sans-serif;
+  background-color: var(--color-background);
+  color: var(--color-text);
+}
+
+/* Você pode adicionar estilos para tags HTML básicas aqui, se necessário */
+h1 {
+  color: var(--color-primary);
+}
+
+/* Você pode adicionar estilos para o rodapé ou estilos de reset aqui, se quiser que afetem toda a aplicação */
+footer {
+  text-align: center;
+  padding: 1rem;
+  background-color: var(--color-primary);
+  color: white;
+  margin-top: 2rem;
+}
+
+/* Você pode adicionar global styles to this file, and also import other style files */
