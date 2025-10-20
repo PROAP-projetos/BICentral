@@ -13,7 +13,8 @@ import { Router, RouterLink } from '@angular/router';
     HttpClientModule,
     RouterLink
   ],
-  templateUrl: './cadastro.component.html'
+  templateUrl: './cadastro.component.html',
+  styleUrls: ['./cadastro.component.css']
 })
 export class CadastroComponent {
 
