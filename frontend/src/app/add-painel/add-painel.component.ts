@@ -1,8 +1,8 @@
 // Local: frontend/src/app/add-painel/add-painel.component.ts
 
 import { Component } from '@angular/core';
-import { HttpClient, HttpClientModule } from '@angular/common/http'; // Importamos o módulo aqui
-import { FormsModule } from '@angular/forms'; // Importamos o FormsModule aqui
+import { HttpClient, HttpClientModule, HttpErrorResponse } from '@angular/common/http'; // Adicionado HttpErrorResponse
+import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
 // Interface simples para garantir a tipagem dos dados enviados
@@ -24,7 +24,6 @@ interface AddPainel {
   styleUrls: ['./add-painel.component.css']
 })
 export class AddPainelComponent {
-  // ... (O RESTO DO CÓDIGO DA CLASSE É O MESMO) ...
 
   painel: AddPainel = {
     nome: '',
@@ -44,13 +43,27 @@ export class AddPainelComponent {
 
     this.http.post<AddPainel>(this.API_URL, this.painel).subscribe({
       next: (resposta) => {
+        // Sucesso: Painel salvo
         this.mensagem = `Painel "${resposta.nome}" salvo com sucesso! ID: ${resposta.id}`;
         this.painel = { nome: '', linkPowerBi: '' };
       },
-      error: (e) => {
+      error: (e: HttpErrorResponse) => { // Tipando o erro para HttpErrorResponse
         this.erro = true;
         console.error("Erro ao salvar painel:", e);
-        this.mensagem = 'Erro ao conectar ou salvar. Verifique o backend (porta 8080) e as credenciais.';
+
+        // 1. Verifica se o status HTTP é 409 (Conflict)
+        if (e.status === 409) {
+          // A mensagem de erro esperada do backend é "Painel já cadastrado"
+          // O corpo da resposta de erro (e.error) contém a string que enviamos do Controller.
+          this.mensagem = e.error || 'Painel já cadastrado (conflito de link)';
+        } else if (e.status === 0) {
+          // Status 0 é geralmente ERR_CONNECTION_REFUSED (backend desligado/inacessível)
+          this.mensagem = 'Erro de conexão: O backend (porta 8080) está desligado ou inacessível.';
+        }
+        else {
+          // Qualquer outro erro HTTP
+          this.mensagem = `Erro ao salvar. Status: ${e.status}. Verifique o console.`;
+        }
       }
     });
   }
