@@ -6,6 +6,17 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 
+// Novos Imports para CORS
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import java.util.Arrays; // Para Arrays.asList
+
+// NImports para CORS
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import java.util.Arrays; 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -13,21 +24,34 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // Desativa CSRF (comum para APIs stateless)
+                .cors(cors -> cors.disable())
                 .csrf(csrf -> csrf.disable())
-                // Configuração de CORS (importante para Angular/Spring na mesma máquina)
-                .cors(cors -> cors.disable()) // Desativa para simplificar o teste local
-                
                 .authorizeHttpRequests(auth -> auth
-                        // Permite acesso não autenticado aos endpoints de usuários
-                        .requestMatchers("/api/usuarios/**").permitAll()
-                        
-                        // PERMITE ACESSO NÃO AUTENTICADO aos endpoints de painéis
-                        .requestMatchers("/api/paineis/**").permitAll()
-                        
-                        // Qualquer outra requisição deve ser autenticada
-                        .anyRequest().authenticated()
+                        .anyRequest().permitAll()
                 );
         return http.build();
+    }
+
+    // BEAN DE CONFIGURAÇÃO DETALHADA DO CORS
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+
+        // Permite o seu frontend Angular (http://localhost:4200)
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:4200"));
+
+        // Permite todos os métodos HTTP (GET, POST, OPTIONS, etc.)
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+
+        // Permite todos os cabeçalhos
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+
+        // Permite o envio de cookies e headers de autenticação
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        // Aplica essa configuração a todas as requisições (/**)
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 }
