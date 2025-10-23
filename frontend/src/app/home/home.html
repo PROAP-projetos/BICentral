@@ -1,26 +1,50 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Menu BICentral</title>
-  <link rel="stylesheet" href="home.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Menu BICentral</title>
+  <link rel="stylesheet" href="home.css" />
 </head>
 <body>
 <header>
-  <a href="#" class="logo">BICentral</a>
-  <nav>
-    <ul>
-      <li class="nav-item-with-dropdown"><a href="#">Minha Equipe</a></li>
-    </ul>
-    <div class="nav-right-section">
-      <a href="#" class="nav-text-link">Suporte</a>
+  <a href="#" class="logo">BICentral</a>
+  <nav>
+    <ul>
+      <li class="nav-item-with-dropdown"><a href="#">Minha Equipe</a></li>
+    </ul>
+    <div class="nav-right-section">
+      <a href="#" class="nav-text-link">Suporte</a>
 
-      <a href="/login" class="nav-text-link">Login</a>
-      <button class="nav-button" onclick="location.href='/cadastro'">Cadastre-se</button>
-    </div>
-  </nav>
+      <a href="/login" class="nav-text-link">Login</a>
+      <button class="nav-button" onclick="location.href='/cadastro'">Cadastre-se</button>
+    </div>
+  </nav>
 </header>
+<main class="content-area">
+  <h2>Painéis de BI Disponíveis</h2>
+  
+  <div *ngIf="loading" class="loading-message">
+      <p>Carregando painéis, aguarde...</p>
+  </div>
+  
+  <div *ngIf="error" class="error-message">
+      <p>Erro ao carregar os painéis: {{ error }}</p>
+  </div>
 
+  <div class="dashboard-grid">
+      <a *ngFor="let painel of dashboards" 
+         [href]="painel.linkPowerBi" 
+         target="_blank" 
+         class="dashboard-card-lin'k">
+          
+          <div class="dashboard-card">
+              <img [src]="'data:image/png;base64,' + painel.imagemCapaBase64" 
+                   [alt]="'Capa do Painel ' + painel.nome"
+                   class="dashboard-capa-menor">               
+              <h3 class="dashboard-title-below-image">{{ painel.nome }}</h3>           </div>
+      </a>
+  </div>
+</main>
 </body>
 </html>
