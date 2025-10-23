@@ -2,17 +2,17 @@
 
 /* Esconde o botão hambúrguer no desktop */
 .menu-toggle {
-    display: none;
+  display: none;
 }
 
-/* O HEADER CONTÉM O MENU */
+/* O HEADER CONTÉM O MENU (VOLTANDO AO ORIGINAL) */
 header {
   background-color: var(--color-primary);
   color: white;
-  padding: 0 2rem;
+  padding: 0 2rem; /* Original: dá o espaçamento lateral */
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: space-between; /* Original: distribui o espaço */
   height: 60px;
 }
 
@@ -30,6 +30,7 @@ nav {
   align-items: center;
   justify-content: space-between;
   height: 100%;
+  /* Removido max-width: 1200px para manter o estilo original */
 }
 
 nav ul {
@@ -92,7 +93,7 @@ nav ul li a:hover,
   transition: color 0.2s ease;
 }
 
-/* Botões Login/Cadastro (Ajustado para o Login ser diferente se necessário) */
+/* Botões Login/Cadastro */
 .nav-button {
   background-color: var(--color-nav-button-bg);
   color: white;
@@ -112,85 +113,99 @@ nav ul li a:hover,
   border-radius: 25px;
 }
 
-/* --- MEDIA QUERY (MOBILE) --- */
+/* --- ESTILOS DO CONTEÚDO PRINCIPAL E GRID DE PAINÉIS (MANTENDO AS ALTERAÇÕES) --- */
+.content-area {
+  padding: 30px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
 
-@media (max-width: 992px) {
+h2 {
+  margin-bottom: 25px;
+  color: #333;
+}
 
-    /* 1. VISUALIZAÇÃO DO BOTÃO HAMBÚRGUER */
-    .menu-toggle {
-        display: block; /* Mostra o botão no mobile */
-        background: none;
-        border: none;
-        color: white;
-        font-size: 1.5rem;
-        cursor: pointer;
-        padding: 0; /* Remove padding desnecessário */
-        margin-left: 1rem; /* Dá um pequeno espaço */
-    }
+.dashboard-grid {
+  display: grid;
+  /* Mantido o minmax menor para mais cards */
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+  gap: 20px; 
+  
+  /* Mantido: Alinha os itens da grade à esquerda */
+  justify-items: start; 
+}
 
-    /* 2. CONFIGURAÇÃO PADRÃO: ESCONDER O MENU */
-    nav {
-        /* Esconde a navegação por padrão (vai ser mostrada pela classe .open) */
-        display: none;
+.dashboard-card-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
 
-        /* Layout fixo e vertical para o menu quando aparecer */
-        flex-direction: column;
-        position: absolute;
-        top: 60px; /* Abaixo do header */
-        left: 0;
-        width: 100%;
-        background-color: var(--color-primary);
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        z-index: 10;
-        height: auto;
-        padding-bottom: 1rem;
-    }
+.dashboard-card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+  background-color: #fff;
+  /* Mantido: Configurações para cards menores */
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  padding-bottom: 15px; 
+  max-width: 300px; 
+  height: auto;
+}
 
-    /* 3. MOSTRAR MENU */
-    /* Esta é a classe que o Angular vai adicionar: [class.open]="isMenuOpen" */
-    nav.open {
-        display: flex;
-    }
+.dashboard-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+}
 
-    /* Reorganiza o alinhamento do header no mobile */
-    header {
-        padding: 0 1rem;
-    }
+/* Estilo para a imagem menor (AJUSTADO) */
+.dashboard-capa-menor {
+  width: 100%; 
+  max-width: 250px; 
+  height: 150px; 
+  object-fit: cover; 
+  border-bottom: 1px solid #eee;
+  margin-bottom: 10px; 
+}
 
-    /* Reorganiza os links e botões para coluna */
-    nav ul {
-        flex-direction: column;
-        width: 100%;
-        align-items: flex-start;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1); /* Separador visual */
-        padding-bottom: 0.5rem;
-    }
+/* Estilo para o título abaixo da imagem (AJUSTADO) */
+.dashboard-title-below-image {
+  font-size: 1.1em; 
+  font-weight: bold;
+  color: #333;
+  text-align: center; 
+  padding: 0 10px; 
+  margin-top: 5px; 
+}
 
-    nav ul li {
-        margin: 0.3rem 0;
-        width: 100%;
-        height: auto;
-    }
+/* Mensagens de estado */
+.loading-message,
+.error-message {
+  text-align: center;
+  padding: 20px;
+  border-radius: 5px;
+  margin-top: 20px;
+  font-size: 1.1em;
+}
 
-    /* Alinha os links do menu para ocupar toda a largura e ter padding */
-    nav ul li a {
-        padding: 0.5rem 1rem;
-        width: 100%;
-        justify-content: flex-start;
-    }
+.loading-message {
+  background-color: #e0f7fa;
+  color: #00796b;
+}
 
-    /* Reorganiza a seção de botões (Login/Cadastro) */
-    .nav-right-section {
-        flex-direction: column;
-        gap: 0.8rem;
-        padding: 1rem; /* Adiciona padding para afastar das bordas */
-        width: 100%;
-        align-items: flex-start;
-    }
+.error-message {
+  background-color: #ffebee;
+  color: #d32f2f;
+}
 
-    /* Zera a margem dos botões para alinhar */
-    .nav-button {
-        margin-left: 0;
-        width: 100%; /* Botões ocupam a largura total no mobile */
-    }
+/* Variáveis de cor */
+:root {
+  --color-primary: #0056b3; 
+  --color-secondary: #007bff; 
+  --color-nav-hover-text: #ADD8E6; 
+  --color-nav-button-bg: #28a745; 
 }
