@@ -1,3 +1,33 @@
+/* --- RESET BÁSICO (Para remover margens e preenchimentos indesejados) --- */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: none !important; 
+  outline: none !important;
+}
+
+/* Remover todas as bordas de links e elementos interativos */
+a, a:visited, a:focus, a:hover, a:active {
+  border: none !important;
+  outline: none !important;
+  text-decoration: none !important;
+}
+
+/* Remover bordas de imagens */
+img {
+  border: none !important;
+  outline: none !important;
+}
+
+/* Variáveis de cor */
+:root {
+  --color-primary: #0056b3; 
+  --color-secondary: #007bff; 
+  --color-nav-hover-text: #ADD8E6; 
+  --color-nav-button-bg: #28a745; 
+}
+
 /* --- ESTILOS PADRÃO (DESKTOP) --- */
 
 /* Esconde o botão hambúrguer no desktop */
@@ -9,10 +39,9 @@
 header {
   background-color: var(--color-primary);
   color: white;
-  padding: 0 2rem; /* Original: dá o espaçamento lateral */
+  padding: 0 2rem;
   display: flex;
   align-items: center;
-  justify-content: space-between; /* Original: distribui o espaço */
   height: 60px;
 }
 
@@ -21,16 +50,16 @@ header {
   font-weight: bold;
   color: white;
   text-decoration: none;
-  margin-right: 2rem;
+  margin-right: 0.5rem;
 }
 
 nav {
-  flex-grow: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: 100%;
-  /* Removido max-width: 1200px para manter o estilo original */
+  flex-grow: 1;
+  margin-left: 0;
 }
 
 nav ul {
@@ -40,11 +69,12 @@ nav ul {
   display: flex;
   align-items: center;
   height: 100%;
+  gap: 0;
 }
 
 nav ul li {
   position: relative;
-  margin-right: 1.5rem;
+  margin-right: 0;
   height: 100%;
   display: flex;
   align-items: center;
@@ -60,6 +90,9 @@ nav ul li a {
   height: 100%;
   display: flex;
   align-items: center;
+  /* Garantindo a remoção de bordas/contornos em links do menu */
+  outline: none; 
+  border: none;
 }
 
 /* Efeito de hover no texto usa --color-nav-hover-text */
@@ -83,7 +116,8 @@ nav ul li a:hover,
 .nav-right-section {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 0.5rem;
+  margin-left: auto;
 }
 
 .nav-icon, .nav-text-link {
@@ -91,20 +125,23 @@ nav ul li a:hover,
   text-decoration: none;
   font-size: 0.95rem;
   transition: color 0.2s ease;
+  /* Garantindo a remoção de bordas/contornos em links de texto */
+  outline: none; 
+  border: none;
 }
 
 /* Botões Login/Cadastro */
 .nav-button {
   background-color: var(--color-nav-button-bg);
   color: white;
-  border: none;
+  /* 'border: none;' já está no reset, mas reconfirmando aqui */
   padding: 0.8rem 1.5rem;
   border-radius: 6px;
   font-size: 1rem;
   font-weight: bold;
   cursor: pointer;
   transition: background-color 0.2s ease, border-radius 0.2s ease;
-  margin-left: 1.5rem;
+  margin-left: 0;
 }
 
 .nav-button:hover {
@@ -115,71 +152,85 @@ nav ul li a:hover,
 
 /* --- ESTILOS DO CONTEÚDO PRINCIPAL E GRID DE PAINÉIS (MANTENDO AS ALTERAÇÕES) --- */
 .content-area {
-  padding: 30px 20px;
-  max-width: 1200px;
+  padding: 20px 40px;
+  width: 100%;
   margin: 0 auto;
 }
 
 h2 {
-  margin-bottom: 25px;
-  color: #333;
+  margin: 0 0 5px 0;
+  color: #000000;
+  font-size: 1.2em;
+  font-weight: bold;
+  text-align: left;
+  padding: 0 20px;
 }
 
 .dashboard-grid {
   display: grid;
-  /* Mantido o minmax menor para mais cards */
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
-  gap: 20px; 
-  
-  /* Mantido: Alinha os itens da grade à esquerda */
-  justify-items: start; 
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 10px;
+  align-items: start;
+  margin-top: 0;
+  justify-content: stretch;
+  padding: 0 20px;
 }
 
 .dashboard-card-link {
-  text-decoration: none;
+  text-decoration: none !important;
   color: inherit;
   display: block;
+  outline: none !important; 
+  border: none !important;
+  box-shadow: none !important;
 }
 
 .dashboard-card {
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  border: none !important; 
+  outline: none !important;
+  border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s, box-shadow 0.2s;
-  background-color: #fff;
-  /* Mantido: Configurações para cards menores */
-  display: flex; 
-  flex-direction: column; 
-  align-items: center; 
-  padding-bottom: 15px; 
-  max-width: 300px; 
-  height: auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  background: linear-gradient(to bottom, #ffffff 0%, #f8f9fa 100%);
+  display: flex;
+  flex-direction: column;
+  max-width: 350px;
+  height: 250px;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
 .dashboard-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+  transform: translateY(-8px);
+  box-shadow: 0 12px 24px rgba(0, 86, 179, 0.15);
 }
 
 /* Estilo para a imagem menor (AJUSTADO) */
 .dashboard-capa-menor {
-  width: 100%; 
-  max-width: 250px; 
-  height: 150px; 
-  object-fit: cover; 
-  border-bottom: 1px solid #eee;
-  margin-bottom: 10px; 
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border: none !important; 
+  outline: none !important;
+  display: block;
 }
 
 /* Estilo para o título abaixo da imagem (AJUSTADO) */
 .dashboard-title-below-image {
-  font-size: 1.1em; 
-  font-weight: bold;
-  color: #333;
-  text-align: center; 
-  padding: 0 10px; 
-  margin-top: 5px; 
+  font-size: 1.1em;
+  font-weight: 600;
+  color: #000000;
+  text-align: center;
+  padding: 12px 8px;
+  margin: 0;
+  border: none !important;
+  outline: none !important;
+  text-decoration: none !important;
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Mensagens de estado */
@@ -200,12 +251,4 @@ h2 {
 .error-message {
   background-color: #ffebee;
   color: #d32f2f;
-}
-
-/* Variáveis de cor */
-:root {
-  --color-primary: #0056b3; 
-  --color-secondary: #007bff; 
-  --color-nav-hover-text: #ADD8E6; 
-  --color-nav-button-bg: #28a745; 
 }

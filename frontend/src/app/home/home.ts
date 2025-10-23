@@ -24,8 +24,8 @@ export class HomeComponent implements OnInit {
   loading: boolean = true;
   error: string | null = null;
   
-  // URL CORRIGIDA: Aponta para o endpoint de teste único
-  private API_URL = '/api/paineis/teste-scraper'; 
+  // URL para buscar todos os painéis do banco de dados
+  private API_URL = '/api/paineis/com-capa'; 
 
   // --- LÓGICA DE CONTROLE DE MENU ---
   isMenuOpen: boolean = false;
@@ -44,22 +44,22 @@ export class HomeComponent implements OnInit {
     this.loading = true;
     this.error = null;
 
-    // A chamada espera AGORA um ÚNICO PainelDTO
-    this.http.get<PainelDTO>(this.API_URL).subscribe({
+    // A chamada agora espera uma LISTA de PainelDTO
+    this.http.get<PainelDTO[]>(this.API_URL).subscribe({
       next: (data) => {
-        // Se a chamada for bem-sucedida, adicionamos o objeto único à lista
-        if (data && data.imagemCapaBase64 !== null) {
-          this.dashboards = [data]; // Transforma o objeto único em uma lista de um item
+        // Se a chamada for bem-sucedida, usa a lista completa
+        if (data && data.length > 0) {
+          this.dashboards = data; // Usa a lista completa de painéis
         } else {
-          // Se o Base64 for null (scraper falhou), mostra erro
-          this.error = 'O painel foi encontrado, mas o Web Scraper falhou em capturar a capa.';
+          // Se não houver painéis cadastrados
+          this.dashboards = [];
         }
         this.loading = false;
       },
       error: (err) => {
-        console.error('Erro ao buscar painel:', err);
+        console.error('Erro ao buscar painéis:', err);
         // Exibe o erro de comunicação
-        this.error = 'Não foi possível comunicar com o Spring Boot. Verifique o console.';
+        this.error = 'Não foi possível carregar os painéis. Verifique se o backend está rodando.';
         this.loading = false;
       }
     });
