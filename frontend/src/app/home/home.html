@@ -21,16 +21,10 @@
     </div>
   </nav>
 </header>
+<nav class="sub-nav-button-container">
+      <a href="/adicionar-painel" class="sub-nav-button">Adicionar Painel</a>
+</nav>
 <main class="content-area">
-  <h2>Painéis de BI Disponíveis</h2>
-  
-  <div *ngIf="loading" class="loading-message">
-      <p>Carregando painéis, aguarde...</p>
-  </div>
-  
-  <div *ngIf="error" class="error-message">
-      <p>Erro ao carregar os painéis: {{ error }}</p>
-  </div>
 
   <div class="dashboard-grid">
       <a *ngFor="let painel of dashboards" 
