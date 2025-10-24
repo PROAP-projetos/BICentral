@@ -4,7 +4,7 @@ import { Component } from '@angular/core';
 import { HttpClient, HttpClientModule, HttpErrorResponse } from '@angular/common/http'; // Adicionado HttpErrorResponse
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-
+import { Router } from '@angular/router';
 // Interface simples para garantir a tipagem dos dados enviados
 interface AddPainel {
   id?: number;
@@ -35,7 +35,7 @@ export class AddPainelComponent {
 
   private API_URL = 'http://localhost:8080/api/painel';
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient, private router: Router) { }
 
   salvarPainel() {
     this.mensagem = '';
@@ -46,6 +46,7 @@ export class AddPainelComponent {
         // Sucesso: Painel salvo
         this.mensagem = `Painel "${resposta.nome}" salvo com sucesso! ID: ${resposta.id}`;
         this.painel = { nome: '', linkPowerBi: '' };
+        this.router.navigate(['/']); // Redireciona para a página inicial
       },
       error: (e: HttpErrorResponse) => { // Tipando o erro para HttpErrorResponse
         this.erro = true;

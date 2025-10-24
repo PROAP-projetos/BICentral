@@ -252,3 +252,19 @@ h2 {
   background-color: #ffebee;
   color: #d32f2f;
 }
+
+.sub-nav-button-container {
+  background-color:  var(--color-info);
+  padding: 10px 20px;
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: background-color 0.2s ease;
+  outline: none;
+  border: none;
+  justify-content: flex-end 
+}
+.sub-nav-button {
+  color: white;
+  cursor: pointer;
+}
