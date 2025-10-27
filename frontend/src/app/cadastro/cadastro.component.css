@@ -1,7 +1,127 @@
-.container {
+/* --- 1. Configuração Global e de Fundo --- */
+
+
+
+/* --- 2. A "Caixa" Branca (Estilos Compartilhados) --- */
+
+form, .card {
+  width: 140%;
+  max-width: 500px; /* Largura máxima da caixa */
+  padding: 50px;
+  background: white; /* Cor da caixa */
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Sombra suave */
+  box-sizing: border-box;
+}
+
+/* --- 3. Título (Funciona nos dois) --- */
+
+h2 {
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 600;
+  color: #333; /* Cor do título */
+  margin-top: 0;
+  margin-bottom: 32px;
+}
+
+/* --- 4. Formulário e Campos --- */
+
+form {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  background-color: #f5f5f5;
+  flex-direction: column;
+  gap: 20px; /* Espaço moderno entre os campos e o botão */
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+label {
+  font-weight: 600;
+  color: #555; /* Cor do texto da label */
+  margin-bottom: 8px;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"] {
+  width: 90%;
+  padding: 16px;
+  font-size: 1rem;
+  border: 1px solid #ccc; /* Cor da borda do input */
+  border-radius: 4px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus {
+  outline: none;
+  border-color: var(--color-primary); /* Cor primária */
+  box-shadow: 0 0 0 2px rgba(0, 74, 128, 0.25); /* Sombra de foco */
+}
+
+/* --- 5. Botão de Ação --- */
+
+.btn {
+  width: 100%;
+  padding: 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease-in-out;
+
+  color: white; /* Cor do texto do botão */
+  background-color: var(--color-button); /* Cor de fundo do botão */
+}
+
+.btn-primary:hover {
+  background-color: #009f67; /* Cor do hover */
+  transform: translateY(-2px);
+}
+
+/* --- 6. Link de Rodapé e Texto de Sucesso --- */
+
+.footer-link {
+  text-align: center;
+  /* O 'gap' do form já dá o espaçamento,
+     mas podemos forçar se necessário */
+  margin-top: 8px;
+}
+
+.footer-link a {
+  font-weight: 500;
+  text-decoration: none;
+  color: var(--color-primary); /* Cor primária */
+}
+
+.footer-link a:hover {
+  text-decoration: underline;
+}
+
+/* Estilo para o parágrafo da mensagem de sucesso */
+.card p {
+  font-size: 1.1rem;
+  color: #333;
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+/* --- 7. Alertas --- */
+
+.alert {
+  padding: 1rem;
+  border: 1px solid transparent;
+  border-radius: .25rem;
+}
+
+.alert-info {
+  color: #0c5460;
+  background-color: #e7f3fe;
+  border-color: #b8daff;
 }
