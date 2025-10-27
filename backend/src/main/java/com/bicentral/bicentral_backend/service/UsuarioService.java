@@ -4,6 +4,8 @@ import com.bicentral.bicentral_backend.exception.AutenticacaoException;
 import com.bicentral.bicentral_backend.exception.RecursoJaExistenteException;
 import com.bicentral.bicentral_backend.model.Usuario;
 import com.bicentral.bicentral_backend.repository.UsuarioRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -16,6 +18,7 @@ public class UsuarioService{
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private static final Logger logger = LoggerFactory.getLogger(UsuarioService.class);
 
     @Autowired
     public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder, EmailService emailService) {
@@ -42,7 +45,12 @@ public class UsuarioService{
 
         Usuario savedUser = usuarioRepository.save(usuarioParaCadastrar);
 
-        emailService.sendVerificationEmail(savedUser, siteURL);
+        try {
+            emailService.sendVerificationEmail(savedUser, siteURL);
+        } catch (Exception e) {
+            logger.error("Falha ao enviar e-mail de verificação", e);
+            throw new RuntimeException("Erro ao enviar e-mail de verificação.");
+        }
 
         return savedUser;
     }
@@ -86,4 +94,3 @@ public class UsuarioService{
         }
     }
 }
-

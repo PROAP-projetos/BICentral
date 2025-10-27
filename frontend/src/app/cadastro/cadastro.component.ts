@@ -38,6 +38,8 @@ export class CadastroComponent {
           this.message = error.error;
         } else if (error.status === 400) {
           this.message = Object.values(error.error).join(', ');
+        } else {
+          this.message = 'Ocorreu um erro ao tentar cadastrar. Por favor, tente novamente mais tarde.';
         }
         console.error('Erro ao cadastrar usuário', error);
       });
