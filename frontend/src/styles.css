@@ -1,16 +1,25 @@
-:root {
-  --color-primary: #004a80;
-  --color-success: #008577;
-  --color-error: #f44336;
-  --color-button: #00b875;
-  --color-alert: #FDB913;
-  --color-text-hover: #FFC107;
-}
+/* src/styles.css - Estilos Globais */
 
-html, body {
-  height: 100%;
-  margin: 0;
-  padding: 0;
+:root {
+  /* Cores principais */
+  --color-primary: #004a80; /* Azul principal (menu, login, etc.) */
+  --color-primary-hover: #005a99; /* Para estados de hover do azul */
+  --color-accent: #00897b; /* Outra cor de destaque secundária */
+
+  /* Cores de Destaque */
+  --color-nav-hover-text: #ffff00; /* AMARELO para o hover dos links */
+  --color-nav-button-bg: #00b875; /* Fundo do botão Cadastre-se */
+  /* Layout e Texto */
+  --color-background: #f5f7fa; /* Fundo claro da página */
+  --color-surface: #ffffff; /* Fundo de cards, painéis */
+  --color-text: #1a1a1a; /* Cor principal do texto */
+  --color-text-muted: #6c757d; /* Texto secundário */
+
+  /* Cores de status (útil para mensagens/alertas) */
+  --color-success: #008577;
+  --color-warning: #ffc107;
+  --color-error: #f44336;
+  --color-info: #3e6d9a;
 }
 
 body {

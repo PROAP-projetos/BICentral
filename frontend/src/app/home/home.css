@@ -1,9 +1,196 @@
-.home-container {
-  text-align: center;
+/* --- ESTILOS PADRÃO (DESKTOP) --- */
+
+/* Esconde o botão hambúrguer no desktop */
+.menu-toggle {
+    display: none;
 }
 
-.actions {
+/* O HEADER CONTÉM O MENU */
+header {
+  background-color: var(--color-primary);
+  color: white;
+  padding: 0 2rem;
   display: flex;
-  gap: 16px;
-  justify-content: center;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+}
+
+.logo {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: white;
+  text-decoration: none;
+  margin-right: 2rem;
+}
+
+nav {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+}
+
+nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+nav ul li {
+  position: relative;
+  margin-right: 1.5rem;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+nav ul li a {
+  color: white;
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 500;
+  padding: 0 5px;
+  transition: color 0.2s ease;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+/* Efeito de hover no texto usa --color-nav-hover-text */
+nav ul li a:hover,
+.nav-icon:hover,
+.nav-text-link:hover {
+  color: var(--color-nav-hover-text);
+}
+
+.nav-item-with-dropdown {
+  display: flex;
+  align-items: center;
+}
+
+.nav-item-with-dropdown::after {
+  content: '▾';
+  margin-left: 5px;
+  font-size: 0.8rem;
+}
+
+.nav-right-section {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.nav-icon, .nav-text-link {
+  color: white;
+  text-decoration: none;
+  font-size: 0.95rem;
+  transition: color 0.2s ease;
+}
+
+/* Botões Login/Cadastro (Ajustado para o Login ser diferente se necessário) */
+.nav-button {
+  background-color: var(--color-nav-button-bg);
+  color: white;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-radius 0.2s ease;
+  margin-left: 1.5rem;
+}
+
+.nav-button:hover {
+  background-color: var(--color-nav-button-bg);
+  color: white;
+  border-radius: 25px;
+}
+
+/* --- MEDIA QUERY (MOBILE) --- */
+
+@media (max-width: 992px) {
+
+    /* 1. VISUALIZAÇÃO DO BOTÃO HAMBÚRGUER */
+    .menu-toggle {
+        display: block; /* Mostra o botão no mobile */
+        background: none;
+        border: none;
+        color: white;
+        font-size: 1.5rem;
+        cursor: pointer;
+        padding: 0; /* Remove padding desnecessário */
+        margin-left: 1rem; /* Dá um pequeno espaço */
+    }
+
+    /* 2. CONFIGURAÇÃO PADRÃO: ESCONDER O MENU */
+    nav {
+        /* Esconde a navegação por padrão (vai ser mostrada pela classe .open) */
+        display: none;
+
+        /* Layout fixo e vertical para o menu quando aparecer */
+        flex-direction: column;
+        position: absolute;
+        top: 60px; /* Abaixo do header */
+        left: 0;
+        width: 100%;
+        background-color: var(--color-primary);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        z-index: 10;
+        height: auto;
+        padding-bottom: 1rem;
+    }
+
+    /* 3. MOSTRAR MENU */
+    /* Esta é a classe que o Angular vai adicionar: [class.open]="isMenuOpen" */
+    nav.open {
+        display: flex;
+    }
+
+    /* Reorganiza o alinhamento do header no mobile */
+    header {
+        padding: 0 1rem;
+    }
+
+    /* Reorganiza os links e botões para coluna */
+    nav ul {
+        flex-direction: column;
+        width: 100%;
+        align-items: flex-start;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1); /* Separador visual */
+        padding-bottom: 0.5rem;
+    }
+
+    nav ul li {
+        margin: 0.3rem 0;
+        width: 100%;
+        height: auto;
+    }
+
+    /* Alinha os links do menu para ocupar toda a largura e ter padding */
+    nav ul li a {
+        padding: 0.5rem 1rem;
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    /* Reorganiza a seção de botões (Login/Cadastro) */
+    .nav-right-section {
+        flex-direction: column;
+        gap: 0.8rem;
+        padding: 1rem; /* Adiciona padding para afastar das bordas */
+        width: 100%;
+        align-items: flex-start;
+    }
+
+    /* Zera a margem dos botões para alinhar */
+    .nav-button {
+        margin-left: 0;
+        width: 100%; /* Botões ocupam a largura total no mobile */
+    }
 }

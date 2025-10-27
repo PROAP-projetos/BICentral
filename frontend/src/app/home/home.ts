@@ -1,20 +1,17 @@
-import { Component, OnInit } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+// src/app/home/home.component.ts
 
+import { Component } from '@angular/core';
 @Component({
-  selector: 'app-home',
-  standalone: true,
-  imports: [RouterLink],
-  templateUrl: './home.html',
-  styleUrls: ['./home.css']
+selector: 'app-home',
+templateUrl: './home.html',
+styleUrls: ['./home.css']
 })
-export class HomeComponent implements OnInit {
+export class HomeComponent {
+// Variável que controla se o menu está aberto ou fechado
+isMenuOpen: boolean = false;
 
-  constructor(private router: Router) { }
-
-  ngOnInit() {
-    if (localStorage.getItem('user')) {
-      this.router.navigate(['/dashboard']);
-    }
+// Função para alternar o estado do menu
+toggleMenu() {
+    this.isMenuOpen = !this.isMenuOpen;
   }
 }
