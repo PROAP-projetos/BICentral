@@ -1,11 +1,15 @@
-/* --- 1. Configuração Global e de Fundo --- */
-
-
-
-/* --- 2. A "Caixa" Branca (Estilos Compartilhados) --- */
+:host{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  margin: 0;
+  padding: 20px;
+  box-sizing: border-box;
+}
 
 form, .card {
-  width: 140%;
+  width: 500px;
   max-width: 500px; /* Largura máxima da caixa */
   padding: 50px;
   background: white; /* Cor da caixa */
@@ -13,8 +17,6 @@ form, .card {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Sombra suave */
   box-sizing: border-box;
 }
-
-/* --- 3. Título (Funciona nos dois) --- */
 
 h2 {
   text-align: center;
@@ -47,7 +49,7 @@ label {
 input[type="text"],
 input[type="email"],
 input[type="password"] {
-  width: 90%;
+  width: 100%;
   padding: 16px;
   font-size: 1rem;
   border: 1px solid #ccc; /* Cor da borda do input */
@@ -77,7 +79,7 @@ input[type="password"]:focus {
   transition: all 0.2s ease-in-out;
 
   color: white; /* Cor do texto do botão */
-  background-color: var(--color-button); /* Cor de fundo do botão */
+  background-color: var(--color-nav-button-bg); /* Cor de fundo do botão */
 }
 
 .btn-primary:hover {
