@@ -12,6 +12,11 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays; // Para Arrays.asList
 
+// NImports para CORS
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import java.util.Arrays; 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -19,15 +24,10 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // 1. ATIVAÇÃO DO CORS: Aplica o bean 'corsConfigurationSource' definido abaixo.
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-
+                .cors(cors -> cors.disable())
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        // 2. Garante que o endpoint do painel esteja permitido.
-                        .requestMatchers("/api/painel/**").permitAll()
-                        .requestMatchers("/api/usuarios/**").permitAll()
-                        .anyRequest().authenticated()
+                        .anyRequest().permitAll()
                 );
         return http.build();
     }
@@ -55,5 +55,3 @@ public class SecurityConfig {
         return source;
     }
 }
-
-//dando push

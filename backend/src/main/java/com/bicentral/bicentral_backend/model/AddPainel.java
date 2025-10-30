@@ -1,16 +1,14 @@
 package com.bicentral.bicentral_backend.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.Data;
-import lombok.NoArgsConstructor; // Adicionado para boas práticas
+import lombok.NoArgsConstructor;
+import java.time.LocalDateTime;
 
 @Data
 @Entity
-@NoArgsConstructor // Adicionado: Construtor vazio é necessário pelo JPA
-public class AddPainel { // Renomeado para começar com letra maiúscula
+@NoArgsConstructor
+public class AddPainel {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -19,4 +17,20 @@ public class AddPainel { // Renomeado para começar com letra maiúscula
     private String nome;
 
     private String linkPowerBi;
+
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String imagemCapaBase64;
+
+    @Enumerated(EnumType.STRING)
+    private StatusCaptura statusCaptura = StatusCaptura.PENDENTE;
+
+    private LocalDateTime dataUltimaCaptura;
+
+    public enum StatusCaptura {
+        PENDENTE,
+        PROCESSANDO,
+        CONCLUIDA,
+        ERRO
+    }
 }
