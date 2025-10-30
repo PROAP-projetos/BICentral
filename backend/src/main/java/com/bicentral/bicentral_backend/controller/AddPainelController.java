@@ -2,11 +2,12 @@ package com.bicentral.bicentral_backend.controller;
 
 import com.bicentral.bicentral_backend.model.AddPainel;
 import com.bicentral.bicentral_backend.repository.AddPainelRepository;
+import com.bicentral.bicentral_backend.service.PowerBIScraperService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.http.HttpStatus; // Importar HttpStatus
-import org.springframework.http.ResponseEntity; // Importar ResponseEntity
-import java.util.Optional; // Importar Optional (necessário para o findBy)
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/painel")
@@ -15,6 +16,9 @@ public class AddPainelController {
 
     @Autowired
     private AddPainelRepository addPainelRepository;
+
+    @Autowired
+    private PowerBIScraperService scraperService;
 
     @PostMapping
     public ResponseEntity<?> criarPainel(@RequestBody AddPainel novoPainel) {
@@ -28,10 +32,23 @@ public class AddPainelController {
             return new ResponseEntity<>(mensagemErro, HttpStatus.CONFLICT);
         }
 
-        // 3. Se o link for único, salva o novo painel.
+        // 3. Garantir que o status inicial seja PENDENTE
+        novoPainel.setStatusCaptura(AddPainel.StatusCaptura.PENDENTE);
+        novoPainel.setImagemCapaBase64(null);
+
+        // 4. Salva o novo painel
         AddPainel painelSalvo = addPainelRepository.save(novoPainel);
 
-        // Retorna o status HTTP 201 Created e o objeto salvo.
+        // 5. Inicia captura assíncrona da capa
+        try {
+            scraperService.capturaCapaAsync(painelSalvo.getId());
+            System.out.println("Captura assíncrona iniciada para painel ID: " + painelSalvo.getId());
+        } catch (Exception e) {
+            System.err.println("Erro ao iniciar captura assíncrona: " + e.getMessage());
+            // Não falha a criação do painel, apenas loga o erro
+        }
+
+        // 6. Retorna o status HTTP 201 Created e o objeto salvo
         return new ResponseEntity<>(painelSalvo, HttpStatus.CREATED);
     }
 
