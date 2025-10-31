@@ -1,19 +1,21 @@
 package com.bicentral.bicentral_backend.controller;
 
+// Importações necessárias
+import com.bicentral.bicentral_backend.exception.AutenticacaoException;
 import com.bicentral.bicentral_backend.model.Usuario;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.repository.query.Param;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus; // Importado para usar o HttpStatus
 import org.springframework.http.ResponseEntity;
 import com.bicentral.bicentral_backend.service.UsuarioService;
-import com.bicentral.bicentral_backend.model.Usuario;
-import jakarta.validation.Valid;
 
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/usuarios")
+@CrossOrigin(origins = "http://localhost:4200")
 public class UsuarioController {
 
     @Autowired
@@ -43,13 +45,30 @@ public class UsuarioController {
         return siteURL.replace(request.getServletPath(), "");
     }
 
+    /* * ================================================================
+     * MÉTODO DE LOGIN CORRIGIDO
+     * Adicionado um catch genérico (Exception e) para capturar
+     * erros de banco de dados (como o de rollback) e evitar o 403.
+     * ================================================================
+     */
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
-        Usuario usuario = usuarioService.login(loginRequest.getEmail(), loginRequest.getPassword());
-        if (usuario != null) {
+        try {
+            // 1. Tenta fazer o login
+            Usuario usuario = usuarioService.login(loginRequest.getEmail(), loginRequest.getPassword());
+
+            // 2. Se der certo, retorna 200 OK
             return ResponseEntity.ok(usuario);
+
+        } catch (AutenticacaoException e) {
+            // 3. Captura o erro de "senha inválida"
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+
+        } catch (Exception e) {
+            // 4. Captura QUALQUER OUTRO erro (como o do banco de dados)
+            // e retorna um Erro Interno do Servidor (500)
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erro interno no servidor: " + e.getMessage());
         }
-        return ResponseEntity.status(401).body("Credenciais inválidas");
     }
 
     public static class LoginRequest {
@@ -73,7 +92,3 @@ public class UsuarioController {
         }
     }
 }
-
-
-
-
