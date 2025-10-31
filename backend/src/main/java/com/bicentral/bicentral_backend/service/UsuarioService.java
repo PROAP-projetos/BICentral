@@ -79,7 +79,7 @@ public class UsuarioService{
      * @return O objeto Usuario se a autenticação for bem-sucedida.
      * @throws AutenticacaoException se o email não for encontrado ou a senha estiver incorreta.
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public Usuario login(String email, String senhaPlana) {
         // Busca o usuário pelo email ou lança uma exceção se não encontrar
         Usuario usuario = usuarioRepository.findByEmail(email)

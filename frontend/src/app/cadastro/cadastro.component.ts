@@ -29,7 +29,7 @@ export class CadastroComponent {
   constructor(private http: HttpClient, private router: Router) { }
 
   cadastrar() {
-    this.http.post('http://localhost:8080/api/auth/cadastro', this.usuario)
+    this.http.post('http://localhost:8080/api/usuarios/cadastro', this.usuario)
       .subscribe(response => {
         this.registrationSuccess = true;
         this.message = 'Cadastro realizado com sucesso! Por favor, verifique seu e-mail para ativar sua conta.';
