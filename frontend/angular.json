@@ -91,5 +91,6 @@
   },
   "cli": {
     "analytics": false
+
   }
 }

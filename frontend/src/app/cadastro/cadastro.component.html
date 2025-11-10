@@ -1,21 +1,33 @@
 <div class="form-container">
-  <form (ngSubmit)="cadastrar()">
-    <h2>Crie sua Conta</h2>
-    <div class="form-group">
-      <label for="username">Nome de usuário</label>
-      <input type="text" id="username" [(ngModel)]="usuario.username" name="username" required>
+  <div *ngIf="!registrationSuccess; else successMessage">
+    <form (ngSubmit)="cadastrar()">
+      <h2>Crie sua Conta</h2>
+      <div *ngIf="message" class="alert alert-info">{{ message }}</div>
+      <div class="form-group">
+        <label for="username">Nome de usuário</label>
+        <input type="text" id="username" [(ngModel)]="usuario.username" name="username" required>
+      </div>
+      <div class ="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" [(ngModel)]="usuario.email" name ="email" required>
+      </div>
+      <div class="form-group">
+        <label for="password">Senha</label>
+        <input type="password" id="password" [(ngModel)]="usuario.password" name="password" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Cadastrar</button>
+      <div class="footer-link">
+        <a routerLink="/">Voltar para a Home</a>
+      </div>
+    </form>
+  </div>
+  <ng-template #successMessage>
+    <div class="card">
+      <h2>Cadastro realizado com sucesso!</h2>
+      <p>Por favor, verifique seu e-mail para ativar sua conta.</p>
+      <div class="footer-link">
+        <a routerLink="/">Voltar para a Home</a>
+      </div>
     </div>
-    <div class="form-group">
-      <label for="password">Senha</label>
-      <input type="password" id="password" [(ngModel)]="usuario.password" name="password" required>
-    </div>
-    <div class ="form-group">
-      <label for="email">Email</label>
-      <input type="email" id="email" [(ngModel)]="usuario.email" name ="email" required>
-    </div>
-    <button type="submit" class="btn btn-primary">Cadastrar</button>
-    <div class="footer-link">
-      <a routerLink="/">Voltar para a Home</a>
-    </div>
-  </form>
+  </ng-template>
 </div>

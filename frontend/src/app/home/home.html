@@ -1,10 +1,26 @@
-<div class="home-container">
-  <div class="card">
-    <h1>Bem-vindo à BICentral!</h1>
-    <p>Sua plataforma centralizada para gerenciamento de bicicletas. Acesse sua conta ou registre-se para começar.</p>
-    <div class="actions">
-      <a routerLink="/login" class="btn btn-secondary">Login</a>
-      <a routerLink="/cadastro" class="btn btn-primary">Cadastre-se</a>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Menu BICentral</title>
+  <link rel="stylesheet" href="home.css" />
+</head>
+<body>
+<header>
+  <a href="#" class="logo">BICentral</a>
+  <nav>
+    <ul>
+      <li class="nav-item-with-dropdown"><a href="#">Minha Equipe</a></li>
+    </ul>
+    <div class="nav-right-section">
+      <a href="#" class="nav-text-link">Suporte</a>
+
+      <a href="/login" class="nav-text-link">Login</a>
+      <button class="nav-button" onclick="location.href='/cadastro'">Cadastre-se</button>
     </div>
-  </div>
-</div>
+  </nav>
+</header>
+
+</body>
+</html>
