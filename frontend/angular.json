@@ -54,6 +54,9 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "proxyConfig": "proxy.conf.json"
+          },
           "configurations": {
             "production": {
               "buildTarget": "BICentral-frontend:build:production"
@@ -73,6 +76,7 @@
             "polyfills": [
               "zone.js",
               "zone.js/testing"
+
             ],
             "tsConfig": "tsconfig.spec.json",
             "assets": [
@@ -90,7 +94,6 @@
     }
   },
   "cli": {
-    "analytics": false
-
+    "analytics": "94454564-5012-4cb9-9a69-752c26ddc067"
   }
 }
