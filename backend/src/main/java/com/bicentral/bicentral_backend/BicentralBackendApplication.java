@@ -8,6 +8,5 @@ public class BicentralBackendApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(BicentralBackendApplication.class, args);
-	}
-
+    }
 }
