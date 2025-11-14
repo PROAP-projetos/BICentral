@@ -7,6 +7,8 @@ import { authGuard } from './auth.guard';
 import { VerificacaoComponent } from './verificacao/verificacao.component';
 import { AddPainelComponent } from './add-painel/add-painel.component';
 
+//advinha pô, eu acho que as rotas mexem com as rotas, mas posso estar errado né
+
 export const routes: Routes = [
 { path: '', component: HomeComponent },
 { path: 'cadastro', component: CadastroComponent },
