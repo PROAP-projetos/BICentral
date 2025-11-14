@@ -27,6 +27,16 @@ public class UsuarioService{
         this.emailService = emailService;
     }
 
+    /**
+     * Cadastra um usuário com base no email e senha.
+     * A anotação @Transactional(readOnly = true) informa ao Spring e ao JPA
+     * que esta é uma operação de apenas leitura, otimizando a performance.
+     *
+     * @param usuarioParaCadastrar name do usuário.
+     * @return cadastro realizado.
+     * @throws RecursoJaExistenteException se email ou user já existirem.
+     */
+
     @Transactional
     public Usuario cadastrar(Usuario usuarioParaCadastrar, String siteURL) {
         if (usuarioRepository.findByUsername(usuarioParaCadastrar.getUsername()).isPresent()) {

@@ -10,6 +10,12 @@ import org.springframework.stereotype.Service;
 
 import java.io.UnsupportedEncodingException;
 
+
+
+
+//Envia o email de confirmação para o usuário, CUIDADO, A API É DO BREVO
+
+
 @Service
 public class EmailService {
 
@@ -21,8 +27,6 @@ public class EmailService {
         String fromAddress = "bicentraluft@gmail.com"; // Lembre-se: Este email DEVE estar validado no Brevo
         String senderName = "BI Central";
         String subject = "Verifique seu cadastro";
-
-        // --- CÓDIGO REFATORADO ABAIXO ---
 
         String content = """
             <!DOCTYPE html>
@@ -136,7 +140,6 @@ public class EmailService {
             </html>
             """;
 
-        // --- FIM DA REFATORAÇÃO ---
 
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8"); // Habilitar UTF-8
