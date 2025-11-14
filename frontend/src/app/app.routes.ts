@@ -6,6 +6,8 @@ import { DashboardComponent } from './dashboard/dashboard.component';
 import { authGuard } from './auth.guard';
 import { VerificacaoComponent } from './verificacao/verificacao.component';
 
+//advinha pô, eu acho que as rotas mexem com as rotas, mas posso estar errado né
+
 export const routes: Routes = [
     { path: '', component: HomeComponent },
     { path: 'cadastro', component: CadastroComponent },
