@@ -9,6 +9,5 @@ public class BicentralBackendApplication {
     //Dallyla: É tipo a main
 	public static void main(String[] args) {
 		SpringApplication.run(BicentralBackendApplication.class, args);
-	}
-
+    }
 }
