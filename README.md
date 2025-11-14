@@ -1,4 +1,45 @@
-# Projeto: Sistema de Gestão de Painéis
+# Projeto: Sistema de Gestão de Painéis (BICentral)
+
+## 📋 Sobre o Projeto
+
+**BICentral** é um sistema de gestão de painéis (dashboards) de Business Intelligence que permite equipes organizarem e compartilharem links de painéis analíticos de forma centralizada e segura.
+
+### O que é este projeto?
+
+Este é um projeto acadêmico/empresarial desenvolvido para facilitar o gerenciamento e visualização de painéis de BI por múltiplas equipes. O sistema oferece:
+
+- **Centralização de Painéis**: Organize todos os links dos painéis de BI da sua organização em um único lugar
+- **Gestão de Equipes**: Crie equipes e controle quem pode visualizar ou editar cada painel
+- **Controle de Acesso**: Sistema de permissões com roles (Admin, Editor, Viewer)
+- **Autenticação Segura**: Login com JWT e gerenciamento de senhas
+- **Interface Responsiva**: Acesso via desktop e mobile
+- **Auditoria**: Registro de todas as ações importantes do sistema
+
+### 🛠️ Stack Tecnológica
+
+#### Backend
+- **Framework**: Spring Boot 3.5.6
+- **Linguagem**: Java 17
+- **Banco de Dados**: PostgreSQL
+- **Segurança**: Spring Security + JWT
+- **ORM**: Spring Data JPA
+- **Build Tool**: Maven
+
+#### Frontend (Planejado)
+- **Framework**: Angular
+- **UI**: Design responsivo com categorização visual
+
+### 🎯 Objetivo
+
+Facilitar o acesso e a gestão de painéis de Business Intelligence para equipes, permitindo que gestores organizem painéis por categoria e controlem as permissões de visualização e edição de acordo com o papel de cada membro da equipe.
+
+### 👥 Público-Alvo
+
+- Gestores de BI que precisam organizar e compartilhar painéis com suas equipes
+- Analistas de dados que precisam acesso rápido aos painéis relevantes
+- Administradores que precisam controlar permissões e auditar acessos
+
+---
 
 ## Épicos e Histórias de Usuário
 
@@ -98,3 +139,58 @@
 - Middleware no backend para logs
 - Registro em tabela Logs (`ação`, `usuário`, `data`)
 - Endpoint `GET /logs` (restrito a admin)
+
+---
+
+## 📁 Estrutura do Projeto
+
+```
+BICentral/
+├── backend/              # API REST em Spring Boot
+│   ├── src/             # Código-fonte Java
+│   ├── pom.xml          # Dependências Maven
+│   └── ...
+├── frontend/            # Interface Angular (a ser implementado)
+├── README.md            # Este arquivo
+└── ...
+```
+
+## 🚀 Como Executar
+
+### Pré-requisitos
+- Java 17 ou superior
+- Maven 3.6+
+- PostgreSQL
+- Node.js e Angular CLI (para o frontend, quando implementado)
+
+### Backend
+
+1. Configure o banco de dados PostgreSQL
+2. Atualize as configurações em `backend/src/main/resources/application.properties`
+3. Execute:
+
+```bash
+cd backend
+./mvnw spring-boot:run
+```
+
+### Frontend
+
+O frontend em Angular ainda está em desenvolvimento.
+
+## 📝 Status do Projeto
+
+Este projeto está em desenvolvimento ativo. As histórias de usuário listadas acima representam o roadmap completo do sistema. O backend Spring Boot está em implementação, e o frontend Angular será desenvolvido posteriormente.
+
+## 📖 Documentação Adicional
+
+- [ARTIGO_GIT_CONECTIVIDADE.md](ARTIGO_GIT_CONECTIVIDADE.md) - Artigo sobre conectividade com Git
+- [RESUMO_RAPIDO_GIT.md](RESUMO_RAPIDO_GIT.md) - Guia rápido de comandos Git
+
+## 🤝 Contribuindo
+
+Este é um projeto acadêmico/empresarial. Para contribuir, siga as práticas de desenvolvimento estabelecidas pela equipe.
+
+## 📄 Licença
+
+Este projeto é de propriedade da organização PROAP-projetos.
