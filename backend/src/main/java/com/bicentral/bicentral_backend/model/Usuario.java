@@ -9,6 +9,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+
+
+//estrutura do user
+
 @Entity
 @Getter
 @Setter
