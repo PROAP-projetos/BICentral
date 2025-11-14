@@ -13,6 +13,13 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
 
+
+//Isso aqui concede permissão ao front-end acessar o back-end
+//CORS significa Cross-Origin Resource Sharing
+//A função SecurityFilterChain configura as regras de segurança para as requisições HTTP
+// A função corsConfigurationSource define as configurações de CORS, especificando quais origens, métodos e cabeçalhos são permitidos
+
+
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -22,14 +29,8 @@ public class SecurityConfig {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(auth -> auth
-                        // Rotas públicas
-                        .requestMatchers(
-                                "/api/usuarios/cadastro",
-                                "/api/usuarios/login",
-                                "/api/usuarios/verify/**"
-                        ).permitAll()
-                        // Todo o resto requer autenticação
+                .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers("/api/usuarios/cadastro", "/api/usuarios/login", "/api/paineis/com-capa","/api/painel", "/api/usuarios/verify/**").permitAll()
                         .anyRequest().authenticated()
                 );
 

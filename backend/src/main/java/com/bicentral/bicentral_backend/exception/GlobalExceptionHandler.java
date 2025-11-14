@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import java.util.HashMap;
 import java.util.Map;
 
+
+//trivial, cuida dos erros e afins.
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
