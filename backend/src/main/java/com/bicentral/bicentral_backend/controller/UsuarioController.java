@@ -6,11 +6,14 @@ import com.bicentral.bicentral_backend.model.Usuario;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.repository.query.Param;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus; // Importado para usar o HttpStatus
 import org.springframework.http.ResponseEntity;
 import com.bicentral.bicentral_backend.service.UsuarioService;
+
+import java.util.List;
 
 
 @RestController
@@ -20,6 +23,9 @@ public class UsuarioController {
 
     @Autowired
     private UsuarioService usuarioService;
+
+
+    //FUNÇÕES GERAIS
 
     @PostMapping("/cadastro")
     public ResponseEntity<?> cadastrarUsuario(@Valid @RequestBody Usuario usuario, HttpServletRequest request) {
@@ -45,12 +51,6 @@ public class UsuarioController {
         return siteURL.replace(request.getServletPath(), "");
     }
 
-    /* * ================================================================
-     * MÉTODO DE LOGIN CORRIGIDO
-     * Adicionado um catch genérico (Exception e) para capturar
-     * erros de banco de dados (como o de rollback) e evitar o 403.
-     * ================================================================
-     */
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
         try {
@@ -90,5 +90,14 @@ public class UsuarioController {
         public void setPassword(String password) {
             this.password = password;
         }
+    }
+
+    //FUNÇÕES ADMINISTRADOR
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<Usuario>> getAllUsuarios() {
+        List<Usuario> usuarios = usuarioService.getAllUsuarios();
+        return ResponseEntity.ok(usuarios);
     }
 }
