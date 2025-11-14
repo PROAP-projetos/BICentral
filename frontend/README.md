@@ -1,59 +1,100 @@
-# BICentralFrontend
+# Projeto: Sistema de Gestão de Painéis
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.3.2.
+## Épicos e Histórias de Usuário
 
-## Development server
+### 🟣 Épico 1: Autenticação e Cadastro
 
-To start a local development server, run:
+#### US-001 – Cadastro de Usuário
+**Como** usuário, **quero** criar minha conta **para** acessar o sistema.
+- Criar tela de cadastro no Angular
+- Implementar validação de formulário
+- Criar endpoint de cadastro no Spring Boot (`POST /usuarios`)
+- Salvar usuário no banco de dados
+- Testes de integração (cadastro)
 
-```bash
-ng serve
-```
+#### US-002 – Login com Email/Senha
+**Como** usuário, **quero** fazer login com email/senha **para** acessar o sistema.
+- Criar tela de login no Angular
+- Implementar autenticação JWT no backend
+- Endpoint de login (`POST /auth/login`)
+- Guard no Angular para proteger rotas privadas
+- Testes de login/logout
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+#### US-003 – Redefinição de Senha
+**Como** usuário, **quero** redefinir minha senha **caso** eu esqueça.
+- Tela de recuperação de senha
+- Endpoint de reset no backend
+- Integração com email (mock no início)
+- Testes de fluxo de recuperação
 
-## Code scaffolding
+### 🟣 Épico 2: Gestão de Painéis
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+#### US-004 – Cadastro de Painel
+**Como** gestor, **quero** cadastrar um painel com título, descrição e link **para** minha equipe visualizar.
+- Modelo Painel no banco (`id`, `título`, `descrição`, `link`, `equipeId`)
+- Endpoint `POST /paineis`
+- Tela Angular de cadastro de painel
+- Validação de links
 
-```bash
-ng generate component component-name
-```
+#### US-005 – Listagem de Painéis
+**Como** gestor, **quero** listar todos os painéis da minha equipe em um overview categorizado.
+- Endpoint `GET /paineis?equipeId=X`
+- Tela Angular de overview com categorias
+- Estilizar painéis em cards
+- Implementar busca/filtro básico
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+#### US-006 – Edição de Painel
+**Como** gestor, **quero** editar o link de um painel existente **sem precisar** recriá-lo.
+- Endpoint `PUT /paineis/{id}`
+- Botão “Editar” no Angular
+- Atualizar link dinamicamente no front
+- Testes de edição
 
-```bash
-ng generate --help
-```
+#### US-007 – Exclusão de Painel
+**Como** gestor, **quero** excluir um painel que não é mais usado.
+- Endpoint `DELETE /paineis/{id}`
+- Botão “Excluir” no Angular
+- Confirmação antes da exclusão
+- Testes de exclusão
 
-## Building
+### 🟣 Épico 3: Gestão de Equipes e Permissões
 
-To build the project run:
+#### US-008 – Criação de Equipe
+**Como** admin, **quero** criar uma equipe e adicionar membros **para** organizar os painéis.
+- Modelo Equipe no banco (`id`, `nome`, `descrição`)
+- Endpoint `POST /equipes`
+- Tela Angular para criação de equipe
+- Associação de usuários à equipe
 
-```bash
-ng build
-```
+#### US-009 – Atribuição de Papéis
+**Como** gestor, **quero** atribuir papéis (viewer/editor) aos membros da minha equipe.
+- Implementar papéis no banco (`role: viewer/editor/admin`)
+- Endpoint `PUT /equipes/{id}/membros`
+- Tela Angular para alterar permissões
+- Regras de acesso aplicadas no backend
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+#### US-010 – Visualização Restrita de Painéis
+**Como** viewer, **quero** visualizar apenas os painéis da minha equipe.
+- Middleware no backend para restringir acesso
+- Angular Guards para bloquear acesso de quem não tem permissão
+- Testes de acesso negado
 
-## Running unit tests
+#### US-011 – Atualização de Painéis por Editores
+**Como** editor, **quero** poder atualizar links de painéis da minha equipe.
+- Endpoint respeitando permissões
+- UI que mostra opções diferentes para viewer x editor
+- Testes de permissão
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+### 🟣 Épico 4: Qualidade e Extras
 
-```bash
-ng test
-```
+#### US-012 – Experiência Responsiva
+**Como** usuário, **quero** ter uma experiência agradável e responsiva.
+- Layout responsivo em Angular
+- Tema simples com categorias visuais
+- Testar em desktop e mobile
 
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+#### US-013 – Registro de Logs
+**Como** admin, **quero** registrar logs de ações (login, cadastro, edição de painel) **para** auditoria.
+- Middleware no backend para logs
+- Registro em tabela Logs (`ação`, `usuário`, `data`)
+- Endpoint `GET /logs` (restrito a admin)
