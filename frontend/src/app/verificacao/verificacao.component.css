@@ -1,0 +1,20 @@
+.verification-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #f5f5f5;
+}
+
+.verification-card {
+    max-width: 500px;
+    text-align: center;
+}
+
+.success-message {
+    color: var(--color-success);
+}
+
+.error-message {
+    color: var(--color-error);
+}

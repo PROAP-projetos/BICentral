@@ -1,0 +1,18 @@
+<div class="form-container">
+  <form (ngSubmit)="login()">
+    <h2>Login</h2>
+    <div *ngIf="message" class="alert alert-danger">{{ message }}</div>
+    <div class="form-group">
+      <label for="email">Email</label>
+      <input type="email" id="email" [(ngModel)]="credentials.email" name="email" required>
+    </div>
+    <div class="form-group">
+      <label for="password">Senha</label>
+      <input type="password" id="password" [(ngModel)]="credentials.password" name="password" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Login</button>
+    <div class="footer-link">
+      <a routerLink="/cadastro">Criar uma conta</a>
+    </div>
+  </form>
+</div>
