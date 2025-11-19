@@ -22,33 +22,29 @@ public class AddPainelController {
 
     @PostMapping
     public ResponseEntity<?> criarPainel(@RequestBody AddPainel novoPainel) {
-        // 1. Buscar no repositório se já existe um painel com este link
+        // 1. Verifica se já existe painel com o mesmo link
         Optional<AddPainel> painelExistente = addPainelRepository.findByLinkPowerBi(novoPainel.getLinkPowerBi());
 
-        // 2. Se o Optional não estiver vazio, significa que o link já existe.
         if (painelExistente.isPresent()) {
-            // Retorna o status HTTP 409 Conflict e a mensagem de erro.
-            String mensagemErro = "Painel já cadastrado";
-            return new ResponseEntity<>(mensagemErro, HttpStatus.CONFLICT);
+            return new ResponseEntity<>("Painel já cadastrado", HttpStatus.CONFLICT);
         }
 
-        // 3. Garantir que o status inicial seja PENDENTE
+        // 2. Define status inicial PENDENTE
         novoPainel.setStatusCaptura(AddPainel.StatusCaptura.PENDENTE);
-        novoPainel.setImagemCapaBase64(null);
+
+        // 3. Agora o nome correto do campo é imagemCapaUrl
+        novoPainel.setImagemCapaUrl(null);
 
         // 4. Salva o novo painel
         AddPainel painelSalvo = addPainelRepository.save(novoPainel);
 
-        // 5. Inicia captura assíncrona da capa
+        // 5. Inicia captura assíncrona
         try {
             scraperService.capturaCapaAsync(painelSalvo.getId());
-            System.out.println("Captura assíncrona iniciada para painel ID: " + painelSalvo.getId());
         } catch (Exception e) {
             System.err.println("Erro ao iniciar captura assíncrona: " + e.getMessage());
-            // Não falha a criação do painel, apenas loga o erro
         }
 
-        // 6. Retorna o status HTTP 201 Created e o objeto salvo
         return new ResponseEntity<>(painelSalvo, HttpStatus.CREATED);
     }
 

@@ -6,21 +6,21 @@ import com.bicentral.bicentral_backend.model.AddPainel;
 public class PainelDTO {
     private String nome;
     private String linkPowerBi;
-    private String imagemCapaBase64;
+    private String imagemCapaUrl; // <-- renomeado
     private AddPainel.StatusCaptura statusCaptura;
 
-    // Construtor
+    // Construtor vazio
     public PainelDTO() {}
 
-    // Construtor com todos os campos (opcional)
-    public PainelDTO(String nome, String linkPowerBi, String imagemCapaBase64, AddPainel.StatusCaptura statusCaptura) {
+    // Construtor completo
+    public PainelDTO(String nome, String linkPowerBi, String imagemCapaUrl, AddPainel.StatusCaptura statusCaptura) {
         this.nome = nome;
         this.linkPowerBi = linkPowerBi;
-        this.imagemCapaBase64 = imagemCapaBase64;
+        this.imagemCapaUrl = imagemCapaUrl; // <-- renomeado
         this.statusCaptura = statusCaptura;
     }
 
-    // GETTERS e SETTERS 
+    // GETTERS e SETTERS
     public String getNome() {
         return nome;
     }
@@ -28,14 +28,21 @@ public class PainelDTO {
     public void setNome(String nome) {
         this.nome = nome;
     }
+
+    public String getLinkPowerBi() {
+        return linkPowerBi;
+    }
+
     public void setLinkPowerBi(String linkPowerBi) {
         this.linkPowerBi = linkPowerBi;
     }
-    public String getImagemCapaBase64() {
-        return imagemCapaBase64;
+
+    public String getImagemCapaUrl() { // <-- renomeado
+        return imagemCapaUrl;
     }
-    public void setImagemCapaBase64(String imagemCapaBase64) {
-        this.imagemCapaBase64 = imagemCapaBase64;
+
+    public void setImagemCapaUrl(String imagemCapaUrl) { // <-- renomeado
+        this.imagemCapaUrl = imagemCapaUrl;
     }
 
     public AddPainel.StatusCaptura getStatusCaptura() {
@@ -44,9 +51,5 @@ public class PainelDTO {
 
     public void setStatusCaptura(AddPainel.StatusCaptura statusCaptura) {
         this.statusCaptura = statusCaptura;
-    }
-
-    public String getLinkPowerBi() {
-        return linkPowerBi;
     }
 }

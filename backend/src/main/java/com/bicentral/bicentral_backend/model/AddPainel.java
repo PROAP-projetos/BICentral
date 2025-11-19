@@ -20,7 +20,7 @@ public class AddPainel {
 
     @Lob
     @Column(columnDefinition = "TEXT")
-    private String imagemCapaBase64;
+    private String imagemCapaUrl;
 
     @Enumerated(EnumType.STRING)
     private StatusCaptura statusCaptura = StatusCaptura.PENDENTE;
