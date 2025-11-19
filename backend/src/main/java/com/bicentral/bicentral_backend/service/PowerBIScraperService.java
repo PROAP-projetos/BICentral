@@ -3,7 +3,6 @@ package com.bicentral.bicentral_backend.service;
 import com.bicentral.bicentral_backend.model.AddPainel;
 import com.bicentral.bicentral_backend.repository.AddPainelRepository;
 import io.github.bonigarcia.wdm.WebDriverManager;
-import org.openqa.selenium.By;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
@@ -14,128 +13,101 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
-import java.util.Base64;
 import java.util.concurrent.TimeUnit;
 
 @Service
 public class PowerBIScraperService {
 
-    private final String IMAGES_PATH = "storage/paineis/"; // Local para salvar as imagens
-    
-    // ATENÇÃO: Use variáveis de ambiente ou Vault para credenciais.
-    private final String PBI_USERNAME = "dallyla.moraes@mail.uft.edu.br";
-    private final String PBI_PASSWORD = "Beng@123";
-
     @Autowired
     private AddPainelRepository addPainelRepository;
 
-    public String capturarCapaEmBase64(String urlPainel, String nomePainel) {
-        
-        // 1. Configuração do Driver
+    @Autowired
+    private SupabaseStorageService supabaseStorageService;
+
+    /**
+     * Captura o screenshot de um painel Power BI e salva como arquivo local temporário
+     */
+    public Path capturarScreenshotComoArquivo(String urlPainel, String nomePainel) {
+
         WebDriverManager.chromedriver().setup();
 
         ChromeOptions options = new ChromeOptions();
-        options.addArguments("--headless");        // Modo sem GUI
-        options.addArguments("--no-sandbox");      // Necessário para alguns ambientes (ex: Docker)
+        options.addArguments("--headless");
+        options.addArguments("--no-sandbox");
         options.addArguments("--disable-dev-shm-usage");
-        options.addArguments("--window-size=1920,1080"); // Define o tamanho da tela para a captura
+        options.addArguments("--window-size=1920,1080");
 
         WebDriver driver = new ChromeDriver(options);
         driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
 
         try {
             driver.get(urlPainel);
-            
-            // ******************************************************
-            // 2. O PONTO CRÍTICO: AUTENTICAÇÃO
-            // ESTE CÓDIGO É ALTAMENTE FRÁGIL E DEPENDENTE DA TELA DE LOGIN DO MS/AZURE AD.
-            // ******************************************************
-            
-            System.out.println("Tentando autenticar...");
-            
-            // Exemplo de Autenticação Fase 1: Inserir e-mail
-            // Pode precisar ajustar o seletor (ID ou nome)
-           // driver.findElement(By.id("i0116")).sendKeys(PBI_USERNAME); 
-           // driver.findElement(By.id("idSIButton9")).click();
-            
-            // Espera a próxima tela (senha) carregar
-            TimeUnit.SECONDS.sleep(3);
-            
-            // Exemplo de Autenticação Fase 2: Inserir senha
-         //   driver.findElement(By.id("i0118")).sendKeys(PBI_PASSWORD);
-         //   driver.findElement(By.id("idSIButton9")).click(); 
-            
-            // Esperar o PBI carregar a página principal e os visuais
-            TimeUnit.SECONDS.sleep(10); // Dê tempo para os scripts do Power BI rodarem
 
-            // Verifique se a página carregou procurando um elemento comum do PBI (opcional)
-            // if (driver.findElements(By.cssSelector("seletor-de-um-elemento-do-powerbi")).isEmpty()) {
-            //     throw new RuntimeException("Falha ao carregar o dashboard do Power BI após login.");
-            // }
+            // Aguarda carregamento do PowerBI
+            TimeUnit.SECONDS.sleep(10);
 
-            // 3. Captura de Tela do Elemento Principal (Assumindo que o corpo é o dashboard)
-            File srcFile = ((TakesScreenshot)driver).getScreenshotAs(OutputType.FILE);
+            File srcFile = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
 
-            // 4. Converte a imagem para Base64 (Para enviar diretamente na sua API)
-            byte[] fileContent = Files.readAllBytes(srcFile.toPath());
-            String base64Image = Base64.getEncoder().encodeToString(fileContent);
-            
-            System.out.println("Captura bem-sucedida.");
-            return base64Image;
+            // Criar arquivo temporário
+            Path destino = Path.of("temp_" + System.currentTimeMillis() + ".png");
+            Files.copy(srcFile.toPath(), destino, StandardCopyOption.REPLACE_EXISTING);
+
+            return destino;
 
         } catch (Exception e) {
-            System.err.println("Erro durante a raspagem de tela: " + e.getMessage());
             e.printStackTrace();
-            return null; // Retorna nulo em caso de falha
+            return null;
         } finally {
-            if (driver != null) {
-                driver.quit(); // Sempre feche o navegador!
-            }
+            driver.quit();
         }
     }
 
     /**
-     * Método assíncrono para capturar capa de um painel e atualizar no banco
-     * @param painelId ID do painel a ser processado
+     * Método assíncrono para capturar capa de um painel e atualizar no banco (URL, não Base64)
      */
     @Async("taskExecutor")
     public void capturaCapaAsync(Long painelId) {
         try {
-            // 1. Busca o painel no banco
+            // 1. Busca o painel
             AddPainel painel = addPainelRepository.findById(painelId)
-                .orElseThrow(() -> new RuntimeException("Painel não encontrado com ID: " + painelId));
+                    .orElseThrow(() -> new RuntimeException("Painel não encontrado com ID: " + painelId));
 
-            // 2. Atualiza status para PROCESSANDO
             painel.setStatusCaptura(AddPainel.StatusCaptura.PROCESSANDO);
             painel.setDataUltimaCaptura(LocalDateTime.now());
             addPainelRepository.save(painel);
 
-            System.out.println("Iniciando captura assíncrona para painel: " + painel.getNome());
+            System.out.println("Capturando screenshot do painel: " + painel.getNome());
 
-            // 3. Executa a captura
-            String imagemBase64 = capturarCapaEmBase64(painel.getLinkPowerBi(), painel.getNome());
+            // 2. Screenshot → arquivo
+            Path arquivo = capturarScreenshotComoArquivo(painel.getLinkPowerBi(), painel.getNome());
 
-            // 4. Atualiza o painel com o resultado
-            if (imagemBase64 != null) {
-                painel.setImagemCapaBase64(imagemBase64);
-                painel.setStatusCaptura(AddPainel.StatusCaptura.CONCLUIDA);
-                System.out.println("Captura concluída com sucesso para painel: " + painel.getNome());
-            } else {
+            if (arquivo == null) {
                 painel.setStatusCaptura(AddPainel.StatusCaptura.ERRO);
-                System.err.println("Falha na captura para painel: " + painel.getNome());
+                addPainelRepository.save(painel);
+                return;
             }
 
+            // 3. Upload no Supabase
+            String nomeArquivo = "paineis/" + painel.getId() + ".png";
+            String urlFinal = supabaseStorageService.uploadFile(nomeArquivo, arquivo);
+
+            // 4. Atualizar painel com URL final
+            painel.setImagemCapaUrl(urlFinal);
+            painel.setStatusCaptura(AddPainel.StatusCaptura.CONCLUIDA);
+            painel.setDataUltimaCaptura(LocalDateTime.now());
             addPainelRepository.save(painel);
 
+            System.out.println("Upload concluído: " + urlFinal);
+
         } catch (Exception e) {
+
             System.err.println("Erro durante captura assíncrona: " + e.getMessage());
             e.printStackTrace();
-            
-            // Atualiza status para ERRO
+
             try {
                 AddPainel painel = addPainelRepository.findById(painelId).orElse(null);
                 if (painel != null) {
