@@ -2,39 +2,33 @@ import { Component, OnInit } from '@angular/core';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 
-// Define a estrutura do objeto que vem do Spring Boot
 interface PainelDTO {
-  nome: string;
-  linkPowerBi: string;
-  imagemCapaBase64: string;
+nome: string;
+linkPowerBi: string;
+imagemCapaUrl: string;
+statusCaptura: string;
+
+// controle local
+previewSrc?: string;   // só definida se a imagem existir
+carregada?: boolean;   // true quando imagem válida e exibida
 }
 
 @Component({
-  selector: 'app-home', 
-  standalone: true, 
-  imports: [CommonModule, HttpClientModule], 
-  templateUrl: './home.html',
-  styleUrls: ['./home.css']
+selector: 'app-home',
+standalone: true,
+imports: [CommonModule, HttpClientModule],
+templateUrl: './home.html',
+styleUrls: ['./home.css']
 })
 export class HomeComponent implements OnInit {
 
-  // --- LÓGICA DE LISTAGEM DE PAINÉIS ---
-  // A lista agora conterá apenas o resultado do scraper
-  dashboards: PainelDTO[] = []; 
-  loading: boolean = true;
-  error: string | null = null;
-  
-  // URL para buscar todos os painéis do banco de dados
-  private API_URL = '/api/paineis/com-capa'; 
+dashboards: PainelDTO[] = [];
+loading: boolean = true;
+error: string | null = null;
 
-  // --- LÓGICA DE CONTROLE DE MENU ---
-  isMenuOpen: boolean = false;
+private API_URL = '/api/paineis/com-capa';
 
-  toggleMenu() {
-    this.isMenuOpen = !this.isMenuOpen;
-  }
-  
-  constructor(private http: HttpClient) { }
+constructor(private http: HttpClient) {}
 
   ngOnInit(): void {
     this.loadDashboards();
@@ -44,24 +38,72 @@ export class HomeComponent implements OnInit {
     this.loading = true;
     this.error = null;
 
-    // A chamada agora espera uma LISTA de PainelDTO
     this.http.get<PainelDTO[]>(this.API_URL).subscribe({
       next: (data) => {
-        // Se a chamada for bem-sucedida, usa a lista completa
-        if (data && data.length > 0) {
-          this.dashboards = data; // Usa a lista completa de painéis
-        } else {
-          // Se não houver painéis cadastrados
-          this.dashboards = [];
-        }
+        this.dashboards = (data ?? []).map(p => ({
+          ...p,
+          previewSrc: undefined,
+          carregada: false
+        }));
+
+        // pré-carrega imagens (não insere <img> até confirmar sucesso)
+        this.dashboards.forEach(p => this.preloadImageForPainel(p));
+
         this.loading = false;
       },
       error: (err) => {
         console.error('Erro ao buscar painéis:', err);
-        // Exibe o erro de comunicação
-        this.error = 'Não foi possível carregar os painéis. Verifique se o backend está rodando.';
+        this.error = 'Não foi possível carregar os painéis.';
         this.loading = false;
       }
     });
+  }
+
+  private preloadImageForPainel(painel: PainelDTO) {
+    const url = painel.imagemCapaUrl;
+    if (!url) {
+      // sem URL: mostra o placeholder (não marca como "carregada")
+      painel.previewSrc = undefined;
+      painel.carregada = false;
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      // imagem válida — agora permite que o <img> seja renderizado e esconde o placeholder
+      painel.previewSrc = url;
+      painel.carregada = true;
+    };
+    img.onerror = () => {
+      // falha ao carregar → mantém o placeholder visível
+      painel.previewSrc = undefined;
+      painel.carregada = false;
+    };
+
+    // dispara o carregamento
+    img.src = url;
+  }
+
+  // handlers caso o <img> precise deles depois
+  onImageLoad(painel: PainelDTO) {
+    painel.carregada = true;
+  }
+  onImageError(painel: PainelDTO) {
+    painel.previewSrc = undefined;
+    painel.carregada = false;
+  }
+
+  // ex: adicionar localmente um painel
+  addLocalPainel(p: Partial<PainelDTO>) {
+    const painel: PainelDTO = {
+      nome: p.nome ?? 'Painel sem nome',
+      linkPowerBi: p.linkPowerBi ?? '#',
+      imagemCapaUrl: p.imagemCapaUrl ?? '',
+      statusCaptura: p.statusCaptura ?? '',
+      previewSrc: undefined,
+      carregada: false
+    };
+    this.dashboards = [painel, ...this.dashboards];
+    this.preloadImageForPainel(painel);
   }
 }

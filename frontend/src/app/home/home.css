@@ -3,7 +3,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  border: none !important; 
+  border: none !important;
   outline: none !important;
 }
 
@@ -22,10 +22,10 @@ img {
 
 /* Variáveis de cor */
 :root {
-  --color-primary: #0056b3; 
-  --color-secondary: #007bff; 
-  --color-nav-hover-text: #ADD8E6; 
-  --color-nav-button-bg: #28a745; 
+  --color-primary: #0056b3;
+  --color-secondary: #007bff;
+  --color-nav-hover-text: #ADD8E6;
+  --color-nav-button-bg: #28a745;
 }
 
 /* --- ESTILOS PADRÃO (DESKTOP) --- */
@@ -35,7 +35,7 @@ img {
   display: none;
 }
 
-/* O HEADER CONTÉM O MENU (VOLTANDO AO ORIGINAL) */
+/* HEADER */
 header {
   background-color: var(--color-primary);
   color: white;
@@ -69,7 +69,6 @@ nav ul {
   display: flex;
   align-items: center;
   height: 100%;
-  gap: 0;
 }
 
 nav ul li {
@@ -90,12 +89,8 @@ nav ul li a {
   height: 100%;
   display: flex;
   align-items: center;
-  /* Garantindo a remoção de bordas/contornos em links do menu */
-  outline: none; 
-  border: none;
 }
 
-/* Efeito de hover no texto usa --color-nav-hover-text */
 nav ul li a:hover,
 .nav-icon:hover,
 .nav-text-link:hover {
@@ -125,16 +120,12 @@ nav ul li a:hover,
   text-decoration: none;
   font-size: 0.95rem;
   transition: color 0.2s ease;
-  /* Garantindo a remoção de bordas/contornos em links de texto */
-  outline: none; 
-  border: none;
 }
 
 /* Botões Login/Cadastro */
 .nav-button {
   background-color: var(--color-nav-button-bg);
   color: white;
-  /* 'border: none;' já está no reset, mas reconfirmando aqui */
   padding: 0.8rem 1.5rem;
   border-radius: 6px;
   font-size: 1rem;
@@ -150,7 +141,7 @@ nav ul li a:hover,
   border-radius: 25px;
 }
 
-/* --- ESTILOS DO CONTEÚDO PRINCIPAL E GRID DE PAINÉIS (MANTENDO AS ALTERAÇÕES) --- */
+/* --- ESTILOS DO CONTEÚDO PRINCIPAL E GRID DE PAINÉIS --- */
 .content-area {
   padding: 20px 40px;
   width: 100%;
@@ -168,26 +159,21 @@ h2 {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 15px;
   align-items: start;
-  margin-top: 0;
-  justify-content: stretch;
   padding: 0 20px;
 }
 
+/* LINK DO CARD */
 .dashboard-card-link {
   text-decoration: none !important;
   color: inherit;
   display: block;
-  outline: none !important; 
-  border: none !important;
-  box-shadow: none !important;
 }
 
+/* CARD DO PAINEL */
 .dashboard-card {
-  border: none !important; 
-  outline: none !important;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -195,10 +181,8 @@ h2 {
   background: linear-gradient(to bottom, #ffffff 0%, #f8f9fa 100%);
   display: flex;
   flex-direction: column;
-  max-width: 350px;
   height: 250px;
   cursor: pointer;
-  flex-shrink: 0;
 }
 
 .dashboard-card:hover {
@@ -206,17 +190,40 @@ h2 {
   box-shadow: 0 12px 24px rgba(0, 86, 179, 0.15);
 }
 
-/* Estilo para a imagem menor (AJUSTADO) */
-.dashboard-capa-menor {
+/* --- IMAGEM DO PAINEL + PLACEHOLDER --- */
+.dashboard-image-wrapper {
+  position: relative;
   width: 100%;
-  height: 150px;
-  object-fit: cover;
-  border: none !important; 
-  outline: none !important;
-  display: block;
+  height: 160px;
+  background: #fafafa; /* leve contraste para não ficar "todo branco" */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  overflow: hidden;
 }
 
-/* Estilo para o título abaixo da imagem (AJUSTADO) */
+.dashboard-capa-menor {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Placeholder com o texto "Carregando imagem..." */
+.image-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fafafa;
+  font-size: 14px;
+  color: #666;
+  padding: 8px;
+  text-align: center;
+}
+
+/* Título abaixo */
 .dashboard-title-below-image {
   font-size: 1.1em;
   font-weight: 600;
@@ -224,16 +231,12 @@ h2 {
   text-align: center;
   padding: 12px 8px;
   margin: 0;
-  border: none !important;
-  outline: none !important;
-  text-decoration: none !important;
-  flex-grow: 1;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* Mensagens de estado */
+/* Mensagens */
 .loading-message,
 .error-message {
   text-align: center;
@@ -253,18 +256,15 @@ h2 {
   color: #d32f2f;
 }
 
+/* Botão superior */
 .sub-nav-button-container {
-  background-color:  var(--color-info);
+  background-color: var(--color-info);
   padding: 10px 20px;
-  text-decoration: none;
-  font-size: 1rem;
-  font-weight: 600;
-  transition: background-color 0.2s ease;
-  outline: none;
-  border: none;
-  justify-content: flex-end 
+  justify-content: flex-end;
 }
+
 .sub-nav-button {
   color: white;
   cursor: pointer;
 }
+
