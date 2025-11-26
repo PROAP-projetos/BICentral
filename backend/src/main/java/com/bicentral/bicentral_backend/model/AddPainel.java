@@ -18,8 +18,7 @@ public class AddPainel {
 
     private String linkPowerBi;
 
-    @Lob
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "text")
     private String imagemCapaUrl;
 
     @Enumerated(EnumType.STRING)
