@@ -18,9 +18,8 @@ public class AddPainel {
 
     private String linkPowerBi;
 
-    @Lob
-    @Column(columnDefinition = "TEXT")
-    private String imagemCapaBase64;
+    @Column(columnDefinition = "text")
+    private String imagemCapaUrl;
 
     @Enumerated(EnumType.STRING)
     private StatusCaptura statusCaptura = StatusCaptura.PENDENTE;
