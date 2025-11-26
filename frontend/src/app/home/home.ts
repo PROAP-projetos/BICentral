@@ -2,12 +2,15 @@ import { Component, OnInit } from '@angular/core';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 
-// Estrutura correta do objeto que vem do backend
 interface PainelDTO {
 nome: string;
 linkPowerBi: string;
 imagemCapaUrl: string;
 statusCaptura: string;
+
+// controle local
+previewSrc?: string;   // só definida se a imagem existir
+carregada?: boolean;   // true quando imagem válida e exibida
 }
 
 @Component({
@@ -25,13 +28,7 @@ error: string | null = null;
 
 private API_URL = '/api/paineis/com-capa';
 
-isMenuOpen: boolean = false;
-
-toggleMenu() {
-    this.isMenuOpen = !this.isMenuOpen;
-  }
-
-  constructor(private http: HttpClient) { }
+constructor(private http: HttpClient) {}
 
   ngOnInit(): void {
     this.loadDashboards();
@@ -43,7 +40,15 @@ toggleMenu() {
 
     this.http.get<PainelDTO[]>(this.API_URL).subscribe({
       next: (data) => {
-        this.dashboards = data ?? [];
+        this.dashboards = (data ?? []).map(p => ({
+          ...p,
+          previewSrc: undefined,
+          carregada: false
+        }));
+
+        // pré-carrega imagens (não insere <img> até confirmar sucesso)
+        this.dashboards.forEach(p => this.preloadImageForPainel(p));
+
         this.loading = false;
       },
       error: (err) => {
@@ -52,5 +57,53 @@ toggleMenu() {
         this.loading = false;
       }
     });
+  }
+
+  private preloadImageForPainel(painel: PainelDTO) {
+    const url = painel.imagemCapaUrl;
+    if (!url) {
+      // sem URL: mostra o placeholder (não marca como "carregada")
+      painel.previewSrc = undefined;
+      painel.carregada = false;
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      // imagem válida — agora permite que o <img> seja renderizado e esconde o placeholder
+      painel.previewSrc = url;
+      painel.carregada = true;
+    };
+    img.onerror = () => {
+      // falha ao carregar → mantém o placeholder visível
+      painel.previewSrc = undefined;
+      painel.carregada = false;
+    };
+
+    // dispara o carregamento
+    img.src = url;
+  }
+
+  // handlers caso o <img> precise deles depois
+  onImageLoad(painel: PainelDTO) {
+    painel.carregada = true;
+  }
+  onImageError(painel: PainelDTO) {
+    painel.previewSrc = undefined;
+    painel.carregada = false;
+  }
+
+  // ex: adicionar localmente um painel
+  addLocalPainel(p: Partial<PainelDTO>) {
+    const painel: PainelDTO = {
+      nome: p.nome ?? 'Painel sem nome',
+      linkPowerBi: p.linkPowerBi ?? '#',
+      imagemCapaUrl: p.imagemCapaUrl ?? '',
+      statusCaptura: p.statusCaptura ?? '',
+      previewSrc: undefined,
+      carregada: false
+    };
+    this.dashboards = [painel, ...this.dashboards];
+    this.preloadImageForPainel(painel);
   }
 }

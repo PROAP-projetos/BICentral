@@ -16,7 +16,6 @@
     </ul>
     <div class="nav-right-section">
       <a href="#" class="nav-text-link">Suporte</a>
-
       <a href="/login" class="nav-text-link">Login</a>
       <button class="nav-button" onclick="location.href='/cadastro'">Cadastre-se</button>
     </div>
@@ -29,8 +28,15 @@
 
 <main class="content-area">
 
-  <div class="dashboard-grid">
+  <div *ngIf="loading" class="loading-section">
+    Carregando painéis...
+  </div>
 
+  <div *ngIf="error" class="error-section">
+    {{ error }}
+  </div>
+
+  <div class="dashboard-grid">
     <a *ngFor="let painel of dashboards"
        [href]="painel.linkPowerBi"
        target="_blank"
@@ -38,19 +44,31 @@
 
       <div class="dashboard-card">
 
-        <!-- Agora usando URL correta enviada pelo backend -->
-        <img
-          [src]="painel.imagemCapaUrl"
-          [alt]="'Capa do Painel ' + painel.nome"
-          class="dashboard-capa-menor">
+        <div class="dashboard-image-wrapper">
+          <!-- só renderiza <img> se previewSrc existir (imagem válida) -->
+          <img *ngIf="painel.previewSrc"
+               [src]="painel.previewSrc"
+               [alt]="'Capa do Painel ' + painel.nome"
+               class="dashboard-capa-menor"
+               (load)="onImageLoad(painel)"
+               (error)="onImageError(painel)"
+               loading="lazy"
+          >
 
-        <h3 class="dashboard-title-below-image">{{ painel.nome }}</h3>
+          <!-- Placeholder: aparece enquanto não há confirmação de imagem -->
+          <div class="image-placeholder" *ngIf="!painel.carregada">
+            Carregando imagem...
+          </div>
+        </div>
+
+        <h3 class="dashboard-title-below-image">
+          {{ painel.nome }}
+        </h3>
+
       </div>
-
     </a>
-
   </div>
-</main>
 
+</main>
 </body>
 </html>
