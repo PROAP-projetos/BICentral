@@ -1,2 +1,6 @@
 org.springframework.context.ApplicationListener=\
+<<<<<<< Updated upstream
 com.bicentral.bicentral_backend.config.EnvLoader
+=======
+com.bicentral.bicentral_backend.config.EnvLoader
+>>>>>>> Stashed changes

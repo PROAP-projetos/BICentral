@@ -25,7 +25,11 @@ public class EnvLoader implements ApplicationListener<ApplicationEnvironmentPrep
                 }
             });
         } catch (IOException e) {
+<<<<<<< Updated upstream
             System.out.println("⚠ .env não encontrado (ignorando)");
+=======
+            System.out.println("⚠️ .env não encontrado (ignorando)");
+>>>>>>> Stashed changes
         }
 
         ConfigurableEnvironment environment = event.getEnvironment();
@@ -33,4 +37,8 @@ public class EnvLoader implements ApplicationListener<ApplicationEnvironmentPrep
                 new MapPropertySource("customDotenv", envMap)
         );
     }
+<<<<<<< Updated upstream
 }
+=======
+}
+>>>>>>> Stashed changes
