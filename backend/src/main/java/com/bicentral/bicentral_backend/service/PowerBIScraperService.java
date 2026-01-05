@@ -8,6 +8,8 @@ import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,8 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class PowerBIScraperService {
 
+    private static final Logger logger = LoggerFactory.getLogger(PowerBIScraperService.class);
+
     @Autowired
     private AddPainelRepository addPainelRepository;
 
@@ -31,8 +35,7 @@ public class PowerBIScraperService {
     /**
      * Captura o screenshot de um painel Power BI e salva como arquivo local temporário
      */
-    public Path capturarScreenshotComoArquivo(String urlPainel, String nomePainel) {
-
+    public Path capturarScreenshotComoArquivo(String urlPainel) {
         WebDriverManager.chromedriver().setup();
 
         ChromeOptions options = new ChromeOptions();
@@ -46,20 +49,15 @@ public class PowerBIScraperService {
 
         try {
             driver.get(urlPainel);
-
-            // Aguarda carregamento do PowerBI
             TimeUnit.SECONDS.sleep(10);
 
             File srcFile = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
-
-            // Criar arquivo temporário
             Path destino = Path.of("temp_" + System.currentTimeMillis() + ".png");
             Files.copy(srcFile.toPath(), destino, StandardCopyOption.REPLACE_EXISTING);
 
             return destino;
-
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Erro ao capturar screenshot do painel: {}", urlPainel, e);
             return null;
         } finally {
             driver.quit();
@@ -67,12 +65,12 @@ public class PowerBIScraperService {
     }
 
     /**
-     * Método assíncrono para capturar capa de um painel e atualizar no banco (URL, não Base64)
+     * Método assíncrono para capturar capa de um painel e atualizar no banco
      */
     @Async("taskExecutor")
     public void capturaCapaAsync(Long painelId) {
+        Path arquivo = null;
         try {
-            // 1. Busca o painel
             AddPainel painel = addPainelRepository.findById(painelId)
                     .orElseThrow(() -> new RuntimeException("Painel não encontrado com ID: " + painelId));
 
@@ -80,10 +78,9 @@ public class PowerBIScraperService {
             painel.setDataUltimaCaptura(LocalDateTime.now());
             addPainelRepository.save(painel);
 
-            System.out.println("Capturando screenshot do painel: " + painel.getNome());
+            logger.info("Capturando screenshot do painel: {}", painel.getNome());
 
-            // 2. Screenshot → arquivo
-            Path arquivo = capturarScreenshotComoArquivo(painel.getLinkPowerBi(), painel.getNome());
+            arquivo = capturarScreenshotComoArquivo(painel.getLinkPowerBi());
 
             if (arquivo == null) {
                 painel.setStatusCaptura(AddPainel.StatusCaptura.ERRO);
@@ -91,22 +88,18 @@ public class PowerBIScraperService {
                 return;
             }
 
-            // 3. Upload no Supabase
             String nomeArquivo = "paineis/" + painel.getId() + ".png";
             String urlFinal = supabaseStorageService.uploadFile(nomeArquivo, arquivo);
 
-            // 4. Atualizar painel com URL final
             painel.setImagemCapaUrl(urlFinal);
             painel.setStatusCaptura(AddPainel.StatusCaptura.CONCLUIDA);
             painel.setDataUltimaCaptura(LocalDateTime.now());
             addPainelRepository.save(painel);
 
-            System.out.println("Upload concluído: " + urlFinal);
+            logger.info("Upload concluído para painel {}: {}", painel.getNome(), urlFinal);
 
         } catch (Exception e) {
-
-            System.err.println("Erro durante captura assíncrona: " + e.getMessage());
-            e.printStackTrace();
+            logger.error("Erro durante captura assíncrona do painel ID: {}", painelId, e);
 
             try {
                 AddPainel painel = addPainelRepository.findById(painelId).orElse(null);
@@ -115,7 +108,16 @@ public class PowerBIScraperService {
                     addPainelRepository.save(painel);
                 }
             } catch (Exception ex) {
-                System.err.println("Erro ao atualizar status de erro: " + ex.getMessage());
+                logger.error("Erro ao atualizar status de erro do painel ID: {}", painelId, ex);
+            }
+        } finally {
+            if (arquivo != null) {
+                try {
+                    Files.deleteIfExists(arquivo);
+                    logger.debug("Arquivo temporário deletado: {}", arquivo);
+                } catch (Exception e) {
+                    logger.error("Erro ao deletar arquivo temporário: {}", arquivo, e);
+                }
             }
         }
     }
