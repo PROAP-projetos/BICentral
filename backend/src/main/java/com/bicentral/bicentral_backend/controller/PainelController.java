@@ -4,22 +4,21 @@ import com.bicentral.bicentral_backend.dto.PainelDTO;
 import com.bicentral.bicentral_backend.model.AddPainel;
 import com.bicentral.bicentral_backend.repository.AddPainelRepository;
 import com.bicentral.bicentral_backend.service.PowerBIScraperService;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/paineis")
 @CrossOrigin(origins = "http://localhost:4200")
 public class PainelController {
+
+    private static final Logger logger = LoggerFactory.getLogger(PainelController.class);
 
     private final AddPainelRepository addPainelRepository;
     private final PowerBIScraperService scraperService;
@@ -41,22 +40,15 @@ public class PainelController {
     public ResponseEntity<List<PainelDTO>> getAllPaineisComCapa() {
         try {
             List<AddPainel> paineis = addPainelRepository.findAll();
-            List<PainelDTO> resultado = new ArrayList<>();
-
-            for (AddPainel painel : paineis) {
-                PainelDTO dto = new PainelDTO();
-                dto.setNome(painel.getNome());
-                dto.setLinkPowerBi(painel.getLinkPowerBi());
-                dto.setImagemCapaUrl(painel.getImagemCapaUrl()); // <-- atualizado
-                dto.setStatusCaptura(painel.getStatusCaptura());
-
-                resultado.add(dto);
-            }
+            List<PainelDTO> resultado = paineis.stream()
+                    .map(this::toDTO)
+                    .collect(Collectors.toList());
 
             return ResponseEntity.ok(resultado);
         } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500).body(new ArrayList<>());
+            logger.error("Erro ao buscar painéis com capa", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .build();
         }
     }
 
@@ -71,8 +63,18 @@ public class PainelController {
             return ResponseEntity.ok("Atualização de capa iniciada para painel ID: " + id);
 
         } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500).body("Erro ao iniciar atualização de capa");
+            logger.error("Erro ao iniciar atualização de capa para painel ID: {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Erro ao iniciar atualização de capa");
         }
+    }
+
+    private PainelDTO toDTO(AddPainel painel) {
+        return new PainelDTO(
+                painel.getNome(),
+                painel.getLinkPowerBi(),
+                painel.getImagemCapaUrl(),
+                painel.getStatusCaptura()
+        );
     }
 }

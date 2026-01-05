@@ -19,17 +19,16 @@ public class SupabaseStorageService {
     @Value("${supabase.bucket}")
     private String BUCKET;
 
-    private String API() {
+    private String getApiEndpoint() {
         return SUPABASE_URL + "/storage/v1/object/";
     }
 
     public String uploadFile(String pathInBucket, Path localFilePath) throws Exception {
-
         HttpClient client = HttpClient.newHttpClient();
         byte[] fileBytes = Files.readAllBytes(localFilePath);
 
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(API() + BUCKET + "/" + pathInBucket))
+                .uri(URI.create(getApiEndpoint() + BUCKET + "/" + pathInBucket))
                 .header("Authorization", "Bearer " + SUPABASE_KEY)
                 .header("Content-Type", "image/png")
                 .header("x-upsert", "true")
