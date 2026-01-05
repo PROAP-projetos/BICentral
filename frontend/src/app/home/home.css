@@ -122,6 +122,15 @@ nav ul li a:hover,
   transition: color 0.2s ease;
 }
 
+.user-greeting {
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin-right: 0.5rem;
+  display: flex;
+  align-items: center;
+}
+
 /* Botões Login/Cadastro */
 .nav-button {
   background-color: var(--color-nav-button-bg);

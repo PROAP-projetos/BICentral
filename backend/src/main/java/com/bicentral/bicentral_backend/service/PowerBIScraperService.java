@@ -1,7 +1,7 @@
 package com.bicentral.bicentral_backend.service;
 
-import com.bicentral.bicentral_backend.model.AddPainel;
-import com.bicentral.bicentral_backend.repository.AddPainelRepository;
+import com.bicentral.bicentral_backend.model.Painel;
+import com.bicentral.bicentral_backend.repository.PainelRepository;
 import io.github.bonigarcia.wdm.WebDriverManager;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
@@ -27,7 +27,7 @@ public class PowerBIScraperService {
     private static final Logger logger = LoggerFactory.getLogger(PowerBIScraperService.class);
 
     @Autowired
-    private AddPainelRepository addPainelRepository;
+    private PainelRepository painelRepository;
 
     @Autowired
     private SupabaseStorageService supabaseStorageService;
@@ -71,20 +71,20 @@ public class PowerBIScraperService {
     public void capturaCapaAsync(Long painelId) {
         Path arquivo = null;
         try {
-            AddPainel painel = addPainelRepository.findById(painelId)
+            Painel painel = painelRepository.findById(painelId)
                     .orElseThrow(() -> new RuntimeException("Painel não encontrado com ID: " + painelId));
 
-            painel.setStatusCaptura(AddPainel.StatusCaptura.PROCESSANDO);
+            painel.setStatusCaptura(Painel.StatusCaptura.PROCESSANDO);
             painel.setDataUltimaCaptura(LocalDateTime.now());
-            addPainelRepository.save(painel);
+            painelRepository.save(painel);
 
             logger.info("Capturando screenshot do painel: {}", painel.getNome());
 
             arquivo = capturarScreenshotComoArquivo(painel.getLinkPowerBi());
 
             if (arquivo == null) {
-                painel.setStatusCaptura(AddPainel.StatusCaptura.ERRO);
-                addPainelRepository.save(painel);
+                painel.setStatusCaptura(Painel.StatusCaptura.ERRO);
+                painelRepository.save(painel);
                 return;
             }
 
@@ -92,9 +92,9 @@ public class PowerBIScraperService {
             String urlFinal = supabaseStorageService.uploadFile(nomeArquivo, arquivo);
 
             painel.setImagemCapaUrl(urlFinal);
-            painel.setStatusCaptura(AddPainel.StatusCaptura.CONCLUIDA);
+            painel.setStatusCaptura(Painel.StatusCaptura.CONCLUIDA);
             painel.setDataUltimaCaptura(LocalDateTime.now());
-            addPainelRepository.save(painel);
+            painelRepository.save(painel);
 
             logger.info("Upload concluído para painel {}: {}", painel.getNome(), urlFinal);
 
@@ -102,10 +102,10 @@ public class PowerBIScraperService {
             logger.error("Erro durante captura assíncrona do painel ID: {}", painelId, e);
 
             try {
-                AddPainel painel = addPainelRepository.findById(painelId).orElse(null);
+                Painel painel = painelRepository.findById(painelId).orElse(null);
                 if (painel != null) {
-                    painel.setStatusCaptura(AddPainel.StatusCaptura.ERRO);
-                    addPainelRepository.save(painel);
+                    painel.setStatusCaptura(Painel.StatusCaptura.ERRO);
+                    painelRepository.save(painel);
                 }
             } catch (Exception ex) {
                 logger.error("Erro ao atualizar status de erro do painel ID: {}", painelId, ex);

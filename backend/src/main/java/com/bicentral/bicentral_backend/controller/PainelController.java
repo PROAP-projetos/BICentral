@@ -1,8 +1,8 @@
 package com.bicentral.bicentral_backend.controller;
 
 import com.bicentral.bicentral_backend.dto.PainelDTO;
-import com.bicentral.bicentral_backend.model.AddPainel;
-import com.bicentral.bicentral_backend.repository.AddPainelRepository;
+import com.bicentral.bicentral_backend.model.Painel;
+import com.bicentral.bicentral_backend.repository.PainelRepository;
 import com.bicentral.bicentral_backend.service.PowerBIScraperService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,11 +20,11 @@ public class PainelController {
 
     private static final Logger logger = LoggerFactory.getLogger(PainelController.class);
 
-    private final AddPainelRepository addPainelRepository;
+    private final PainelRepository painelRepository;
     private final PowerBIScraperService scraperService;
 
-    public PainelController(AddPainelRepository addPainelRepository, PowerBIScraperService scraperService) {
-        this.addPainelRepository = addPainelRepository;
+    public PainelController(PainelRepository painelRepository, PowerBIScraperService scraperService) {
+        this.painelRepository = painelRepository;
         this.scraperService = scraperService;
     }
 
@@ -39,7 +39,7 @@ public class PainelController {
     @GetMapping("/com-capa")
     public ResponseEntity<List<PainelDTO>> getAllPaineisComCapa() {
         try {
-            List<AddPainel> paineis = addPainelRepository.findAll();
+            List<Painel> paineis = painelRepository.findAll();
             List<PainelDTO> resultado = paineis.stream()
                     .map(this::toDTO)
                     .collect(Collectors.toList());
@@ -55,7 +55,7 @@ public class PainelController {
     @PostMapping("/atualizar-capa/{id}")
     public ResponseEntity<String> atualizarCapa(@PathVariable Long id) {
         try {
-            if (!addPainelRepository.existsById(id)) {
+            if (!painelRepository.existsById(id)) {
                 return ResponseEntity.notFound().build();
             }
 
@@ -69,7 +69,7 @@ public class PainelController {
         }
     }
 
-    private PainelDTO toDTO(AddPainel painel) {
+    private PainelDTO toDTO(Painel painel) {
         return new PainelDTO(
                 painel.getNome(),
                 painel.getLinkPowerBi(),

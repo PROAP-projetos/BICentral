@@ -16,8 +16,10 @@
     </ul>
     <div class="nav-right-section">
       <a href="#" class="nav-text-link">Suporte</a>
-      <a href="/login" class="nav-text-link">Login</a>
-      <button class="nav-button" onclick="location.href='/cadastro'">Cadastre-se</button>
+      <span *ngIf="isLoggedIn" class="user-greeting">Olá, {{ userName }}</span>
+      <a *ngIf="!isLoggedIn" href="/login" class="nav-text-link">Login</a>
+      <a *ngIf="isLoggedIn" href="#" class="nav-text-link" (click)="logout(); $event.preventDefault()">Logout</a>
+      <button *ngIf="!isLoggedIn" class="nav-button" onclick="location.href='/cadastro'">Cadastre-se</button>
     </div>
   </nav>
 </header>
