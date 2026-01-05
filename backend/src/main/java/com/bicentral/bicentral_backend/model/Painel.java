@@ -1,41 +1,39 @@
 package com.bicentral.bicentral_backend.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import java.time.LocalDateTime;
 
+@Data
 @Entity
+@NoArgsConstructor
 public class Painel {
-    
+
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
     private String nome;
+
     private String linkPowerBi;
-    
-    // Construtor 
-    public Painel() {}
-    
-    public Long getId() {
-        return id;
-    }
 
-    public String getNome() {
-        return nome;
-    }
+    @Column(columnDefinition = "text")
+    private String imagemCapaUrl;
 
-    public String getLinkPowerBi() { 
-        return linkPowerBi;
-    }
+    @Enumerated(EnumType.STRING)
+    private StatusCaptura statusCaptura = StatusCaptura.PENDENTE;
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    private LocalDateTime dataUltimaCaptura;
 
-    public void setNome(String nome) {
-        this.nome = nome;
-    }
+    @ManyToOne
+    @JoinColumn(name = "usuario_id")
+    private Usuario usuario;
 
-    public void setLinkPowerBi(String linkPowerBi) {
-        this.linkPowerBi = linkPowerBi;
+    public enum StatusCaptura {
+        PENDENTE,
+        PROCESSANDO,
+        CONCLUIDA,
+        ERRO
     }
 }

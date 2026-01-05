@@ -54,10 +54,15 @@ public class SecurityConfig {
                                 "/api/usuarios/cadastro",   // cadastro do usuário
                                 "/api/usuarios/login",      // login
                                 "/api/usuarios/verify/**",  // verificação
-                                "/api/paineis/com-capa"     // painel que você já usava como público
+                                "/auth/**",                 // rotas de autenticação (login e cadastro)
+                                "/api/painel"               // TODO: remover quando JWT for implementado
                         ).permitAll()
 
                         // Todas as outras rotas EXIGEM AUTENTICAÇÃO
+                        // Isso inclui:
+                        // - POST, PUT, DELETE em /api/paineis/**
+                        // - GET em /api/paineis/** (incluindo /com-capa)
+                        // - POST e GET em /api/painel
                         .anyRequest().authenticated()
                 );
 
