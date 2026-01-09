@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 
 interface PainelDTO {
 nome: string;
@@ -25,13 +26,42 @@ export class HomeComponent implements OnInit {
 dashboards: PainelDTO[] = [];
 loading: boolean = true;
 error: string | null = null;
+isLoggedIn: boolean = false;
+userName: string | null = null;
 
 private API_URL = '/api/paineis/com-capa';
 
-constructor(private http: HttpClient) {}
+constructor(private http: HttpClient, private router: Router) {}
 
   ngOnInit(): void {
+    this.checkAuthStatus();
     this.loadDashboards();
+  }
+
+  checkAuthStatus(): void {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        this.isLoggedIn = true;
+        // Preferir username, mas usar email como fallback
+        this.userName = user.username || user.email || 'Usuário';
+      } catch (e) {
+        console.error('Erro ao fazer parse do usuário:', e);
+        this.isLoggedIn = false;
+        this.userName = null;
+      }
+    } else {
+      this.isLoggedIn = false;
+      this.userName = null;
+    }
+  }
+
+  logout(): void {
+    localStorage.removeItem('user');
+    this.isLoggedIn = false;
+    this.userName = null;
+    this.router.navigate(['/']);
   }
 
   loadDashboards(): void {
