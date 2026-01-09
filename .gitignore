@@ -1,6 +1,5 @@
 # --- Credenciais e Segredos (CRÍTICO) ---
 .env
-backend/src/main/resources/application.properties
 *.log
 
 # --- Pastas de Compilação e Cache ---
@@ -42,3 +41,4 @@ Thumbs.db
 
 # --- IMPORTANTE: Garante que nada dentro de src seja ignorado ---
 !**/src/**
+backend/src/main/resources/application.properties
