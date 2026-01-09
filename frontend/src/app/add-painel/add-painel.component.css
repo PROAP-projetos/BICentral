@@ -1,0 +1,215 @@
+/* --- Estrutura da Página --- */
+.main-content {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+  background-color: #f4f7f6;
+  padding: 60px 20px;
+  box-sizing: border-box;
+}
+
+.card-container {
+  width: 100%;
+  max-width: 550px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+  padding: 40px;
+  transition: transform 0.3s ease;
+}
+
+/* --- Cabeçalho do Formulário --- */
+.form-header {
+  margin-bottom: 30px;
+  border-bottom: 2px solid #f0f2f5;
+  padding-bottom: 15px;
+}
+
+.form-title {
+  color: #004a80;
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.form-subtitle {
+  color: #666;
+  font-size: 0.9rem;
+  margin-top: 5px;
+}
+
+/* --- Campos de Entrada --- */
+.form-group {
+  margin-bottom: 20px;
+}
+
+label {
+  display: block;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+  font-size: 0.95rem;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid #dcdfe6;
+  border-radius: 8px;
+  box-sizing: border-box;
+  font-size: 1rem;
+  transition: all 0.3s;
+}
+
+.form-input:focus {
+  border-color: #004a80;
+  box-shadow: 0 0 0 3px rgba(0, 74, 128, 0.1);
+  outline: none;
+}
+
+/* --- Botões e Ações --- */
+.form-actions {
+  display: flex;
+  gap: 15px;
+  margin-top: 30px;
+}
+
+.btn-primary, .btn-secondary {
+  flex: 1;
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-primary {
+  background-color: #004a80;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #003359;
+  transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+  background-color: #cbd5e0;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background-color: #f8f9fa;
+  color: #4a5568;
+  border: 1px solid #dcdfe6;
+}
+
+.btn-secondary:hover {
+  background-color: #edf2f7;
+}
+
+/* --- Spinner de Carregamento --- */
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #fff;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* --- SISTEMA DE LOGS PREMIUM --- */
+
+.log-wrapper {
+  margin-top: 24px;
+}
+
+.premium-alert {
+  display: flex;
+  align-items: flex-start;
+  padding: 16px 20px;
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0,0,0,0.05);
+  border-left-width: 6px;
+  margin-top: 12px; /* Espaço quando o alerta aparece dentro de um form-group */
+  animation: slideUpFade 0.4s ease-out;
+}
+
+.alert-icon-wrapper {
+  flex-shrink: 0;
+  margin-right: 16px;
+  padding-top: 2px;
+}
+
+.alert-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.alert-content {
+  flex: 1;
+}
+
+.alert-title {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.alert-message {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #4B5563;
+}
+
+/* --- Variação de ERRO (Com efeito Shake) --- */
+.premium-alert.error {
+  border-left-color: #DC2626;
+  animation: slideUpFade 0.4s ease-out, shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+.premium-alert.error .alert-icon { color: #DC2626; }
+.premium-alert.error .alert-title { color: #991B1B; }
+
+/* --- Variação de SUCESSO --- */
+.premium-alert.success {
+  border-left-color: #059669;
+}
+
+.premium-alert.success .alert-icon { color: #059669; }
+.premium-alert.success .alert-title { color: #064E3B; }
+
+/* --- Variação de AVISO / BOAS PRÁTICAS (Dourado/Âmbar) --- */
+.premium-alert.warning {
+  border-left-color: #F59E0B;
+  background-color: #FFFBEB; /* Fundo levemente amarelado para destaque */
+}
+
+.premium-alert.warning .alert-icon { color: #F59E0B; }
+.premium-alert.warning .alert-title { color: #92400E; }
+.premium-alert.warning .alert-message { color: #92400E; opacity: 0.9; }
+
+/* --- ANIMAÇÕES PREMIUM --- */
+
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}

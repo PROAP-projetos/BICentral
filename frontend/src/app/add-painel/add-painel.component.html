@@ -1,151 +1,90 @@
-<div class="main-content">
-  <div class="card">
-    <h1 class="card-title">Adicionar Novo Painel Power BI</h1>
+<main class="main-content">
+  <div class="card-container">
+    <header class="form-header">
+      <h1 class="form-title">Adicionar Novo Painel</h1>
+      <p class="form-subtitle">Cadastre o link público para gerar a capa automaticamente.</p>
+    </header>
 
     <form (ngSubmit)="salvarPainel()" #painelForm="ngForm">
 
       <div class="form-group">
-        <label for="nomePainel">Nome do Painel:</label>
+        <label for="nomePainel">Nome do Painel</label>
         <input
           type="text"
           id="nomePainel"
           name="nomePainel"
           [(ngModel)]="painel.nome"
-          placeholder="Ex: Vendas e Faturamento Mensal"
+          (input)="validarNomeUnico()"
+          #nomeModel="ngModel"
+          placeholder="Ex: Painel de Metas 2026"
           required
-          class="form-control">
+          minlength="3"
+          class="form-input">
+
+        <div *ngIf="isNomeRepetido" class="premium-alert warning">
+          <div class="alert-icon-wrapper">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="alert-icon">
+              <path fill-rule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.401 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <div class="alert-content">
+            <h4 class="alert-title">Dica de Boas Práticas</h4>
+            <p class="alert-message">Já existe um painel com este nome. Considere usar um nome único para facilitar a gestão na PROAP.</p>
+          </div>
+        </div>
       </div>
 
       <div class="form-group">
-        <label for="linkPowerBi">Link do Painel:</label>
+        <label for="linkPowerBi">Link do Power BI (Publicado na Web)</label>
         <input
-          type="text"
+          type="url"
           id="linkPowerBi"
           name="linkPowerBi"
           [(ngModel)]="painel.linkPowerBi"
+          #linkModel="ngModel"
           placeholder="https://app.powerbi.com/view?r=..."
           required
-          class="form-control">
+          pattern="https://app\.powerbi\.com/.*"
+          class="form-input">
       </div>
 
-      <button type="submit" [disabled]="!painelForm.valid" class="btn-primary" >
-        Salvar Painel
-      </button>
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" (click)="router.navigate(['/'])">
+          Cancelar
+        </button>
+        <button type="submit" [disabled]="painelForm.invalid || carregando" class="btn-primary">
+          <span *ngIf="carregando" class="spinner"></span>
+          <span>{{ carregando ? 'Salvando...' : 'Salvar Painel' }}</span>
+        </button>
+      </div>
     </form>
 
-    <div *ngIf="mensagem" class="message" [ngClass]="{'success': !erro, 'error': erro}">
-      {{ mensagem }}
+    <div class="log-wrapper" *ngIf="mensagem">
+
+      <div *ngIf="erro" class="premium-alert error">
+        <div class="alert-icon-wrapper">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="alert-icon">
+            <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zm-1.72 6.97a.75.75 0 10-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 101.06 1.06L12 13.06l1.72 1.72a.75.75 0 101.06-1.06L13.06 12l1.72-1.72a.75.75 0 10-1.06-1.06L12 10.94l-1.72-1.72z" clip-rule="evenodd" />
+          </svg>
+        </div>
+        <div class="alert-content">
+          <h4 class="alert-title">Atenção</h4>
+          <p class="alert-message">{{ mensagem }}</p>
+        </div>
+      </div>
+
+      <div *ngIf="!erro" class="premium-alert success">
+        <div class="alert-icon-wrapper">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="alert-icon">
+            <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd" />
+          </svg>
+        </div>
+        <div class="alert-content">
+          <h4 class="alert-title">Sucesso!</h4>
+          <p class="alert-message">{{ mensagem }}</p>
+        </div>
+      </div>
+
     </div>
   </div>
-</div>
-
-<style>
-  /* Fundo principal e centralização */
-  .main-content {
-    display: flex;
-    justify-content: center; /* Centraliza horizontalmente */
-    align-items: flex-start; /* Alinha ao topo (melhor para rolagem) */
-    min-height: 100vh;
-    padding: 40px 20px;
-    background-color: #f4f7f6; /* Fundo suave */
-    box-sizing: border-box;
-  }
-
-  /* Estilo de Cartão (Card) */
-  .card {
-    width: 100%;
-    max-width: 550px;
-    padding: 30px;
-    background: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08); /* Sombra mais suave */
-  }
-
-  /* Título */
-  .card-title {
-    color: #004a80;
-    font-size: 1.8em;
-    font-weight: 700;
-    margin-bottom: 30px;
-    text-align: center;
-    border-bottom: 1px solid #e8e8e8;
-    padding-bottom: 15px;
-  }
-
-  /* Agrupamento de Formulário */
-  .form-group {
-    margin-bottom: 25px;
-  }
-
-  /* Rótulo (Label) */
-  label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 600;
-    color: #4f5b66;
-    font-size: 0.95em;
-  }
-
-  /* Campo de Input */
-  .form-control {
-    width: 100%;
-    padding: 12px 15px;
-    border: 1px solid #dcdfe6;
-    border-radius: 8px;
-    box-sizing: border-box;
-    font-size: 1em;
-    transition: border-color 0.3s, box-shadow 0.3s;
-  }
-
-  .form-control:focus {
-    border-color: #004a80;
-    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15); /* Efeito de foco azul suave */
-    outline: none;
-  }
-
-  /* Botão Principal */
-  .btn-primary {
-    width: 100%;
-    background-color: #004a80;
-    color: white;
-    padding: 12px 20px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 1em;
-    font-weight: 600;
-    transition: background-color 0.3s, transform 0.1s;
-  }
-
-  .btn-primary:hover:not([disabled]) {
-    background-color: #1660c6;
-  }
-
-  /* Botão Desabilitado */
-  .btn-primary:disabled {
-    background-color: #a0a0a0;
-    cursor: not-allowed;
-  }
-
-  /* Mensagens (Feedback) */
-  .message {
-    padding: 15px;
-    margin-top: 25px;
-    border-radius: 8px;
-    font-weight: bold;
-    font-size: 0.9em;
-    text-align: center;
-  }
-
-  .success {
-    background-color: #e6ffed;
-    color: #00701c;
-    border: 1px solid #00c853;
-  }
-
-  .error {
-    background-color: #ffeaea;
-    color: #d90000;
-    border: 1px solid #ff1744;
-  }
-</style>
+</main>
