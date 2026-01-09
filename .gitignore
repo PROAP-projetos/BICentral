@@ -1,0 +1,29 @@
+# --- Pastas de Compilação (Sem a barra inicial para valer em subpastas) ---
+dist/
+tmp/
+out-tsc/
+bazel-out/
+target/
+bin/
+
+# --- Node e Cache (Obrigatório para limpar seu git status) ---
+node_modules/
+.angular/
+.gradle/
+.mvn/
+npm-debug.log*
+yarn-error.log*
+
+# --- IDEs e Editores ---
+.idea/
+.vscode/
+*.swp
+*.patch
+.history/
+
+# --- Arquivos de Sistema ---
+.DS_Store
+Thumbs.db
+
+# --- IMPORTANTE: Garante que nada dentro de src seja ignorado ---
+!**/src/**
