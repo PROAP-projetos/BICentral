@@ -1,3 +1,18 @@
+# --- Credenciais e Segredos (CRÍTICO) ---
+.env
+application.properties
+*.log
+
+# --- Pastas de Compilação e Cache ---
+target/
+node_modules/
+.angular/
+dist/
+.idea/
+.vscode/
+
+# --- Garante que o código fonte sempre suba ---
+!**/src/**
 # --- Pastas de Compilação (Sem a barra inicial para valer em subpastas) ---
 dist/
 tmp/
