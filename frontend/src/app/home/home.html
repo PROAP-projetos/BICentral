@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Menu BICentral</title>
-  <link rel="stylesheet" href="home.css" />
 </head>
 
 <body>
@@ -30,8 +29,8 @@
 
 <main class="content-area">
 
-  <div *ngIf="loading" class="loading-section">
-    Carregando painéis...
+  <div *ngIf="loading && dashboards.length === 0" class="loading-section">
+    Carregando painéis da PROAP...
   </div>
 
   <div *ngIf="error" class="error-section">
@@ -39,16 +38,15 @@
   </div>
 
   <div class="dashboard-grid">
-    <a *ngFor="let painel of dashboards"
+    <a *ngFor="let painel of dashboards; trackBy: trackById"
        [href]="painel.linkPowerBi"
        target="_blank"
        class="dashboard-card-link">
 
       <div class="dashboard-card">
-
         <div class="dashboard-image-wrapper">
-          <!-- só renderiza <img> se previewSrc existir (imagem válida) -->
-          <img *ngIf="painel.previewSrc"
+
+          <img *ngIf="painel.statusCaptura === 'CONCLUIDA' && painel.previewSrc"
                [src]="painel.previewSrc"
                [alt]="'Capa do Painel ' + painel.nome"
                class="dashboard-capa-menor"
@@ -57,20 +55,25 @@
                loading="lazy"
           >
 
-          <!-- Placeholder: aparece enquanto não há confirmação de imagem -->
-          <div class="image-placeholder" *ngIf="!painel.carregada">
-            Carregando imagem...
+          <div class="image-placeholder" *ngIf="painel.statusCaptura !== 'CONCLUIDA'">
+            <div class="loader-content">
+              <span *ngIf="painel.statusCaptura === 'PROCESSANDO'" class="status-msg">Gerando capa...</span>
+              <span *ngIf="painel.statusCaptura === 'PENDENTE'" class="status-msg">Aguardando robô...</span>
+              <span *ngIf="painel.statusCaptura === 'ERRO'" class="status-msg error-msg">Capa indisponível</span>
+            </div>
+          </div>
+
+          <div class="image-placeholder" *ngIf="painel.statusCaptura === 'CONCLUIDA' && !painel.carregada">
+            <span class="status-msg">Carregando imagem...</span>
           </div>
         </div>
 
         <h3 class="dashboard-title-below-image">
           {{ painel.nome }}
         </h3>
-
       </div>
     </a>
   </div>
-
 </main>
 </body>
 </html>

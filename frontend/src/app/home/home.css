@@ -1,4 +1,3 @@
-/* --- RESET BÁSICO (Para remover margens e preenchimentos indesejados) --- */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -7,20 +6,17 @@
   outline: none !important;
 }
 
-/* Remover todas as bordas de links e elementos interativos */
 a, a:visited, a:focus, a:hover, a:active {
   border: none !important;
   outline: none !important;
   text-decoration: none !important;
 }
 
-/* Remover bordas de imagens */
 img {
   border: none !important;
   outline: none !important;
 }
 
-/* Variáveis de cor */
 :root {
   --color-primary: #0056b3;
   --color-secondary: #007bff;
@@ -28,14 +24,10 @@ img {
   --color-nav-button-bg: #28a745;
 }
 
-/* --- ESTILOS PADRÃO (DESKTOP) --- */
-
-/* Esconde o botão hambúrguer no desktop */
 .menu-toggle {
   display: none;
 }
 
-/* HEADER */
 header {
   background-color: var(--color-primary);
   color: white;
@@ -131,7 +123,6 @@ nav ul li a:hover,
   align-items: center;
 }
 
-/* Botões Login/Cadastro */
 .nav-button {
   background-color: var(--color-nav-button-bg);
   color: white;
@@ -150,7 +141,6 @@ nav ul li a:hover,
   border-radius: 25px;
 }
 
-/* --- ESTILOS DO CONTEÚDO PRINCIPAL E GRID DE PAINÉIS --- */
 .content-area {
   padding: 20px 40px;
   width: 100%;
@@ -174,14 +164,12 @@ h2 {
   padding: 0 20px;
 }
 
-/* LINK DO CARD */
 .dashboard-card-link {
   text-decoration: none !important;
   color: inherit;
   display: block;
 }
 
-/* CARD DO PAINEL */
 .dashboard-card {
   border-radius: 12px;
   overflow: hidden;
@@ -199,12 +187,11 @@ h2 {
   box-shadow: 0 12px 24px rgba(0, 86, 179, 0.15);
 }
 
-/* --- IMAGEM DO PAINEL + PLACEHOLDER --- */
 .dashboard-image-wrapper {
   position: relative;
   width: 100%;
   height: 160px;
-  background: #fafafa; /* leve contraste para não ficar "todo branco" */
+  background: #fafafa;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -218,7 +205,6 @@ h2 {
   object-fit: cover;
 }
 
-/* Placeholder com o texto "Carregando imagem..." */
 .image-placeholder {
   position: absolute;
   inset: 0;
@@ -230,9 +216,9 @@ h2 {
   color: #666;
   padding: 8px;
   text-align: center;
+  animation: pulse 1.5s infinite ease-in-out;
 }
 
-/* Título abaixo */
 .dashboard-title-below-image {
   font-size: 1.1em;
   font-weight: 600;
@@ -245,35 +231,29 @@ h2 {
   justify-content: center;
 }
 
-/* Mensagens */
-.loading-message,
-.error-message {
-  text-align: center;
-  padding: 20px;
-  border-radius: 5px;
-  margin-top: 20px;
-  font-size: 1.1em;
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
 }
 
-.loading-message {
-  background-color: #e0f7fa;
-  color: #00796b;
+.status-msg {
+  font-weight: bold;
 }
 
-.error-message {
-  background-color: #ffebee;
-  color: #d32f2f;
+.error-msg {
+  color: #d32f2f; /* Cor de erro padrão */
 }
 
-/* Botão superior */
 .sub-nav-button-container {
   background-color: var(--color-info);
   padding: 10px 20px;
+  display: flex;
   justify-content: flex-end;
 }
 
 .sub-nav-button {
   color: white;
   cursor: pointer;
+  text-decoration: none;
 }
-
