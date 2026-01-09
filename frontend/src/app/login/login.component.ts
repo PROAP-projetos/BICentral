@@ -31,7 +31,7 @@ export class LoginComponent {
       .subscribe((response: any) => {
         // Assuming the backend returns the user object on successful login
         localStorage.setItem('user', JSON.stringify(response));
-        this.router.navigate(['/dashboard']);
+        this.router.navigate(['/']);
       }, error => {
         this.message = 'Credenciais inválidas. Tente novamente.';
         console.error('Erro ao fazer login', error);
