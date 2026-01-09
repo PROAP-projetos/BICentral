@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class PainelDTO {
+    private Long id;
     private String nome;
     private String linkPowerBi;
     private String imagemCapaUrl;

@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 
 @Data
 @Entity
+@Table(name = "add_painel")
 @NoArgsConstructor
 public class Painel {
 
@@ -16,24 +17,33 @@ public class Painel {
 
     private String nome;
 
+    // Mapeamento explícito para combinar com seu comando ALTER TABLE
+    @Column(name = "link_power_bi", nullable = false, unique = true)
     private String linkPowerBi;
 
-    @Column(columnDefinition = "text")
+    @Column(name = "imagem_capa_url", columnDefinition = "text")
     private String imagemCapaUrl;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "status_captura")
     private StatusCaptura statusCaptura = StatusCaptura.PENDENTE;
 
+    @Column(name = "data_ultima_captura")
     private LocalDateTime dataUltimaCaptura;
 
     @ManyToOne
-    @JoinColumn(name = "usuario_id")
+    @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
     public enum StatusCaptura {
-        PENDENTE,
-        PROCESSANDO,
-        CONCLUIDA,
-        ERRO
+        PENDENTE, PROCESSANDO, CONCLUIDA, ERRO
+    }
+
+    @PrePersist
+    @PreUpdate
+    protected void onUpdate() {
+        if (this.statusCaptura == StatusCaptura.CONCLUIDA) {
+            this.dataUltimaCaptura = LocalDateTime.now();
+        }
     }
 }
