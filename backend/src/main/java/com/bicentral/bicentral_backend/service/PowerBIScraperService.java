@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -19,6 +21,7 @@ import java.time.LocalDateTime;
 public class PowerBIScraperService {
 
     private static final Logger logger = LoggerFactory.getLogger(PowerBIScraperService.class);
+    private static final String PREFIXO_POWER_BI = "https://app.powerbi.com/view?r=";
 
     // Timeouts (ms)
     private static final double NAV_TIMEOUT = 60_000;
@@ -41,6 +44,12 @@ public class PowerBIScraperService {
         try {
             Painel painel = painelRepository.findById(painelId)
                     .orElseThrow(() -> new RuntimeException("Painel não encontrado ID: " + painelId));
+
+            if (!linkPowerBiValido(painel.getLinkPowerBi())) {
+                logger.warn("Link Power BI inválido para painel {}. Marcando como erro.", painel.getId());
+                marcarComoErro(painelId);
+                return;
+            }
 
             // 1) Marca como processando para o Angular mostrar "Gerando capa..."
             painel.setStatusCaptura(Painel.StatusCaptura.PROCESSANDO);
@@ -146,5 +155,23 @@ public class PowerBIScraperService {
             p.setStatusCaptura(Painel.StatusCaptura.ERRO);
             painelRepository.save(p);
         });
+    }
+
+    private boolean linkPowerBiValido(String link) {
+        if (link == null || link.isBlank()) {
+            return false;
+        }
+        if (!link.startsWith(PREFIXO_POWER_BI)) {
+            return false;
+        }
+        try {
+            URI uri = new URI(link);
+            return "app.powerbi.com".equalsIgnoreCase(uri.getHost())
+                    && "/view".equals(uri.getPath())
+                    && uri.getQuery() != null
+                    && uri.getQuery().contains("r=");
+        } catch (URISyntaxException e) {
+            return false;
+        }
     }
 }

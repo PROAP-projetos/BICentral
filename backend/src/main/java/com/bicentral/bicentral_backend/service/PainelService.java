@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.List;
 
 @Service
@@ -62,12 +64,34 @@ public class PainelService {
         return v.isEmpty() ? null : v;
     }
 
-    private void validarPrefixoPowerBi(String link) {
+    private void validarLinkPowerBi(String link) {
         if (link == null) return;
+
         if (!link.startsWith(PREFIXO_POWER_BI)) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Link inválido. O link deve começar com: " + PREFIXO_POWER_BI
+            );
+        }
+
+        try {
+            URI uri = new URI(link);
+            boolean hostValido = "app.powerbi.com".equalsIgnoreCase(uri.getHost());
+            boolean caminhoValido = "/view".equals(uri.getPath());
+            String query = uri.getQuery();
+            boolean temToken = query != null && query.contains("r=");
+
+            if (!hostValido || !caminhoValido || !temToken) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Link inválido. Verifique se o link do Power BI está completo."
+                );
+            }
+        } catch (URISyntaxException e) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Link inválido. Verifique se o link do Power BI está completo.",
+                    e
             );
         }
     }
@@ -91,7 +115,7 @@ public class PainelService {
         Usuario usuario = getUsuarioLogado();
 
         String linkLimpo = trimOrNull(painel.getLinkPowerBi());
-        validarPrefixoPowerBi(linkLimpo);
+        validarLinkPowerBi(linkLimpo);
 
         boolean duplicado = painelRepository.existsByLinkPowerBiAndUsuario_Id(linkLimpo, usuario.getId());
         if (duplicado) {
@@ -160,28 +184,30 @@ public class PainelService {
         // 2) Link: só valida/processa se veio no payload
         if (dto.getLinkPowerBi() != null) {
             String novoLink = trimOrNull(dto.getLinkPowerBi());
-            validarPrefixoPowerBi(novoLink);
+            if (novoLink != null) {
+                validarLinkPowerBi(novoLink);
 
-            // normalize também o que vem do banco (pra não disparar scraping por espaço)
-            String linkAtual = trimOrNull(painel.getLinkPowerBi());
+                // normalize também o que vem do banco (pra não disparar scraping por espaço)
+                String linkAtual = trimOrNull(painel.getLinkPowerBi());
 
-            if (linkAtual == null || !linkAtual.equals(novoLink)) {
-                boolean duplicado = painelRepository.existsByLinkPowerBiAndUsuario_IdAndIdNot(
-                        novoLink, usuario.getId(), id
-                );
-                if (duplicado) {
-                    throw new ResponseStatusException(
-                            HttpStatus.CONFLICT,
-                            "Você já possui este painel cadastrado na sua lista."
+                if (linkAtual == null || !linkAtual.equals(novoLink)) {
+                    boolean duplicado = painelRepository.existsByLinkPowerBiAndUsuario_IdAndIdNot(
+                            novoLink, usuario.getId(), id
                     );
+                    if (duplicado) {
+                        throw new ResponseStatusException(
+                                HttpStatus.CONFLICT,
+                                "Você já possui este painel cadastrado na sua lista."
+                        );
+                    }
+
+                    painel.setLinkPowerBi(novoLink);
+                    linkMudou = true;
+
+                    // ✅ se link mudou, reseta scraping
+                    painel.setStatusCaptura(Painel.StatusCaptura.PENDENTE);
+                    painel.setImagemCapaUrl(null);
                 }
-
-                painel.setLinkPowerBi(novoLink);
-                linkMudou = true;
-
-                // ✅ se link mudou, reseta scraping
-                painel.setStatusCaptura(Painel.StatusCaptura.PENDENTE);
-                painel.setImagemCapaUrl(null);
             }
         }
 
