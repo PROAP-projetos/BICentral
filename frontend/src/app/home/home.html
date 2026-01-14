@@ -8,27 +8,43 @@
 
 <body>
 <header>
-  <a href="#" class="logo">BICentral</a>
+  <a class="logo" routerLink="/">BICentral</a>
+
   <nav>
     <ul>
-      <li class="nav-item-with-dropdown"><a href="#">Minha Equipe</a></li>
+      <li class="nav-item-with-dropdown">
+        <a class="nav-text-link" href="javascript:void(0)">Minha Equipe</a>
+      </li>
     </ul>
+
     <div class="nav-right-section">
-      <a href="#" class="nav-text-link">Suporte</a>
+      <a class="nav-text-link" href="javascript:void(0)">Suporte</a>
+
       <span *ngIf="isLoggedIn" class="user-greeting">Olá, {{ userName }}</span>
-      <a *ngIf="!isLoggedIn" href="/login" class="nav-text-link">Login</a>
-      <a *ngIf="isLoggedIn" href="#" class="nav-text-link" (click)="logout(); $event.preventDefault()">Logout</a>
-      <button *ngIf="!isLoggedIn" class="nav-button" onclick="location.href='/cadastro'">Cadastre-se</button>
+
+      <a *ngIf="!isLoggedIn" routerLink="/login" class="nav-text-link">Login</a>
+
+      <a *ngIf="isLoggedIn"
+         class="nav-text-link"
+         href="javascript:void(0)"
+         (click)="logout()">
+        Logout
+      </a>
+
+      <!-- ✅ botão com routerLink: use <a>, não <button> -->
+      <a *ngIf="!isLoggedIn" routerLink="/cadastro" class="nav-button">
+        Cadastre-se
+      </a>
     </div>
   </nav>
 </header>
 
+<!-- ✅ BOTÃO ADICIONAR (UMA VEZ SÓ) -->
 <nav class="sub-nav-button-container">
-  <a href="/adicionar-painel" class="sub-nav-button">Adicionar Painel</a>
+  <a routerLink="/adicionar-painel" class="sub-nav-button">Adicionar Painel</a>
 </nav>
 
 <main class="content-area">
-
   <div *ngIf="loading && dashboards.length === 0" class="loading-section">
     Carregando painéis da PROAP...
   </div>
@@ -41,10 +57,26 @@
     <a *ngFor="let painel of dashboards; trackBy: trackById"
        [href]="painel.linkPowerBi"
        target="_blank"
+       rel="noreferrer"
        class="dashboard-card-link">
 
       <div class="dashboard-card">
         <div class="dashboard-image-wrapper">
+
+          <!-- ✅ AÇÕES (EDITAR / EXCLUIR) -->
+          <div class="card-actions" *ngIf="isLoggedIn">
+            <button class="btn-action btn-edit"
+                    type="button"
+                    (click)="abrirEdicao(painel, $event)">
+              Editar
+            </button>
+
+            <button class="btn-action btn-delete"
+                    type="button"
+                    (click)="excluirPainel(painel, $event)">
+              Excluir
+            </button>
+          </div>
 
           <img *ngIf="painel.statusCaptura === 'CONCLUIDA' && painel.previewSrc"
                [src]="painel.previewSrc"
@@ -52,14 +84,19 @@
                class="dashboard-capa-menor"
                (load)="onImageLoad(painel)"
                (error)="onImageError(painel)"
-               loading="lazy"
-          >
+               loading="lazy" />
 
           <div class="image-placeholder" *ngIf="painel.statusCaptura !== 'CONCLUIDA'">
             <div class="loader-content">
-              <span *ngIf="painel.statusCaptura === 'PROCESSANDO'" class="status-msg">Gerando capa...</span>
-              <span *ngIf="painel.statusCaptura === 'PENDENTE'" class="status-msg">Aguardando robô...</span>
-              <span *ngIf="painel.statusCaptura === 'ERRO'" class="status-msg error-msg">Capa indisponível</span>
+              <span *ngIf="painel.statusCaptura === 'PROCESSANDO'" class="status-msg">
+                Gerando capa...
+              </span>
+              <span *ngIf="painel.statusCaptura === 'PENDENTE'" class="status-msg">
+                Aguardando robô...
+              </span>
+              <span *ngIf="painel.statusCaptura === 'ERRO'" class="status-msg error-msg">
+                Capa indisponível
+              </span>
             </div>
           </div>
 
@@ -75,5 +112,47 @@
     </a>
   </div>
 </main>
+
+<!-- ✅ MODAL EDIÇÃO -->
+<div *ngIf="isEditOpen"
+     class="modal-overlay"
+     (click)="onOverlayClick($event)">
+
+  <div class="modal-card" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h3>Editar painel</h3>
+      <button type="button" class="modal-close" (click)="fecharEdicao()">×</button>
+    </div>
+
+    <form [formGroup]="editForm" (ngSubmit)="salvarEdicao()" class="modal-form">
+      <label class="modal-label">
+        Nome
+        <input class="modal-input" formControlName="nome" />
+        <small class="modal-err" *ngIf="editForm.get('nome')?.touched && editForm.get('nome')?.invalid">
+          Informe um nome válido.
+        </small>
+      </label>
+
+      <label class="modal-label">
+        Link Power BI
+        <input class="modal-input" formControlName="linkPowerBi" />
+        <small class="modal-err"
+               *ngIf="editForm.get('linkPowerBi')?.touched && editForm.get('linkPowerBi')?.invalid">
+          O link deve começar com: https://app.powerbi.com/view?r=
+        </small>
+      </label>
+
+      <p class="modal-err" *ngIf="editError">{{ editError }}</p>
+
+      <div class="modal-actions">
+        <button type="button" class="modal-btn" (click)="fecharEdicao()">Cancelar</button>
+        <button type="submit" class="modal-btn primary" [disabled]="savingEdit">
+          {{ savingEdit ? 'Salvando...' : 'Salvar' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
 </body>
 </html>

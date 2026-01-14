@@ -257,3 +257,144 @@ h2 {
   cursor: pointer;
   text-decoration: none;
 }
+.card-actions{
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 8px;
+  z-index: 5;
+}
+
+.btn-action{
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  border-radius: 8px;
+  cursor: pointer;
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(0,0,0,0.08) !important;
+}
+
+.btn-edit:hover{
+  background: rgba(255,255,255,1);
+}
+
+.btn-delete{
+  background: rgba(255, 235, 235, 0.95);
+}
+
+.btn-delete:hover{
+  background: rgba(255, 210, 210, 1);
+}
+/* ============================
+   MODAL (Editar Painel)
+============================ */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.modal-card {
+  background: #ffffff;
+  border-radius: 12px;
+  width: 420px;
+  max-width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  animation: modalFade 0.25s ease-out;
+  padding: 20px 24px;
+}
+
+@keyframes modalFade {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.modal-close {
+  border: none;
+  background: transparent;
+  font-size: 22px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.modal-label {
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.modal-input {
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+.modal-input:focus {
+  outline: none;
+  border-color: #0078d4;
+  box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.15);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.modal-btn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.modal-btn.primary {
+  background: #0078d4;
+  color: white;
+}
+
+.modal-btn.primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.modal-err {
+  color: #d32f2f;
+  font-size: 12px;
+}

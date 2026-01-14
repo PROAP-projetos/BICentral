@@ -3,6 +3,8 @@ package com.bicentral.bicentral_backend.service;
 import com.bicentral.bicentral_backend.model.Painel;
 import com.bicentral.bicentral_backend.repository.PainelRepository;
 import com.microsoft.playwright.*;
+import com.microsoft.playwright.options.WaitUntilState;
+import com.microsoft.playwright.options.WaitForSelectorState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +20,10 @@ public class PowerBIScraperService {
 
     private static final Logger logger = LoggerFactory.getLogger(PowerBIScraperService.class);
 
+    // Timeouts (ms)
+    private static final double NAV_TIMEOUT = 60_000;
+    private static final double WAIT_TIMEOUT = 60_000;
+
     @Autowired
     private PainelRepository painelRepository;
 
@@ -31,32 +37,86 @@ public class PowerBIScraperService {
     @Async("taskExecutor")
     public void capturaCapaAsync(Long painelId) {
         Path tempFile = null;
+
         try {
             Painel painel = painelRepository.findById(painelId)
                     .orElseThrow(() -> new RuntimeException("Painel não encontrado ID: " + painelId));
 
-            // 1. Marca como processando para o Angular mostrar "Gerando capa..."
+            // 1) Marca como processando para o Angular mostrar "Gerando capa..."
             painel.setStatusCaptura(Painel.StatusCaptura.PROCESSANDO);
             painelRepository.save(painel);
 
             logger.info("Playwright: Iniciando captura para {}", painel.getNome());
 
-            // 2. Inicia o Playwright
-            try (Playwright playwright = Playwright.create()) {
-                Browser browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
-                BrowserContext context = browser.newContext(new Browser.NewContextOptions().setViewportSize(1920, 1080));
+            try (Playwright playwright = Playwright.create();
+                 Browser browser = playwright.chromium().launch(
+                         new BrowserType.LaunchOptions().setHeadless(true)
+                 )) {
+
+                BrowserContext context = browser.newContext(new Browser.NewContextOptions()
+                        .setViewportSize(1920, 1080)
+                );
+
                 Page page = context.newPage();
+                page.setDefaultTimeout(WAIT_TIMEOUT);
+                page.setDefaultNavigationTimeout(NAV_TIMEOUT);
 
-                page.navigate(painel.getLinkPowerBi());
+                // Desativa animações/transições (ajuda nas capas)
+                page.addStyleTag(new Page.AddStyleTagOptions().setContent(
+                        "*{animation:none!important;transition:none!important;caret-color:transparent!important}"
+                ));
 
-                logger.info("Aguardando carregamento do dashboard...");
-                page.waitForSelector(".visualContainerHost", new Page.WaitForSelectorOptions().setTimeout(60000));
+                // 2) Navega (report direto)
+                page.navigate(painel.getLinkPowerBi(), new Page.NavigateOptions()
+                        .setWaitUntil(WaitUntilState.DOMCONTENTLOADED)
+                        .setTimeout(NAV_TIMEOUT)
+                );
 
-                // Pequena pausa para garantir que os dados do gráfico carreguem
-                page.waitForTimeout(3000);
+                logger.info("Aguardando render REAL do dashboard...");
 
+                // 3) Base do report
+                page.waitForSelector(".visualContainerHost",
+                        new Page.WaitForSelectorOptions().setTimeout(WAIT_TIMEOUT)
+                );
+
+                // 4) Espera "loading" sumir (se existir)
+                Locator loading = page.locator(
+                        ".loading, .spinner, [role='progressbar'], .busyIndicator, .pbi-loading, .loadingOverlay"
+                );
+
+                try {
+                    loading.first().waitFor(new Locator.WaitForOptions()
+                            .setState(WaitForSelectorState.HIDDEN)
+                            .setTimeout(WAIT_TIMEOUT)
+                    );
+                } catch (PlaywrightException ignored) {
+                    // Se não existir spinner detectável, segue.
+                }
+
+                // 5) Sinal forte de pronto: algum visual com conteúdo real (canvas/svg/img) e tamanho válido
+                page.waitForFunction(
+                        "() => {" +
+                                "  const hosts = Array.from(document.querySelectorAll('.visualContainerHost'));" +
+                                "  if (!hosts.length) return false;" +
+                                "  return hosts.some(h => {" +
+                                "    const r = h.getBoundingClientRect();" +
+                                "    if (r.width < 50 || r.height < 50) return false;" +
+                                "    return !!h.querySelector('canvas,svg,img');" +
+                                "  });" +
+                                "}",
+                        null,
+                        new Page.WaitForFunctionOptions().setTimeout(WAIT_TIMEOUT)
+                );
+
+                // 6) Folga curta pra estabilizar fontes/linhas finais
+                page.waitForTimeout(800);
+
+                // 7) Screenshot
                 tempFile = Files.createTempFile("pbi-", ".png");
-                page.screenshot(new Page.ScreenshotOptions().setPath(tempFile));
+                page.screenshot(new Page.ScreenshotOptions()
+                        .setPath(tempFile)
+                        .setFullPage(false)
+                );
 
                 String nomeArquivo = "paineis/" + painel.getId() + ".png";
                 String urlFinal = supabaseStorageService.uploadFile(nomeArquivo, tempFile);
@@ -67,6 +127,8 @@ public class PowerBIScraperService {
                 painelRepository.save(painel);
 
                 logger.info("Playwright: Sucesso total para {}", painel.getNome());
+
+                try { context.close(); } catch (Exception ignored) {}
             }
 
         } catch (Exception e) {
