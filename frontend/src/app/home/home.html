@@ -1,12 +1,3 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Menu BICentral</title>
-</head>
-
-<body>
 <header>
   <a class="logo" routerLink="/">BICentral</a>
 
@@ -31,7 +22,6 @@
         Logout
       </a>
 
-      <!-- ✅ botão com routerLink: use <a>, não <button> -->
       <a *ngIf="!isLoggedIn" routerLink="/cadastro" class="nav-button">
         Cadastre-se
       </a>
@@ -39,12 +29,19 @@
   </nav>
 </header>
 
-<!-- ✅ BOTÃO ADICIONAR (UMA VEZ SÓ) -->
+<!-- ✅ BOTÃO ADICIONAR (ABRE O SEU COMPONENTE COMO POPUP) -->
 <nav class="sub-nav-button-container">
-  <a routerLink="/adicionar-painel" class="sub-nav-button">Adicionar Painel</a>
+  <button
+    type="button"
+    class="sub-nav-button"
+    *ngIf="isLoggedIn"
+    (click)="abrirAdicionar()">
+    Adicionar Painel
+  </button>
 </nav>
 
 <main class="content-area">
+
   <div *ngIf="loading && dashboards.length === 0" class="loading-section">
     Carregando painéis da PROAP...
   </div>
@@ -63,7 +60,7 @@
       <div class="dashboard-card">
         <div class="dashboard-image-wrapper">
 
-          <!-- ✅ AÇÕES (EDITAR / EXCLUIR) -->
+          <!-- AÇÕES -->
           <div class="card-actions" *ngIf="isLoggedIn">
             <button class="btn-action btn-edit"
                     type="button"
@@ -100,9 +97,11 @@
             </div>
           </div>
 
-          <div class="image-placeholder" *ngIf="painel.statusCaptura === 'CONCLUIDA' && !painel.carregada">
+          <div class="image-placeholder"
+               *ngIf="painel.statusCaptura === 'CONCLUIDA' && !painel.carregada">
             <span class="status-msg">Carregando imagem...</span>
           </div>
+
         </div>
 
         <h3 class="dashboard-title-below-image">
@@ -111,9 +110,12 @@
       </div>
     </a>
   </div>
+
 </main>
 
-<!-- ✅ MODAL EDIÇÃO -->
+<!-- ===================== -->
+<!-- MODAL EDITAR (fica como está) -->
+<!-- ===================== -->
 <div *ngIf="isEditOpen"
      class="modal-overlay"
      (click)="onOverlayClick($event)">
@@ -125,21 +127,15 @@
     </div>
 
     <form [formGroup]="editForm" (ngSubmit)="salvarEdicao()" class="modal-form">
+
       <label class="modal-label">
         Nome
         <input class="modal-input" formControlName="nome" />
-        <small class="modal-err" *ngIf="editForm.get('nome')?.touched && editForm.get('nome')?.invalid">
-          Informe um nome válido.
-        </small>
       </label>
 
       <label class="modal-label">
         Link Power BI
         <input class="modal-input" formControlName="linkPowerBi" />
-        <small class="modal-err"
-               *ngIf="editForm.get('linkPowerBi')?.touched && editForm.get('linkPowerBi')?.invalid">
-          O link deve começar com: https://app.powerbi.com/view?r=
-        </small>
       </label>
 
       <p class="modal-err" *ngIf="editError">{{ editError }}</p>
@@ -154,5 +150,13 @@
   </div>
 </div>
 
-</body>
-</html>
+<!-- ===================== -->
+<!-- ✅ ADICIONAR (USA O SEU COMPONENTE ANTIGO COMO POPUP) -->
+<!-- ✅ já passa nomesExistentes pra validar nome repetido -->
+<!-- ===================== -->
+<app-add-painel
+  *ngIf="isAddOpen"
+  [nomesExistentes]="nomesExistentes"
+  (fechar)="fecharAdicionar()"
+  (salvo)="onPainelSalvo($event)">
+</app-add-painel>

@@ -2,9 +2,12 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { interval, Subscription } from 'rxjs';
-import { switchMap } from 'rxjs/operators';
+import { interval, Subscription, of } from 'rxjs';
+import { switchMap, catchError } from 'rxjs/operators';
 import { FormBuilder, ReactiveFormsModule, Validators, FormGroup } from '@angular/forms';
+
+// ✅ ajuste o path real do seu projeto
+import { AddPainelComponent } from '../add-painel/add-painel.component';
 
 interface PainelDTO {
 id: number;
@@ -25,7 +28,7 @@ email?: string;
 @Component({
 selector: 'app-home',
 standalone: true,
-imports: [CommonModule, RouterModule, ReactiveFormsModule],
+imports: [CommonModule, RouterModule, ReactiveFormsModule, AddPainelComponent],
 templateUrl: './home.html',
 styleUrls: ['./home.css']
 })
@@ -48,16 +51,18 @@ isEditOpen = false;
 savingEdit = false;
 editError: string | null = null;
 editingPainel: PainelDTO | null = null;
-
-// ✅ IMPORTANTE: não inicialize com this.fb aqui
 editForm!: FormGroup;
+
+// -------------------------
+// ✅ ADICIONAR (AGORA É COMPONENTE POPUP)
+// -------------------------
+isAddOpen = false;
 
 constructor(
     private http: HttpClient,
     private router: Router,
     private fb: FormBuilder
   ) {
-    // ✅ inicializa aqui (após DI existir)
     this.editForm = this.fb.group({
       nome: ['', [Validators.required, Validators.minLength(2)]],
       linkPowerBi: ['', [
@@ -86,7 +91,9 @@ constructor(
   trackById(index: number, item: PainelDTO) {
     return item.id;
   }
-
+    get nomesExistentes(): string[] {
+    return (this.dashboards ?? []).map(p => p.nome ?? '');
+  }
   // -------------------------
   // AUTH HELPERS
   // -------------------------
@@ -114,6 +121,7 @@ constructor(
 
   private handleAuthError(err: any) {
     if (err?.status === 401 || err?.status === 403) {
+      this.pararPolling();
       this.logout();
       return true;
     }
@@ -142,17 +150,39 @@ constructor(
     });
   }
 
+  /**
+   * ✅ PROFISSIONAL:
+   * - recalcula Authorization a cada tick
+   * - trata erro sem matar stream
+   * - evita flood 401/403
+   */
   private startPolling(): void {
-    const headers = this.getAuthHeaders();
+    this.pararPolling();
 
-    this.pollingSub = interval(5000)
-      .pipe(switchMap(() => this.http.get<PainelDTO[]>(this.API_URL, { headers })))
-      .subscribe({
-        next: (data) => this.processarDadosRecebidos(data),
-        error: (err) => {
-          this.handleAuthError(err);
+    this.pollingSub = interval(5000).pipe(
+      switchMap(() => {
+        // ✅ se modal estiver aberto, você pode pausar polling (opcional)
+        // if (this.isAddOpen || this.isEditOpen) return of(null);
+
+        const headers = this.getAuthHeaders();
+
+        if (!headers.has('Authorization')) {
+          this.pararPolling();
+          this.logout();
+          return of(null);
         }
-      });
+
+        return this.http.get<PainelDTO[]>(this.API_URL, { headers }).pipe(
+          catchError((err) => {
+            this.handleAuthError(err);
+            return of(null);
+          })
+        );
+      })
+    ).subscribe((data) => {
+      if (!data) return;
+      this.processarDadosRecebidos(data);
+    });
   }
 
   private pararPolling(): void {
@@ -203,6 +233,24 @@ constructor(
 
   onImageError(painel: PainelDTO) {
     painel.carregada = false;
+  }
+
+  // -------------------------
+  // ✅ ADD (POPUP COMPONENT)
+  // -------------------------
+  abrirAdicionar(): void {
+    this.isAddOpen = true;
+  }
+
+  fecharAdicionar(): void {
+    this.isAddOpen = false;
+  }
+
+  onPainelSalvo(_: PainelDTO): void {
+    // você pode otimizar e só inserir no começo,
+    // mas loadDashboards garante consistência (statusCaptura etc.)
+    this.isAddOpen = false;
+    this.loadDashboards();
   }
 
   // -------------------------
@@ -273,25 +321,20 @@ constructor(
 
     const payload: any = {};
 
-    // só manda nome se mudou
     if (nomeNovo && nomeNovo !== nomeAtual) {
       payload.nome = nomeNovo;
     }
 
-    // só manda link se mudou
     if (linkNovo && linkNovo !== linkAtual) {
-      // validação do prefixo (mesma regra do backend)
       const prefixo = 'https://app.powerbi.com/view?r=';
       if (!linkNovo.startsWith(prefixo)) {
         this.editError = `Link inválido. O link deve começar com: ${prefixo}`;
         this.savingEdit = false;
         return;
       }
-
       payload.linkPowerBi = linkNovo;
     }
 
-    // nada mudou -> só fecha
     if (Object.keys(payload).length === 0) {
       this.savingEdit = false;
       this.fecharEdicao();
@@ -330,7 +373,6 @@ constructor(
       });
   }
 
-  // fecha ao clicar fora do modal
   onOverlayClick(ev: MouseEvent) {
     if ((ev.target as HTMLElement).classList.contains('modal-overlay')) {
       this.fecharEdicao();
