@@ -1,90 +1,100 @@
-<main class="main-content">
-  <div class="card-container">
-    <header class="form-header">
-      <h1 class="form-title">Adicionar Novo Painel</h1>
-      <p class="form-subtitle">Cadastre o link público para gerar a capa automaticamente.</p>
-    </header>
+<!-- OVERLAY DO MODAL -->
+<div class="modal-overlay" (click)="onOverlayClick($event)">
+  <div class="modal-shell" role="dialog" aria-modal="true">
 
-    <form (ngSubmit)="salvarPainel()" #painelForm="ngForm">
+    <!-- SEU LAYOUT (CARD) - SEM MUDAR A CARA -->
+    <main class="main-content">
+      <div class="card-container">
+        <header class="form-header">
+          <h1 class="form-title">Adicionar Novo Painel</h1>
+          <p class="form-subtitle">Cadastre o link público para gerar a capa automaticamente.</p>
+        </header>
 
-      <div class="form-group">
-        <label for="nomePainel">Nome do Painel</label>
-        <input
-          type="text"
-          id="nomePainel"
-          name="nomePainel"
-          [(ngModel)]="painel.nome"
-          (input)="validarNomeUnico()"
-          #nomeModel="ngModel"
-          placeholder="Ex: Painel de Metas 2026"
-          required
-          minlength="3"
-          class="form-input">
+        <form (ngSubmit)="salvarPainel()" #painelForm="ngForm">
 
-        <div *ngIf="isNomeRepetido" class="premium-alert warning">
-          <div class="alert-icon-wrapper">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="alert-icon">
-              <path fill-rule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.401 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd" />
-            </svg>
+          <div class="form-group">
+            <label for="nomePainel">Nome do Painel</label>
+            <input
+              type="text"
+              id="nomePainel"
+              name="nomePainel"
+              [(ngModel)]="painel.nome"
+              (input)="validarNomeUnico()"
+              #nomeModel="ngModel"
+              placeholder="Ex: Painel de Metas 2026"
+              required
+              minlength="3"
+              class="form-input">
+
+            <div *ngIf="isNomeRepetido" class="premium-alert warning">
+              <div class="alert-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="alert-icon">
+                  <path fill-rule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.401 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd" />
+                </svg>
+              </div>
+              <div class="alert-content">
+                <h4 class="alert-title">Dica de Boas Práticas</h4>
+                <p class="alert-message">Já existe um painel com este nome. Considere usar um nome único para facilitar a gestão na PROAP.</p>
+              </div>
+            </div>
           </div>
-          <div class="alert-content">
-            <h4 class="alert-title">Dica de Boas Práticas</h4>
-            <p class="alert-message">Já existe um painel com este nome. Considere usar um nome único para facilitar a gestão na PROAP.</p>
+
+          <div class="form-group">
+            <label for="linkPowerBi">Link do Power BI (Publicado na Web)</label>
+            <input
+              type="url"
+              id="linkPowerBi"
+              name="linkPowerBi"
+              [(ngModel)]="painel.linkPowerBi"
+              #linkModel="ngModel"
+              placeholder="https://app.powerbi.com/view?r=..."
+              required
+              pattern="https://app\.powerbi\.com/.*"
+              class="form-input">
           </div>
+
+          <div class="form-actions">
+            <!-- antes: router.navigate(['/']) -->
+            <button type="button" class="btn-secondary" (click)="fecharModal()">
+              Cancelar
+            </button>
+
+            <button type="submit" [disabled]="painelForm.invalid || carregando" class="btn-primary">
+              <span *ngIf="carregando" class="spinner"></span>
+              <span>{{ carregando ? 'Salvando...' : 'Salvar Painel' }}</span>
+            </button>
+          </div>
+        </form>
+
+        <div class="log-wrapper" *ngIf="mensagem">
+
+          <div *ngIf="erro" class="premium-alert error">
+            <div class="alert-icon-wrapper">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="alert-icon">
+                <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zm-1.72 6.97a.75.75 0 10-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 101.06 1.06L12 13.06l1.72 1.72a.75.75 0 101.06-1.06L13.06 12l1.72-1.72a.75.75 0 10-1.06-1.06L12 10.94l-1.72-1.72z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div class="alert-content">
+              <h4 class="alert-title">Atenção</h4>
+              <p class="alert-message">{{ mensagem }}</p>
+            </div>
+          </div>
+
+          <div *ngIf="!erro" class="premium-alert success">
+            <div class="alert-icon-wrapper">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="alert-icon">
+                <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div class="alert-content">
+              <h4 class="alert-title">Sucesso!</h4>
+              <p class="alert-message">{{ mensagem }}</p>
+            </div>
+          </div>
+
         </div>
       </div>
+    </main>
 
-      <div class="form-group">
-        <label for="linkPowerBi">Link do Power BI (Publicado na Web)</label>
-        <input
-          type="url"
-          id="linkPowerBi"
-          name="linkPowerBi"
-          [(ngModel)]="painel.linkPowerBi"
-          #linkModel="ngModel"
-          placeholder="https://app.powerbi.com/view?r=..."
-          required
-          pattern="https://app\.powerbi\.com/.*"
-          class="form-input">
-      </div>
-
-      <div class="form-actions">
-        <button type="button" class="btn-secondary" (click)="router.navigate(['/'])">
-          Cancelar
-        </button>
-        <button type="submit" [disabled]="painelForm.invalid || carregando" class="btn-primary">
-          <span *ngIf="carregando" class="spinner"></span>
-          <span>{{ carregando ? 'Salvando...' : 'Salvar Painel' }}</span>
-        </button>
-      </div>
-    </form>
-
-    <div class="log-wrapper" *ngIf="mensagem">
-
-      <div *ngIf="erro" class="premium-alert error">
-        <div class="alert-icon-wrapper">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="alert-icon">
-            <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zm-1.72 6.97a.75.75 0 10-1.06 1.06L10.94 12l-1.72 1.72a.75.75 0 101.06 1.06L12 13.06l1.72 1.72a.75.75 0 101.06-1.06L13.06 12l1.72-1.72a.75.75 0 10-1.06-1.06L12 10.94l-1.72-1.72z" clip-rule="evenodd" />
-          </svg>
-        </div>
-        <div class="alert-content">
-          <h4 class="alert-title">Atenção</h4>
-          <p class="alert-message">{{ mensagem }}</p>
-        </div>
-      </div>
-
-      <div *ngIf="!erro" class="premium-alert success">
-        <div class="alert-icon-wrapper">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="alert-icon">
-            <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd" />
-          </svg>
-        </div>
-        <div class="alert-content">
-          <h4 class="alert-title">Sucesso!</h4>
-          <p class="alert-message">{{ mensagem }}</p>
-        </div>
-      </div>
-
-    </div>
   </div>
-</main>
+</div>

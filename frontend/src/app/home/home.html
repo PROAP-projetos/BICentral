@@ -1,30 +1,43 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Menu BICentral</title>
-</head>
-
-<body>
 <header>
-  <a href="#" class="logo">BICentral</a>
+  <a class="logo" routerLink="/">BICentral</a>
+
   <nav>
     <ul>
-      <li class="nav-item-with-dropdown"><a href="#">Minha Equipe</a></li>
+      <li class="nav-item-with-dropdown">
+        <a class="nav-text-link" href="javascript:void(0)">Minha Equipe</a>
+      </li>
     </ul>
+
     <div class="nav-right-section">
-      <a href="#" class="nav-text-link">Suporte</a>
+      <a class="nav-text-link" href="javascript:void(0)">Suporte</a>
+
       <span *ngIf="isLoggedIn" class="user-greeting">Olá, {{ userName }}</span>
-      <a *ngIf="!isLoggedIn" href="/login" class="nav-text-link">Login</a>
-      <a *ngIf="isLoggedIn" href="#" class="nav-text-link" (click)="logout(); $event.preventDefault()">Logout</a>
-      <button *ngIf="!isLoggedIn" class="nav-button" onclick="location.href='/cadastro'">Cadastre-se</button>
+
+      <a *ngIf="!isLoggedIn" routerLink="/login" class="nav-text-link">Login</a>
+
+      <a *ngIf="isLoggedIn"
+         class="nav-text-link"
+         href="javascript:void(0)"
+         (click)="logout()">
+        Logout
+      </a>
+
+      <a *ngIf="!isLoggedIn" routerLink="/cadastro" class="nav-button">
+        Cadastre-se
+      </a>
     </div>
   </nav>
 </header>
 
+<!-- ✅ BOTÃO ADICIONAR (ABRE O SEU COMPONENTE COMO POPUP) -->
 <nav class="sub-nav-button-container">
-  <a href="/adicionar-painel" class="sub-nav-button">Adicionar Painel</a>
+  <button
+    type="button"
+    class="sub-nav-button"
+    *ngIf="isLoggedIn"
+    (click)="abrirAdicionar()">
+    Adicionar Painel
+  </button>
 </nav>
 
 <main class="content-area">
@@ -41,6 +54,7 @@
     <a *ngFor="let painel of dashboards; trackBy: trackById"
        [href]="painel.linkPowerBi"
        target="_blank"
+       rel="noreferrer"
        class="dashboard-card-link">
 
       <div class="dashboard-card">
@@ -52,28 +66,163 @@
                class="dashboard-capa-menor"
                (load)="onImageLoad(painel)"
                (error)="onImageError(painel)"
-               loading="lazy"
-          >
+               loading="lazy" />
 
           <div class="image-placeholder" *ngIf="painel.statusCaptura !== 'CONCLUIDA'">
             <div class="loader-content">
-              <span *ngIf="painel.statusCaptura === 'PROCESSANDO'" class="status-msg">Gerando capa...</span>
-              <span *ngIf="painel.statusCaptura === 'PENDENTE'" class="status-msg">Aguardando robô...</span>
-              <span *ngIf="painel.statusCaptura === 'ERRO'" class="status-msg error-msg">Capa indisponível</span>
+              <span *ngIf="painel.statusCaptura === 'PROCESSANDO'" class="status-msg">
+                Gerando capa...
+              </span>
+              <span *ngIf="painel.statusCaptura === 'PENDENTE'" class="status-msg">
+                Aguardando captura...
+              </span>
+              <span *ngIf="painel.statusCaptura === 'ERRO'" class="status-msg error-msg">
+                Capa indisponível
+              </span>
             </div>
           </div>
 
-          <div class="image-placeholder" *ngIf="painel.statusCaptura === 'CONCLUIDA' && !painel.carregada">
+          <div class="image-placeholder"
+               *ngIf="painel.statusCaptura === 'CONCLUIDA' && !painel.carregada">
             <span class="status-msg">Carregando imagem...</span>
           </div>
+
         </div>
 
         <h3 class="dashboard-title-below-image">
           {{ painel.nome }}
         </h3>
+
+        <!-- AÇÕES -->
+        <div class="card-actions" *ngIf="isLoggedIn">
+          <button class="btn-action btn-edit"
+                  type="button"
+                  (click)="abrirEdicao(painel, $event)">
+            Editar
+          </button>
+        </div>
       </div>
     </a>
   </div>
+
 </main>
-</body>
-</html>
+
+<!-- ===================== -->
+<!-- MODAL EDITAR (fica como está) -->
+<!-- ===================== -->
+<div *ngIf="isEditOpen"
+     class="modal-overlay">
+
+  <div class="modal-card card-container delete-modal" role="dialog" aria-modal="true">
+    <div class="form-header">
+      <h3 class="form-title">Editar painel</h3>
+      <button type="button" class="modal-close" (click)="fecharEdicao()">×</button>
+    </div>
+
+    <form [formGroup]="editForm" (ngSubmit)="salvarEdicao()" class="modal-form">
+
+      <div class="form-group">
+        <label>
+          Nome
+          <input class="form-input" formControlName="nome" />
+        </label>
+      </div>
+
+      <div class="form-group">
+        <label>
+          Link Power BI
+          <input class="form-input" formControlName="linkPowerBi" />
+        </label>
+      </div>
+
+      <p class="modal-err" *ngIf="editError">{{ editError }}</p>
+
+      <div class="form-actions">
+        <button type="button"
+                class="btn-danger"
+                *ngIf="editingPainel"
+                (click)="abrirExcluir(editingPainel)">
+          Excluir
+        </button>
+        <button type="button" class="btn-secondary" (click)="fecharEdicao()">Cancelar</button>
+        <button type="submit" class="btn-primary" [disabled]="savingEdit">
+          {{ savingEdit ? 'Salvando...' : 'Salvar' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== -->
+<!-- ✅ ADICIONAR (USA O SEU COMPONENTE ANTIGO COMO POPUP) -->
+<!-- ✅ já passa nomesExistentes pra validar nome repetido -->
+<!-- ===================== -->
+<!-- ===================== -->
+<!-- MODAL EXCLUIR -->
+<!-- ===================== -->
+<div *ngIf="isDeleteOpen"
+     class="modal-overlay">
+
+  <div class="modal-card card-container" role="dialog" aria-modal="true">
+    <div class="form-header">
+      <h3 class="form-title">Excluir painel</h3>
+      <button type="button" class="modal-close" (click)="fecharExcluir()">×</button>
+    </div>
+
+    <div class="delete-alert">
+      <div class="delete-alert-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" class="delete-alert-svg">
+          <path d="M9 4h6m-8 3h10m-1 0-.7 11.2A2 2 0 0 1 13.3 20h-2.6a2 2 0 0 1-2-1.8L8 7m3 3v6m2-6v6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="delete-alert-content">
+        <p class="delete-alert-title">Esta ação é permanente</p>
+        <p class="delete-alert-text">
+          Tem certeza que deseja excluir "{{ deletingPainel?.nome }}"? Esta ação não pode ser desfeita.
+        </p>
+      </div>
+    </div>
+
+    <p class="modal-err" *ngIf="deleteError">{{ deleteError }}</p>
+
+    <div class="log-wrapper" *ngIf="deleteMessage">
+      <div *ngIf="!deleteSuccess" class="premium-alert error">
+        <div class="alert-icon-wrapper">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="alert-icon">
+            <path d="M12 9v4m0 4h.01M5.1 19h13.8a1 1 0 0 0 .9-1.45l-6.9-12a1 1 0 0 0-1.8 0l-6.9 12A1 1 0 0 0 5.1 19Z"/>
+          </svg>
+        </div>
+        <div class="alert-content">
+          <h4 class="alert-title">Atenção</h4>
+          <p class="alert-message">{{ deleteMessage }}</p>
+        </div>
+      </div>
+
+      <div *ngIf="deleteSuccess" class="premium-alert success">
+        <div class="alert-icon-wrapper">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="alert-icon">
+            <path d="M9 16.2 4.8 12l-1.6 1.6L9 19.4 20.8 7.6 19.2 6l-10.2 10.2Z"/>
+          </svg>
+        </div>
+        <div class="alert-content">
+          <h4 class="alert-title">Sucesso!</h4>
+          <p class="alert-message">{{ deleteMessage }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" (click)="fecharExcluir()">Cancelar</button>
+      <button type="button" class="btn-danger" [disabled]="deleting" (click)="confirmarExclusao()">
+        {{ deleting ? 'Excluindo...' : 'Excluir' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<app-add-painel
+  *ngIf="isAddOpen"
+  [nomesExistentes]="nomesExistentes"
+  (fechar)="fecharAdicionar()"
+  (salvo)="onPainelSalvo($event)">
+</app-add-painel>
