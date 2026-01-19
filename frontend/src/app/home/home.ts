@@ -54,6 +54,16 @@ editingPainel: PainelDTO | null = null;
 editForm!: FormGroup;
 
 // -------------------------
+// MODAL EXCLUIR
+// -------------------------
+isDeleteOpen = false;
+deleting = false;
+deleteError: string | null = null;
+deletingPainel: PainelDTO | null = null;
+deleteMessage: string | null = null;
+deleteSuccess = false;
+
+// -------------------------
 // ✅ ADICIONAR (AGORA É COMPONENTE POPUP)
 // -------------------------
 isAddOpen = false;
@@ -256,22 +266,59 @@ constructor(
   // -------------------------
   // CRUD: DELETE
   // -------------------------
-  excluirPainel(painel: PainelDTO, ev: MouseEvent) {
-    ev.preventDefault();
-    ev.stopPropagation();
+  abrirExcluir(painel: PainelDTO, ev?: MouseEvent) {
+    if (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+    }
 
-    const ok = confirm(`Excluir o painel "${painel.nome}"?`);
-    if (!ok) return;
+    if (this.isEditOpen) {
+      this.fecharEdicao();
+    }
+
+    this.deleteError = null;
+    this.deleting = false;
+    this.deleteMessage = null;
+    this.deleteSuccess = false;
+    this.deletingPainel = painel;
+    this.isDeleteOpen = true;
+  }
+
+  fecharExcluir() {
+    this.isDeleteOpen = false;
+    this.deleting = false;
+    this.deleteError = null;
+    this.deleteMessage = null;
+    this.deleteSuccess = false;
+    this.deletingPainel = null;
+  }
+
+  confirmarExclusao() {
+    if (!this.deletingPainel) return;
+
+    this.deleting = true;
+    this.deleteError = null;
 
     const headers = this.getAuthHeaders();
 
-    this.http.delete(`${this.API_URL}/${painel.id}`, { headers }).subscribe({
+    this.http.delete(`${this.API_URL}/${this.deletingPainel.id}`, { headers }).subscribe({
       next: () => {
-        this.dashboards = this.dashboards.filter(p => p.id !== painel.id);
+        this.dashboards = this.dashboards.filter(p => p.id !== this.deletingPainel!.id);
+        this.deleting = false;
+        this.deleteSuccess = true;
+        this.deleteMessage = 'Painel excluído com sucesso.';
+        setTimeout(() => this.fecharExcluir(), 1800);
       },
       error: (err) => {
-        if (this.handleAuthError(err)) return;
-        alert('Falha ao excluir painel.');
+        if (this.handleAuthError(err)) {
+          this.deleting = false;
+          this.fecharExcluir();
+          return;
+        }
+        this.deleting = false;
+        this.deleteError = 'Falha ao excluir painel.';
+        this.deleteSuccess = false;
+        this.deleteMessage = 'Não foi possível excluir o painel.';
       }
     });
   }
@@ -376,6 +423,12 @@ constructor(
   onOverlayClick(ev: MouseEvent) {
     if ((ev.target as HTMLElement).classList.contains('modal-overlay')) {
       this.fecharEdicao();
+    }
+  }
+
+  onDeleteOverlayClick(ev: MouseEvent) {
+    if ((ev.target as HTMLElement).classList.contains('modal-overlay')) {
+      this.fecharExcluir();
     }
   }
 
