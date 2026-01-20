@@ -39,7 +39,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, String>> handleDataIntegrity(DataIntegrityViolationException ex) {
         Map<String, String> error = new HashMap<>();
-        String rootMsg = ex.getRootCause() != null ? ex.getRootCause().getMessage() : ex.getMessage();
+        Throwable rootCause = ex.getRootCause();
+        String rootMsg = rootCause != null ? rootCause.getMessage() : ex.getMessage();
 
         // Verifica se o erro no banco menciona a sua CONSTRAINT uk_link_power_bi
         if (rootMsg != null && rootMsg.contains("uk_link_power_bi")) {

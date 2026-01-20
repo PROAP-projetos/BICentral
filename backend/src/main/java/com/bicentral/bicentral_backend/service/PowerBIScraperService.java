@@ -16,6 +16,7 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Service
 public class PowerBIScraperService {
@@ -39,15 +40,16 @@ public class PowerBIScraperService {
      */
     @Async("taskExecutor")
     public void capturaCapaAsync(Long painelId) {
+        Long id = Objects.requireNonNull(painelId, "painelId");
         Path tempFile = null;
 
         try {
-            Painel painel = painelRepository.findById(painelId)
-                    .orElseThrow(() -> new RuntimeException("Painel não encontrado ID: " + painelId));
+            Painel painel = painelRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Painel não encontrado ID: " + id));
 
             if (!linkPowerBiValido(painel.getLinkPowerBi())) {
                 logger.warn("Link Power BI inválido para painel {}. Marcando como erro.", painel.getId());
-                marcarComoErro(painelId);
+                marcarComoErro(id);
                 return;
             }
 
@@ -142,7 +144,7 @@ public class PowerBIScraperService {
 
         } catch (Exception e) {
             logger.error("Erro no Scraper Playwright: ", e);
-            marcarComoErro(painelId);
+            marcarComoErro(id);
         } finally {
             if (tempFile != null) {
                 try { Files.deleteIfExists(tempFile); } catch (Exception ignored) {}
@@ -151,7 +153,8 @@ public class PowerBIScraperService {
     }
 
     private void marcarComoErro(Long painelId) {
-        painelRepository.findById(painelId).ifPresent(p -> {
+        Long id = Objects.requireNonNull(painelId, "painelId");
+        painelRepository.findById(id).ifPresent(p -> {
             p.setStatusCaptura(Painel.StatusCaptura.ERRO);
             painelRepository.save(p);
         });
@@ -175,3 +178,4 @@ public class PowerBIScraperService {
         }
     }
 }
+

@@ -7,8 +7,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+import org.springframework.lang.NonNull;
 
 import java.io.UnsupportedEncodingException;
+import java.util.Objects;
 
 
 
@@ -22,8 +24,8 @@ public class EmailService {
     @Autowired
     private JavaMailSender mailSender;
 
-    public void sendVerificationEmail(Usuario user, String siteURL) throws MessagingException, UnsupportedEncodingException {
-        String toAddress = user.getEmail();
+    public void sendVerificationEmail(@NonNull Usuario user, @NonNull String siteURL) throws MessagingException, UnsupportedEncodingException {
+        String toAddress = Objects.requireNonNull(user.getEmail(), "user email");
         String fromAddress = "bicentraluft@gmail.com"; // Lembre-se: Este email DEVE estar validado no Brevo
         String senderName = "BI Central";
         String subject = "Verifique seu cadastro";
@@ -148,12 +150,13 @@ public class EmailService {
         helper.setTo(toAddress);
         helper.setSubject(subject);
 
-        content = content.replace("[[name]]", user.getUsername());
-        String verifyURL = siteURL + "/api/auth/verify?code=" + user.getVerificationToken();
+        content = content.replace("[[name]]", Objects.requireNonNull(user.getUsername(), "username"));
+        String verifyURL = siteURL + "/api/auth/verify?code=" + Objects.requireNonNull(user.getVerificationToken(), "verification token");
         content = content.replace("[[URL]]", verifyURL);
 
-        helper.setText(content, true); // O 'true' é crucial para interpretar como HTML
+        helper.setText(Objects.requireNonNull(content), true); // O 'true' é crucial para interpretar como HTML
 
         mailSender.send(message);
     }
 }
+

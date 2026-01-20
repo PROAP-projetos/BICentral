@@ -4,6 +4,7 @@ import org.springframework.boot.context.event.ApplicationEnvironmentPreparedEven
 import org.springframework.context.ApplicationListener;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MapPropertySource;
+import org.springframework.lang.NonNull;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -14,7 +15,7 @@ import java.util.Map;
 public class EnvLoader implements ApplicationListener<ApplicationEnvironmentPreparedEvent> {
 
     @Override
-    public void onApplicationEvent(ApplicationEnvironmentPreparedEvent event) {
+    public void onApplicationEvent(@NonNull ApplicationEnvironmentPreparedEvent event) {
         Map<String, Object> envMap = new HashMap<>();
 
         try {

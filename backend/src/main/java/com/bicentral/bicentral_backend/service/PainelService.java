@@ -18,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class PainelService {
@@ -211,7 +212,7 @@ public class PainelService {
             }
         }
 
-        Painel salvo = painelRepository.save(painel);
+        Painel salvo = painelRepository.save(Objects.requireNonNull(painel, "painel"));
 
         // ✅ só dispara scraping se link mudou
         if (linkMudou) {
@@ -236,7 +237,7 @@ public class PainelService {
         Painel painel = painelRepository.findByIdAndUsuario_Id(id, usuario.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Painel não encontrado."));
 
-        painelRepository.delete(painel);
+        painelRepository.delete(Objects.requireNonNull(painel, "painel"));
         logger.info("Painel ID: {} deletado (usuarioId={}).", id, usuario.getId());
     }
 }

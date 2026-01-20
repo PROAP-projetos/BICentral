@@ -4,6 +4,7 @@ package com.bicentral.bicentral_backend.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.lang.NonNull;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -14,7 +15,7 @@ public class CorsConfig {
     public WebMvcConfigurer corsConfigurer() {
         return new WebMvcConfigurer() {
             @Override
-            public void addCorsMappings(CorsRegistry registry) {
+            public void addCorsMappings(@NonNull CorsRegistry registry) {
                 // Configuração Global de CORS: permite acesso do 4200 a TODAS as rotas
                 registry.addMapping("/**")
                         .allowedOrigins("http://localhost:4200") // Permite o Frontend Angular
