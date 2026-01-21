@@ -30,15 +30,18 @@ public class PainelService {
     private final PainelRepository painelRepository;
     private final UsuarioRepository usuarioRepository;
     private final PowerBIScraperService scraperService;
+    private final SupabaseStorageService supabaseStorageService;
 
     public PainelService(
             PainelRepository painelRepository,
             UsuarioRepository usuarioRepository,
-            PowerBIScraperService scraperService
+            PowerBIScraperService scraperService,
+            SupabaseStorageService supabaseStorageService
     ) {
         this.painelRepository = painelRepository;
         this.usuarioRepository = usuarioRepository;
         this.scraperService = scraperService;
+        this.supabaseStorageService = supabaseStorageService;
     }
 
     // -------------------------
@@ -236,6 +239,15 @@ public class PainelService {
 
         Painel painel = painelRepository.findByIdAndUsuario_Id(id, usuario.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Painel não encontrado."));
+
+        if (painel.getImagemCapaUrl() != null) {
+            String pathInBucket = "paineis/" + painel.getId() + ".png";
+            try {
+                supabaseStorageService.deleteFile(pathInBucket);
+            } catch (Exception e) {
+                logger.warn("Falha ao deletar imagem no Supabase para painel ID: {}", id, e);
+            }
+        }
 
         painelRepository.delete(Objects.requireNonNull(painel, "painel"));
         logger.info("Painel ID: {} deletado (usuarioId={}).", id, usuario.getId());

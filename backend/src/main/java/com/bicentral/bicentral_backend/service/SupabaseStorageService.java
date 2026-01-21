@@ -44,4 +44,29 @@ public class SupabaseStorageService {
             throw new RuntimeException("Falha no upload: " + response.body());
         }
     }
+
+    public void deleteFile(String pathInBucket) throws Exception {
+        if (pathInBucket == null || pathInBucket.isBlank()) {
+            return;
+        }
+
+        HttpClient client = HttpClient.newHttpClient();
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(getApiEndpoint() + BUCKET + "/" + pathInBucket))
+                .header("Authorization", "Bearer " + SUPABASE_KEY)
+                .DELETE()
+                .build();
+
+        HttpResponse<String> response =
+                client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() == 404) {
+            return;
+        }
+
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            throw new RuntimeException("Falha no delete: " + response.body());
+        }
+    }
 }
