@@ -4,7 +4,7 @@
   <nav>
     <ul>
       <li class="nav-item-with-dropdown">
-        <a class="nav-text-link" href="javascript:void(0)">Minha Equipe</a>
+        <a class="nav-text-link" routerLink="/equipe">Minha Equipe</a>
       </li>
     </ul>
 
@@ -94,7 +94,7 @@
         </h3>
 
         <!-- AÇÕES -->
-        <div class="card-actions" *ngIf="isLoggedIn">
+        <div class="card-actions" *ngIf="isLoggedIn && canEdit">
           <button class="btn-action btn-edit"
                   type="button"
                   (click)="abrirEdicao(painel, $event)">
@@ -140,7 +140,7 @@
       <div class="form-actions">
         <button type="button"
                 class="btn-danger"
-                *ngIf="editingPainel"
+                *ngIf="editingPainel && canEdit"
                 (click)="abrirExcluir(editingPainel)">
           Excluir
         </button>

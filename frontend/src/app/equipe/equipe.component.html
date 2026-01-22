@@ -1,0 +1,121 @@
+<header class="page-header">
+  <a class="logo" routerLink="/">BICentral</a>
+  <nav class="nav-links">
+    <a class="nav-link" routerLink="/">Home</a>
+    <a class="nav-link active" routerLink="/equipe">Equipe</a>
+  </nav>
+</header>
+
+<main class="page">
+  <section class="hero">
+    <div class="hero-text">
+      <h1>Equipe</h1>
+      <p class="subtitle">
+        Lista de membros e papéis. Ações visíveis apenas para admin.
+      </p>
+      <p class="rule-note">
+        Regra futura: sempre deve existir pelo menos 1 admin (validação no backend).
+      </p>
+    </div>
+    <div class="role-pill">
+      Role atual: <strong>{{ currentUserRole }}</strong>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-header">
+      <h2>Membros</h2>
+      <span class="count">{{ members.length }} total</span>
+    </div>
+
+    <div class="table">
+      <div class="table-row table-head">
+        <div>Nome</div>
+        <div>Email</div>
+        <div>Papel</div>
+        <div *ngIf="isAdmin" class="actions-col">Ações</div>
+      </div>
+
+      <div class="table-row" *ngFor="let member of members">
+        <div class="cell-name">
+          <span class="avatar">{{ member.name.slice(0, 1) }}</span>
+          <span>{{ member.name }}</span>
+        </div>
+        <div class="cell-email">{{ member.email }}</div>
+        <div>
+          <ng-container *ngIf="isAdmin; else roleLabel">
+            <select
+              class="role-select"
+              [ngModel]="member.role"
+              (ngModelChange)="updateRole(member, $event)">
+              <option *ngFor="let role of roleOptions" [value]="role">
+                {{ role }}
+              </option>
+            </select>
+          </ng-container>
+          <ng-template #roleLabel>
+            <span class="role-chip role-{{ member.role }}">{{ member.role }}</span>
+          </ng-template>
+        </div>
+        <div *ngIf="isAdmin" class="actions-col">
+          <button class="btn btn-danger" type="button" (click)="removeMember(member)">
+            Remover membro
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" *ngIf="isAdmin">
+    <div class="card-header">
+      <h2>Adicionar membro</h2>
+      <span class="hint">Mock local</span>
+    </div>
+
+    <form class="form" (ngSubmit)="addMember()">
+      <label>
+        Nome
+        <input type="text" [(ngModel)]="form.name" name="name" placeholder="Nome completo" />
+      </label>
+      <label>
+        Email
+        <input type="email" [(ngModel)]="form.email" name="email" placeholder="email@dominio.com" />
+      </label>
+      <label>
+        Papel
+        <select [(ngModel)]="form.role" name="role">
+          <option *ngFor="let role of roleOptions" [value]="role">{{ role }}</option>
+        </select>
+      </label>
+      <button class="btn btn-primary" type="submit">Adicionar</button>
+    </form>
+  </section>
+</main>
+
+<div *ngIf="isConfirmOpen" class="modal-overlay" (click)="onConfirmOverlayClick($event)">
+  <div class="modal-card" role="dialog" aria-modal="true">
+    <div class="form-header">
+      <h3 class="form-title">Confirmar remoção</h3>
+      <button type="button" class="modal-close" (click)="fecharConfirmacao()">x</button>
+    </div>
+
+    <div class="delete-alert">
+      <div class="delete-alert-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" class="delete-alert-svg">
+          <path d="M9 4h6m-8 3h10m-1 0-.7 11.2A2 2 0 0 1 13.3 20h-2.6a2 2 0 0 1-2-1.8L8 7m3 3v6m2-6v6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="delete-alert-content">
+        <p class="delete-alert-title">Remover membro</p>
+        <p class="delete-alert-text">
+          Tem certeza que deseja remover {{ memberToRemove?.name }} da equipe?
+        </p>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn btn-secondary" (click)="fecharConfirmacao()">Cancelar</button>
+      <button type="button" class="btn btn-danger" (click)="confirmarRemocao()">Remover</button>
+    </div>
+  </div>
+</div>

@@ -6,6 +6,7 @@ import { LoginComponent } from './login/login.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { VerificacaoComponent } from './verificacao/verificacao.component';
 import { AddPainelComponent } from './add-painel/add-painel.component';
+import { EquipeComponent } from './equipe/equipe.component';
 
 import { authGuard } from './auth.guard';
 
@@ -26,6 +27,7 @@ export const routes: Routes = [
 
 // Outras páginas protegidas
 { path: 'dashboard', component: DashboardComponent, canActivate: [authGuard] },
+{ path: 'equipe', component: EquipeComponent, canActivate: [authGuard] },
 
 // Fallback
 { path: '**', redirectTo: '' }

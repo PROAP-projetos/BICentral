@@ -20,10 +20,13 @@ carregada?: boolean;
 }
 
 interface UsuarioLocalStorage {
-token?: string;
-username?: string;
-email?: string;
+  token?: string;
+  username?: string;
+  email?: string;
+  role?: string;
 }
+
+type UserRole = 'viewer' | 'editor' | 'admin';
 
 @Component({
 selector: 'app-home',
@@ -40,6 +43,7 @@ error: string | null = null;
 
 isLoggedIn = false;
 userName: string | null = null;
+currentRole: UserRole = 'viewer';
 
 private pollingSub?: Subscription;
 private readonly API_URL = 'http://localhost:8080/api/paineis';
@@ -104,9 +108,28 @@ constructor(
     get nomesExistentes(): string[] {
     return (this.dashboards ?? []).map(p => p.nome ?? '');
   }
+
+  get canEdit(): boolean {
+    return this.currentRole === 'admin' || this.currentRole === 'editor';
+  }
   // -------------------------
   // AUTH HELPERS
   // -------------------------
+  private getUserRole(): UserRole {
+    const user = this.getUserFromStorage();
+    let role: string | null = user?.role ?? null;
+
+    if (!role) {
+      role = localStorage.getItem('role');
+    }
+
+    if (role === 'viewer' || role === 'editor' || role === 'admin') {
+      return role;
+    }
+
+    return 'viewer';
+  }
+
   private getUserFromStorage(): UsuarioLocalStorage | null {
     const userStr = localStorage.getItem('user');
     if (!userStr) return null;
@@ -267,6 +290,7 @@ constructor(
   // CRUD: DELETE
   // -------------------------
   abrirExcluir(painel: PainelDTO, ev?: MouseEvent) {
+    if (!this.canEdit) return;
     if (ev) {
       ev.preventDefault();
       ev.stopPropagation();
@@ -327,6 +351,7 @@ constructor(
   // CRUD: EDIT (MODAL)
   // -------------------------
   abrirEdicao(painel: PainelDTO, ev: MouseEvent) {
+    if (!this.canEdit) return;
     ev.preventDefault();
     ev.stopPropagation();
 
@@ -441,11 +466,13 @@ constructor(
     if (!user?.token) {
       this.isLoggedIn = false;
       this.userName = null;
+      this.currentRole = 'viewer';
       return;
     }
 
     this.isLoggedIn = true;
-    this.userName = user.username || 'Usuário';
+    this.userName = user.username || 'Usuario';
+    this.currentRole = this.getUserRole();
   }
 
   logout(): void {
