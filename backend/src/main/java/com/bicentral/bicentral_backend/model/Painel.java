@@ -17,9 +17,65 @@ public class Painel {
 
     private String nome;
 
+    public LocalDateTime getDataUltimaCaptura() {
+        return dataUltimaCaptura;
+    }
+
+    public void setDataUltimaCaptura(LocalDateTime dataUltimaCaptura) {
+        this.dataUltimaCaptura = dataUltimaCaptura;
+    }
+
+    public StatusCaptura getStatusCaptura() {
+        return statusCaptura;
+    }
+
+    public void setStatusCaptura(StatusCaptura statusCaptura) {
+        this.statusCaptura = statusCaptura;
+    }
+
+    public String getImagemCapaUrl() {
+        return imagemCapaUrl;
+    }
+
+    public void setImagemCapaUrl(String imagemCapaUrl) {
+        this.imagemCapaUrl = imagemCapaUrl;
+    }
+
+    public String getLinkPowerBi() {
+        return linkPowerBi;
+    }
+
+    public void setLinkPowerBi(String linkPowerBi) {
+        this.linkPowerBi = linkPowerBi;
+    }
+
     // Mapeamento explícito para combinar com seu comando ALTER TABLE
     @Column(name = "link_power_bi", nullable = false, unique = true)
     private String linkPowerBi;
+
+    public String getNome() {
+        return nome;
+    }
+
+    public void setNome(String nome) {
+        this.nome = nome;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Usuario getUsuario() {
+        return usuario;
+    }
+
+    public void setUsuario(Usuario usuario) {
+        this.usuario = usuario;
+    }
 
     @Column(name = "imagem_capa_url", columnDefinition = "text")
     private String imagemCapaUrl;

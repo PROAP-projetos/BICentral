@@ -16,7 +16,6 @@ import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/paineis")
-@CrossOrigin(origins = "http://localhost:4200")
 public class PainelController {
 
     private static final Logger logger = LoggerFactory.getLogger(PainelController.class);

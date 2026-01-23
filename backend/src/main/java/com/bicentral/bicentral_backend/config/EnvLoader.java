@@ -19,14 +19,14 @@ public class EnvLoader implements ApplicationListener<ApplicationEnvironmentPrep
         Map<String, Object> envMap = new HashMap<>();
 
         try {
-            Files.lines(Paths.get(".env")).forEach(line -> {
+            Files.lines(Paths.get("..env")).forEach(line -> {
                 if (line.contains("=") && !line.startsWith("#")) {
                     String[] parts = line.split("=", 2);
                     envMap.put(parts[0].trim(), parts[1].trim());
                 }
             });
         } catch (IOException e) {
-            System.out.println("⚠ .env não encontrado (ignorando)");
+            System.out.println("⚠ ..env não encontrado (ignorando)");
         }
 
         ConfigurableEnvironment environment = event.getEnvironment();

@@ -6,8 +6,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,8 +24,6 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
-
-    private static final String FRONTEND_ORIGIN = "http://localhost:4200";
 
     private static final String[] PUBLIC_ENDPOINTS = {
             "/api/usuarios/cadastro",
@@ -44,7 +43,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(csrf -> csrf.disable())
+                .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -56,14 +55,12 @@ public class SecurityConfig {
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
                         .anyRequest().authenticated()
                 )
-                // Lê o Authorization: Bearer <token> e autentica a request
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        // padrão seguro e compatível com matches()/encode()
         return new BCryptPasswordEncoder();
     }
 
@@ -71,7 +68,14 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowedOrigins(List.of(FRONTEND_ORIGIN));
+        // ✅ CORREÇÃO: Usamos AllowedOriginPatterns para permitir curingas
+        // em conjunto com AllowCredentials(true).
+        config.setAllowedOriginPatterns(List.of(
+                "http://localhost:*",
+                "http://127.0.0.1:*",
+                "http://*.localhost:*"
+        ));
+
         config.setAllowedMethods(List.of(
                 HttpMethod.GET.name(),
                 HttpMethod.POST.name(),
@@ -80,13 +84,12 @@ public class SecurityConfig {
                 HttpMethod.PATCH.name(),
                 HttpMethod.OPTIONS.name()
         ));
-        config.setAllowedHeaders(List.of("*"));
 
-        // útil se você quiser devolver um token via header
+        config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of(HttpHeaders.AUTHORIZATION));
 
-        // se você usa cookies/sessão no front, ligue isso e troque allowedOrigins por allowedOriginPatterns
-        // config.setAllowCredentials(true);
+        // ✅ Necessário para o Angular gerenciar o token/cookies
+        config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
