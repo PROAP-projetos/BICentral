@@ -105,7 +105,19 @@ public class PainelService {
         dto.setId(painel.getId());
         dto.setNome(painel.getNome());
         dto.setLinkPowerBi(painel.getLinkPowerBi());
-        dto.setImagemCapaUrl(painel.getImagemCapaUrl());
+
+        String path = painel.getImagemCapaUrl();
+        if (path != null && !path.isBlank()) {
+            try {
+                dto.setImagemCapaUrl(supabaseStorageService.createSignedUrl(path, 3600));
+            } catch (Exception e) {
+                dto.setImagemCapaUrl(null);
+                logger.warn("Falha ao gerar signed URL para {}", path, e);
+            }
+        } else {
+            dto.setImagemCapaUrl(null);
+        }
+
         dto.setStatusCaptura(painel.getStatusCaptura());
         return dto;
     }

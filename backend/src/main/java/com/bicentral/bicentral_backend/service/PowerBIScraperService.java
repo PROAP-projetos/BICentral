@@ -130,9 +130,10 @@ public class PowerBIScraperService {
                 );
 
                 String nomeArquivo = "paineis/" + painel.getId() + ".png";
-                String urlFinal = supabaseStorageService.uploadFile(nomeArquivo, tempFile);
+                supabaseStorageService.uploadFile(nomeArquivo, tempFile);
 
-                painel.setImagemCapaUrl(urlFinal);
+                // Bucket privado: salve apenas o path; a URL assinada é gerada quando for servir para o frontend.
+                painel.setImagemCapaUrl(nomeArquivo);
                 painel.setStatusCaptura(Painel.StatusCaptura.CONCLUIDA);
                 painel.setDataUltimaCaptura(LocalDateTime.now());
                 painelRepository.save(painel);

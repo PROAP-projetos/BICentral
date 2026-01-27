@@ -230,15 +230,21 @@ constructor(
       const antigo = antigos.get(novo.id);
 
       if (novo.imagemCapaUrl) {
-        const pronto: PainelDTO = {
-          ...novo,
-          previewSrc: antigo?.previewSrc || novo.imagemCapaUrl,
-          carregada: !!antigo?.carregada
-        };
+        const serverUrl = novo.imagemCapaUrl;
+        const estavaCarregada = !!antigo?.carregada;
+        const previewAnterior = antigo?.previewSrc;
 
-        if (!antigo || !antigo.previewSrc) {
+        // Se a imagem ainda não carregou (ou falhou), use sempre a URL mais recente do servidor
+        // (signed URLs podem mudar; não queremos ficar "presos" em uma URL inválida/expirada).
+        const precisaAtualizarPreview = !estavaCarregada || !previewAnterior || previewAnterior !== serverUrl;
+        const previewSrc = precisaAtualizarPreview ? serverUrl : previewAnterior;
+        const carregada = precisaAtualizarPreview ? false : estavaCarregada;
+
+        const pronto: PainelDTO = { ...novo, previewSrc, carregada };
+        if (!carregada) {
           this.preloadImageForPainel(pronto);
         }
+
         return pronto;
       }
 

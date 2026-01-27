@@ -68,8 +68,6 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // ✅ CORREÇÃO: Usamos AllowedOriginPatterns para permitir curingas
-        // em conjunto com AllowCredentials(true).
         config.setAllowedOriginPatterns(List.of(
                 "http://localhost:*",
                 "http://127.0.0.1:*",
@@ -88,7 +86,6 @@ public class SecurityConfig {
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of(HttpHeaders.AUTHORIZATION));
 
-        // ✅ Necessário para o Angular gerenciar o token/cookies
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
