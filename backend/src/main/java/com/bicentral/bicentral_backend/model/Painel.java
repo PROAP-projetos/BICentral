@@ -91,6 +91,11 @@ public class Painel {
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
 
+    //relacionando com equipe
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "equipe_id")
+    private Equipe equipe;
+
     public enum StatusCaptura {
         PENDENTE, PROCESSANDO, CONCLUIDA, ERRO
     }

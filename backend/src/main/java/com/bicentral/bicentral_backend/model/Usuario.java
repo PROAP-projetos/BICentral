@@ -1,5 +1,6 @@
 package com.bicentral.bicentral_backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -12,13 +13,16 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Table(name = "usuarios")
 public class Usuario implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -42,11 +46,42 @@ public class Usuario implements UserDetails {
 
     private boolean enabled;
 
+    //relacionamentos
+
+    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL)
+    @JsonIgnore
+    private Set<Painel> paineis = new HashSet<>();
+
+    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL)
+    @JsonIgnore
+    private Set<MembroEquipe> equipes = new HashSet<>();
+
+    //construtores,to acrescentando as hash
+
     public Usuario(String nome, String email, String password) {
         this.nome = nome;
         this.email = email;
         this.password = password;
         this.enabled = false;
+        this.paineis = new HashSet<>();
+        this.equipes = new HashSet<>();
+    }
+
+    //métodos helper
+
+    public boolean pertenceAEquipe(Long equipeId){
+        return this.equipes.stream()
+                .anyMatch(membro ->
+                        membro.getEquipe() != null &&
+                        membro.getEquipe().getId().equals(equipeId));
+    }
+
+    public boolean eDonoDaEquipe(Long equipeId){
+        return this.equipes.stream()
+                .anyMatch(membro ->
+                        membro.getEquipe() != null &&
+                        membro.getEquipe().getId().equals(equipeId) &&
+                        membro.getPapel() == PapelMembro.ADMIN);
     }
 
     // --- MÉTODOS OBRIGATÓRIOS DO USERDETAILS ---
