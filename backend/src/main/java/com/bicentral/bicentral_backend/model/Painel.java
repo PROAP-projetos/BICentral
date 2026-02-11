@@ -17,7 +17,7 @@ public class Painel {
 
     private String nome;
 
-    // Mapeamento explícito para combinar com seu comando ALTER TABLE
+    // Mapeamento explícito para combinar com  ALTER TABLE
     @Column(name = "link_power_bi", nullable = false, unique = true)
     private String linkPowerBi;
 
@@ -30,6 +30,10 @@ public class Painel {
 
     @Column(name = "data_ultima_captura")
     private LocalDateTime dataUltimaCaptura;
+
+    @ManyToOne
+    @JoinColumn(name = "equipe_id")
+    private Equipe equipe;
 
     @ManyToOne
     @JoinColumn(name = "usuario_id", nullable = false)
