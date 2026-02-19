@@ -1,5 +1,6 @@
 package com.bicentral.bicentral_backend.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -28,6 +29,7 @@ public class Usuario implements UserDetails {
     @NotBlank(message = "Nome não pode estar em branco")
     @Size(min = 3, max = 20, message = "Nome deve ter entre 3 e 20 caracteres")
     @Column(name = "username", unique = true)
+    @JsonProperty("username")
     private String nome;
 
     @NotBlank(message = "Email não pode estar em branco")
@@ -68,6 +70,10 @@ public class Usuario implements UserDetails {
 
     @Override
     public String getUsername() {
+        return this.email;
+    }
+
+    public String getEmail(){
         return this.email;
     }
 

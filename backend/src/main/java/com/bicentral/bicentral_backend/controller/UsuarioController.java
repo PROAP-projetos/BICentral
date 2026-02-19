@@ -7,6 +7,7 @@ import com.bicentral.bicentral_backend.service.UsuarioService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.graphql.GraphQlProperties;
 import org.springframework.data.repository.query.Param;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,8 +31,8 @@ public class UsuarioController {
         try {
             Usuario novoUsuario = usuarioService.cadastrar(usuario, getSiteURL(request));
             return ResponseEntity.ok(novoUsuario);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(409).body(e.getMessage());
+        }catch(RuntimeException e){
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         }
     }
 

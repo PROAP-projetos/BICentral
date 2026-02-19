@@ -41,4 +41,11 @@ public class EquipeService {
         return membroEquipeRepository.findByEquipe(equipe);
     }
 
+    public List<Equipe>listarEquipesUsuario(Long userId){
+        //primeiro valida o user
+        Usuario user  = new Usuario();
+        user.setId(userId);
+        List<MembroEquipe> membros = membroEquipeRepository.findByUsuario(user);
+        return membros.stream().map(MembroEquipe::getEquipe).toList();
+    }
 }
