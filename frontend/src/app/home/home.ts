@@ -1,6 +1,6 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterModule } from '@angular/router';
+import { Router, RouterModule, RouterLink } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { interval, Subscription, of } from 'rxjs';
 import { switchMap, catchError } from 'rxjs/operators';
@@ -451,6 +451,7 @@ constructor(
   logout(): void {
     this.pararPolling();
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
     this.isLoggedIn = false;
     this.userName = null;
     this.router.navigate(['/login']);

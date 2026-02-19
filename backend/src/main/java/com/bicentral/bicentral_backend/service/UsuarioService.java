@@ -83,6 +83,9 @@ public class UsuarioService {
                 .orElseThrow(() -> new AutenticacaoException("Email ou senha inválidos."));
 
         if (passwordEncoder.matches(senhaPlana, usuario.getPassword())) {
+            if (!usuario.isEnabled()) {
+                throw new AutenticacaoException("Sua conta ainda não foi verificada. Verifique seu e-mail.");
+            }
             // Gera o Token real de 3 partes (ponto.ponto.ponto)
             return jwtService.generateToken(usuario); 
         } else {

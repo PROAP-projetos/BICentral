@@ -28,7 +28,7 @@ public class Usuario implements UserDetails {
 
     @NotBlank(message = "Nome não pode estar em branco")
     @Size(min = 3, max = 20, message = "Nome deve ter entre 3 e 20 caracteres")
-    @Column(unique = true)
+    @Column(name = "username", unique = true)
     @JsonProperty("username")
     private String nome;
 
@@ -70,11 +70,11 @@ public class Usuario implements UserDetails {
 
     @Override
     public String getUsername() {
-        return this.getUsername();
+        return this.email;
     }
 
     public String getEmail(){
-        return this.getEmail();
+        return this.email;
     }
 
     public String getNomeExibicao() {
