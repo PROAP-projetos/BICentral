@@ -28,8 +28,12 @@ public class UsuarioController {
 
     @PostMapping("/cadastro")
     public ResponseEntity<?> cadastrarUsuario(@Valid @RequestBody Usuario usuario, HttpServletRequest request) {
-        Usuario novoUsuario = usuarioService.cadastrar(usuario, getSiteURL(request));
-        return ResponseEntity.ok(novoUsuario);
+        try {
+            Usuario novoUsuario = usuarioService.cadastrar(usuario, getSiteURL(request));
+            return ResponseEntity.ok(novoUsuario);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(409).body(e.getMessage());
+        }
     }
 
     @GetMapping("/verify")

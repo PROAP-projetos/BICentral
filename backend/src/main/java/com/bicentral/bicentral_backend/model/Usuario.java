@@ -1,6 +1,5 @@
 package com.bicentral.bicentral_backend.model;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -11,7 +10,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-import com.fasterxml.jackson.annotation.JsonIgnore; // Importante para evitar loop infinito
 
 import java.util.Collection;
 import java.util.List;
@@ -28,8 +26,7 @@ public class Usuario implements UserDetails {
 
     @NotBlank(message = "Nome não pode estar em branco")
     @Size(min = 3, max = 20, message = "Nome deve ter entre 3 e 20 caracteres")
-    @Column(unique = true)
-    @JsonProperty("username")
+    @Column(name = "username", unique = true) // O ARROCHO: No banco continua 'username', no Java vira 'nome'
     private String nome;
 
     @NotBlank(message = "Email não pode estar em branco")
@@ -45,13 +42,6 @@ public class Usuario implements UserDetails {
 
     private boolean enabled;
 
-    // --- NOVO: RELACIONAMENTO COM EQUIPES ---
-    // mappedBy = "usuario" refere-se ao atributo 'usuario' dentro da classe MembroEquipe
-    @OneToMany(mappedBy = "usuario", fetch = FetchType.LAZY)
-    @JsonIgnore // Evita que o JSON entre em loop (Usuario -> Membro -> Usuario...)
-    private List<MembroEquipe> membros;
-
-    // Construtor personalizado
     public Usuario(String nome, String email, String password) {
         this.nome = nome;
         this.email = email;
@@ -63,20 +53,16 @@ public class Usuario implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Mantenha vazio por enquanto.
-        // As permissões serão validadas por equipe, não globalmente aqui.
         return List.of();
     }
 
     @Override
     public String getUsername() {
-        return this.getUsername();
+        // O Spring Security exige que este método retorne o LOGIN (email)
+        return this.email;
     }
 
-    public String getEmail(){
-        return this.getEmail();
-    }
-
+    // Criamos um getter explícito para o nome de exibição para não confundir com o de segurança
     public String getNomeExibicao() {
         return this.nome;
     }

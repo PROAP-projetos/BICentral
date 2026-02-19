@@ -7,7 +7,6 @@ import com.bicentral.bicentral_backend.repository.UsuarioRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,13 +32,8 @@ public class UsuarioService {
 
     @Transactional
     public Usuario cadastrar(Usuario usuarioParaCadastrar, String siteURL) {
-
-        usuarioParaCadastrar.setNome(usuarioParaCadastrar.getNome().trim());
-        usuarioParaCadastrar.setEmail(usuarioParaCadastrar.getEmail().trim().toLowerCase());
-
-
         if (usuarioRepository.findByNome(usuarioParaCadastrar.getNome()).isPresent()) {
-            throw new RecursoJaExistenteException("O nome de usuário '" + usuarioParaCadastrar.getNome() + "' já está em uso.");
+            throw new RecursoJaExistenteException("O nome de usuário '" + usuarioParaCadastrar.getUsername() + "' já está em uso.");
         }
         if (usuarioRepository.findByEmail(usuarioParaCadastrar.getEmail()).isPresent()) {
             throw new RecursoJaExistenteException("O email '" + usuarioParaCadastrar.getEmail() + "' já está em uso.");
@@ -88,10 +82,5 @@ public class UsuarioService {
         } else {
             throw new AutenticacaoException("Email ou senha inválidos.");
         }
-    }
-
-    public Usuario buscarPorEmail(String email){
-        return usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado: " + email));
     }
 }
