@@ -12,6 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -33,10 +34,10 @@ public class UsuarioService {
 
     @Transactional
     public Usuario cadastrar(Usuario usuarioParaCadastrar, String siteURL) {
+        Objects.requireNonNull(siteURL, "siteURL");
 
         usuarioParaCadastrar.setNome(usuarioParaCadastrar.getNome().trim());
         usuarioParaCadastrar.setEmail(usuarioParaCadastrar.getEmail().trim().toLowerCase());
-
 
         if (usuarioRepository.findByNome(usuarioParaCadastrar.getNome()).isPresent()) {
             throw new RecursoJaExistenteException("O nome de usuário '" + usuarioParaCadastrar.getNome() + "' já está em uso.");

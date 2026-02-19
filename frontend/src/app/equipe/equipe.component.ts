@@ -14,15 +14,12 @@ export type UserRole = 'viewer' | 'editor' | 'admin';
   styleUrls: ['./equipe.component.css']
 })
 export class EquipeComponent implements OnInit {
-  // 2. Trocamos 'members' por 'equipes'
   equipes: Equipe[] = [];
   currentUserRole: UserRole = 'viewer';
 
-  // 3. Mantemos a lógica do seu Modal!
   isConfirmOpen = false;
   equipeToRemove: Equipe | null = null;
 
-  // 4. O formulário agora reflete o Backend (Nome e Descrição)
   novaEquipe: Equipe = {
     nome: '',
     descricao: ''
@@ -32,11 +29,9 @@ export class EquipeComponent implements OnInit {
 
   ngOnInit(): void {
     this.currentUserRole = this.getRoleFromStorage();
-    // 5. Busca as equipes no Banco de Dados assim que a tela abre
     this.carregarEquipes();
   }
 
-  // Mantido intacto!
   get isAdmin(): boolean {
     return this.currentUserRole === 'admin';
   }
@@ -48,7 +43,6 @@ export class EquipeComponent implements OnInit {
     });
   }
 
-  // 6. Criar agora vai pro Java (Restrito para Admin)
   criarEquipe(): void {
     if (!this.isAdmin) return;
 
@@ -64,7 +58,6 @@ export class EquipeComponent implements OnInit {
     });
   }
 
-  // 7. Toda a sua lógica de Modal mantida e adaptada para Equipes
   removerEquipe(equipe: Equipe): void {
     if (!this.isAdmin) return;
     this.equipeToRemove = equipe;
@@ -74,8 +67,6 @@ export class EquipeComponent implements OnInit {
   confirmarRemocao(): void {
     if (!this.isAdmin || !this.equipeToRemove) return;
 
-    // ATENÇÃO: Como o Java ainda não tem Rota DELETE, vamos remover
-    // apenas visualmente da tela por enquanto para o Modal funcionar.
     const id = this.equipeToRemove.id;
     this.equipes = this.equipes.filter(e => e.id !== id);
     console.warn('Backend precisa da rota DELETE para remover do banco real!');
@@ -94,7 +85,6 @@ export class EquipeComponent implements OnInit {
     }
   }
 
-  // Mantido intacto!
   private getRoleFromStorage(): UserRole {
     const userStr = localStorage.getItem('user');
     let role: string | null = null;

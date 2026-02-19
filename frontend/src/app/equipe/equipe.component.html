@@ -14,6 +14,9 @@
         Crie e visualize os times cadastrados no sistema.
       </p>
     </div>
+    <div class="role-pill">
+      Role atual: <strong>{{ currentUserRole }}</strong>
+    </div>
   </section>
 
   <section class="card">
@@ -46,7 +49,7 @@
     </div>
   </section>
 
-  <section class="card">
+  <section class="card" *ngIf="isAdmin">
     <div class="card-header">
       <h2>Criar Nova Equipe</h2>
       <span class="hint">Salva direto no Banco de Dados</span>

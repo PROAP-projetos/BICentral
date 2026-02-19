@@ -12,10 +12,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/paineis")
-@CrossOrigin(origins = "http://localhost:4200")
 public class PainelController {
 
     private static final Logger logger = LoggerFactory.getLogger(PainelController.class);
@@ -41,8 +41,9 @@ public class PainelController {
             logger.error("Erro ao iniciar captura assíncrona para ID: {}", dtoSalvo.getId(), e);
         }
 
+        URI location = Objects.requireNonNull(URI.create("/api/paineis/" + dtoSalvo.getId()), "location");
         return ResponseEntity
-                .created(URI.create("/api/paineis/" + dtoSalvo.getId()))
+                .created(location)
                 .body(dtoSalvo);
     }
 

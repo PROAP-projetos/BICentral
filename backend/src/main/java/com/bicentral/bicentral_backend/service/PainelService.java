@@ -18,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class PainelService {
@@ -29,15 +30,18 @@ public class PainelService {
     private final PainelRepository painelRepository;
     private final UsuarioRepository usuarioRepository;
     private final PowerBIScraperService scraperService;
+    private final SupabaseStorageService supabaseStorageService;
 
     public PainelService(
             PainelRepository painelRepository,
             UsuarioRepository usuarioRepository,
-            PowerBIScraperService scraperService
+            PowerBIScraperService scraperService,
+            SupabaseStorageService supabaseStorageService
     ) {
         this.painelRepository = painelRepository;
         this.usuarioRepository = usuarioRepository;
         this.scraperService = scraperService;
+        this.supabaseStorageService = supabaseStorageService;
     }
 
     // -------------------------
@@ -101,7 +105,19 @@ public class PainelService {
         dto.setId(painel.getId());
         dto.setNome(painel.getNome());
         dto.setLinkPowerBi(painel.getLinkPowerBi());
-        dto.setImagemCapaUrl(painel.getImagemCapaUrl());
+
+        String path = painel.getImagemCapaUrl();
+        if (path != null && !path.isBlank()) {
+            try {
+                dto.setImagemCapaUrl(supabaseStorageService.createSignedUrl(path, 3600));
+            } catch (Exception e) {
+                dto.setImagemCapaUrl(null);
+                logger.warn("Falha ao gerar signed URL para {}", path, e);
+            }
+        } else {
+            dto.setImagemCapaUrl(null);
+        }
+
         dto.setStatusCaptura(painel.getStatusCaptura());
         return dto;
     }
@@ -211,7 +227,7 @@ public class PainelService {
             }
         }
 
-        Painel salvo = painelRepository.save(painel);
+        Painel salvo = painelRepository.save(Objects.requireNonNull(painel, "painel"));
 
         // ✅ só dispara scraping se link mudou
         if (linkMudou) {
@@ -236,7 +252,16 @@ public class PainelService {
         Painel painel = painelRepository.findByIdAndUsuario_Id(id, usuario.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Painel não encontrado."));
 
-        painelRepository.delete(painel);
+        if (painel.getImagemCapaUrl() != null) {
+            String pathInBucket = "paineis/" + painel.getId() + ".png";
+            try {
+                supabaseStorageService.deleteFile(pathInBucket);
+            } catch (Exception e) {
+                logger.warn("Falha ao deletar imagem no Supabase para painel ID: {}", id, e);
+            }
+        }
+
+        painelRepository.delete(Objects.requireNonNull(painel, "painel"));
         logger.info("Painel ID: {} deletado (usuarioId={}).", id, usuario.getId());
     }
 }

@@ -19,7 +19,7 @@ export const routes: Routes = [
   { path: 'cadastro', component: CadastroComponent },
   { path: 'verificar-email', component: VerificacaoComponent },
 
-  // 2. ADICIONE ESTA LINHA AQUI:
+  // Equipes
   { path: 'equipe', component: EquipeComponent, canActivate: [authGuard] },
 
   // Painéis (CRUD)

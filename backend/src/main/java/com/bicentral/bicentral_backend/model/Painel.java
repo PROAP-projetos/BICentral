@@ -17,7 +17,6 @@ public class Painel {
 
     private String nome;
 
-    // Mapeamento explícito para combinar com  ALTER TABLE
     @Column(name = "link_power_bi", nullable = false, unique = true)
     private String linkPowerBi;
 
