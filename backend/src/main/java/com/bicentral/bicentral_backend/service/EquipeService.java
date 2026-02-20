@@ -6,6 +6,7 @@ import com.bicentral.bicentral_backend.model.Role;
 import com.bicentral.bicentral_backend.model.Usuario;
 import com.bicentral.bicentral_backend.repository.EquipeRepository;
 import com.bicentral.bicentral_backend.repository.MembroEquipeRepository;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
@@ -33,6 +34,14 @@ public class EquipeService {
 
         membroEquipeRepository.save(novoMembro);
         return savedEquipe;
+    }
+
+    @Transactional
+    public void deletarEquipe(Long id){
+        if(!equipeRepository.existsById(id)){
+            throw new EntityNotFoundException("Equipe não encontrada");
+        }
+        equipeRepository.deleteById(id);
     }
 
     public List<MembroEquipe> listarMembros(Long equipeID){

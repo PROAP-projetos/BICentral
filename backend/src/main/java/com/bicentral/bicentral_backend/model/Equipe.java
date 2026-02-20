@@ -32,7 +32,12 @@ public class Equipe {
     private String descricao;
 
     // Relacionamento com Membros
-    @OneToMany(mappedBy = "equipe", fetch = FetchType.LAZY)
-    @JsonIgnore // Importante: evita que ao pedir a Equipe, ele traga os membros, que trazem o usuario, que traz a equipe, e assim por diante (loop infinito)
+    @OneToMany(mappedBy = "equipe", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private Set<MembroEquipe> membros;
+
+    // Relacionamento com Paineis
+    @OneToMany(mappedBy = "equipe", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private Set<Painel> paineis;
 }

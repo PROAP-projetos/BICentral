@@ -44,8 +44,6 @@ export class EquipeComponent implements OnInit {
   }
 
   criarEquipe(): void {
-    if (!this.isAdmin) return;
-
     const nome = this.novaEquipe.nome.trim();
     if (!nome) return;
 
@@ -59,19 +57,28 @@ export class EquipeComponent implements OnInit {
   }
 
   removerEquipe(equipe: Equipe): void {
-    if (!this.isAdmin) return;
     this.equipeToRemove = equipe;
     this.isConfirmOpen = true;
   }
 
   confirmarRemocao(): void {
-    if (!this.isAdmin || !this.equipeToRemove) return;
+    if (!this.equipeToRemove) return;
 
     const id = this.equipeToRemove.id;
-    this.equipes = this.equipes.filter(e => e.id !== id);
-    console.warn('Backend precisa da rota DELETE para remover do banco real!');
+    if (id === undefined) return;
 
-    this.fecharConfirmacao();
+    this.equipeService.remover(id).subscribe({
+      next: () =>{
+        this.equipes = this.equipes.filter(e => e.id !== id);
+        console.log(`Equipe ${id} removida com sucesso.`);
+        this.fecharConfirmacao();
+      },
+      error: (erro) =>{
+        console.error(`Erro ao remover equipe no servidor`, erro);
+        alert(`Não foi possível remover a equipe, verifique sua conexão ou permissão`);
+        this.fecharConfirmacao();
+      }
+    });
   }
 
   fecharConfirmacao(): void {

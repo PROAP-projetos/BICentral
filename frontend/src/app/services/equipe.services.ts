@@ -20,6 +20,10 @@ export class EquipeService{
     return this.http.post<Equipe>(this.apiURL, equipe);
   }
 
+  remover(id: number | string): Observable<void>{
+    return this.http.delete<void>(`${this.apiURL}/${id}`);
+  }
+
   listarMinhasEquipes(): Observable<Equipe[]>{
     return this.http.get<Equipe[]>(this.apiURL)
   }
