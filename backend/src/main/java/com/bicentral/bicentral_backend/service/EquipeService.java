@@ -1,5 +1,6 @@
 package com.bicentral.bicentral_backend.service;
 
+import com.bicentral.bicentral_backend.dto.EquipeRequestDTO;
 import com.bicentral.bicentral_backend.model.Equipe;
 import com.bicentral.bicentral_backend.model.MembroEquipe;
 import com.bicentral.bicentral_backend.model.Role;
@@ -56,5 +57,13 @@ public class EquipeService {
         user.setId(userId);
         List<MembroEquipe> membros = membroEquipeRepository.findByUsuario(user);
         return membros.stream().map(MembroEquipe::getEquipe).toList();
+    }
+
+    @Transactional
+    public Equipe updateEquipe(Long id, EquipeRequestDTO dto){
+        Equipe equipe = equipeRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Equipe não encontrada"));
+        equipe.setNome(dto.nome());
+        equipe.setDescricao(dto.descricao());
+        return equipeRepository.save(equipe);
     }
 }

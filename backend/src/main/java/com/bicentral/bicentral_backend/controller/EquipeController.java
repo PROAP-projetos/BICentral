@@ -7,7 +7,9 @@ import com.bicentral.bicentral_backend.model.Equipe;
 import com.bicentral.bicentral_backend.model.Usuario;
 import com.bicentral.bicentral_backend.service.EquipeService;
 import com.bicentral.bicentral_backend.service.UsuarioService;
+import org.apache.coyote.Response;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -53,6 +55,14 @@ public class EquipeController {
         equipeService.deletarEquipe(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
+    public ResponseEntity<EquipeResponseDTO> updateEquipe(@PathVariable Long id, @RequestBody EquipeRequestDTO dto){
+        Equipe equipeAtualizada = equipeService.updateEquipe(id, dto);
+        return ResponseEntity.ok(new EquipeResponseDTO(equipeAtualizada));
+    }
+
 
 
 
