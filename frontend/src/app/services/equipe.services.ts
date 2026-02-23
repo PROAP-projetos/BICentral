@@ -27,4 +27,11 @@ export class EquipeService{
   listarMinhasEquipes(): Observable<Equipe[]>{
     return this.http.get<Equipe[]>(this.apiURL)
   }
+  atualizar(id: number, equipe: Equipe): Observable<Equipe>{
+    return this.http.put<Equipe>(`${this.apiURL}/${id}`, equipe);
+  }
+
+
+
+
 }

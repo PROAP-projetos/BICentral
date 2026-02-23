@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { EquipeService, Equipe } from '../services/equipe.services';
+import { Observable } from 'rxjs';
 
 export type UserRole = 'viewer' | 'editor' | 'admin';
 
@@ -24,6 +25,9 @@ export class EquipeComponent implements OnInit {
     nome: '',
     descricao: ''
   };
+
+  isEditando = false;
+  idEquipeSendoEditada: number | null = null;
 
   constructor(private equipeService: EquipeService) {}
 
@@ -55,6 +59,31 @@ export class EquipeComponent implements OnInit {
       error: (erro) => console.error('Erro ao criar equipe', erro)
     });
   }
+  salvar(): void {
+    if (this.isEditando && this.idEquipeSendoEditada) {
+      this.equipeService.atualizar(this.idEquipeSendoEditada, this.novaEquipe).subscribe({
+        next: () => {
+          this.carregarEquipes(); // Recarrega a lista
+          this.cancelarEdicao();
+        }
+      });
+    } else {
+      this.criarEquipe(); // Sua função original de POST
+    }
+  }
+
+  prepararEdicao(equipe: Equipe){
+    this.isEditando = true;
+    this.idEquipeSendoEditada = equipe.id!;
+    this.novaEquipe = {...equipe};
+  }
+
+  cancelarEdicao(){
+    this.isEditando = false;
+    this.idEquipeSendoEditada = null;
+    this.novaEquipe = {nome: '', descricao: ''};
+  }
+
 
   removerEquipe(equipe: Equipe): void {
     this.equipeToRemove = equipe;
