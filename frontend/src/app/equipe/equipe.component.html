@@ -30,6 +30,7 @@
         <div>Nome da Equipe</div>
         <div>Descrição</div>
         <div>ID</div>
+        <div style="text-align: right;">Ações</div>
       </div>
 
       <div class="table-row" *ngFor="let eq of equipes">
@@ -41,6 +42,13 @@
         <div>
            <span class="role-chip role-viewer">#{{ eq.id }}</span>
         </div>
+        <div style="text-align: right;">
+          <button class="btn-icon" title="Remover" (click)="removerEquipe(eq)">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div *ngIf="equipes.length === 0" style="padding: 1rem; text-align: center; color: #6b7280;">
@@ -49,7 +57,7 @@
     </div>
   </section>
 
-  <section class="card" *ngIf="isAdmin">
+  <section class="card">
     <div class="card-header">
       <h2>Criar Nova Equipe</h2>
       <span class="hint">Salva direto no Banco de Dados</span>
@@ -68,4 +76,18 @@
       <button class="btn btn-primary" type="submit">Criar Equipe</button>
     </form>
   </section>
+
+  <!-- Modal de Confirmação -->
+  <div class="modal-overlay" *ngIf="isConfirmOpen" (click)="onConfirmOverlayClick($event)">
+    <div class="modal-content">
+      <h3>Confirmar Remoção</h3>
+      <p>Deseja realmente excluir a equipe <strong>{{ equipeToRemove?.nome }}</strong>?</p>
+      <p class="warning">Esta ação não pode ser desfeita e removerá todos os vínculos desta equipe.</p>
+      
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="fecharConfirmacao()">Cancelar</button>
+        <button class="btn btn-danger" (click)="confirmarRemocao()">Excluir</button>
+      </div>
+    </div>
+  </div>
 </main>

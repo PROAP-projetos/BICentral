@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("api/equipes")
+@RequestMapping("/api/equipes")
 public class EquipeController {
     private final EquipeService equipeService;
     private final UsuarioService usuarioService;
@@ -48,4 +48,12 @@ public class EquipeController {
         List<EquipeResponseDTO> response = equipes.stream().map(EquipeResponseDTO::new).toList();
         return ResponseEntity.ok(response);
     }
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> removerEquipe(@PathVariable Long id){
+        equipeService.deletarEquipe(id);
+        return ResponseEntity.noContent().build();
+    }
+
+
+
 }

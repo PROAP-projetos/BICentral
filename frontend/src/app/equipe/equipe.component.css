@@ -250,6 +250,24 @@ select {
   }
 }
 
+.btn-icon {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #64748b;
+  padding: 0.5rem;
+  border-radius: 8px;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon:hover {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -261,14 +279,33 @@ select {
   padding: 24px;
 }
 
-.modal-card {
-  width: 100%;
-  max-width: 520px;
-  background: #f3f6fa;
+.modal-content {
+  background: white;
+  padding: 2rem;
   border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
-  padding: 28px;
+  max-width: 450px;
+  width: 100%;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   animation: modalFade 0.2s ease-out;
+}
+
+.modal-content h3 {
+  margin-top: 0;
+  color: #1e293b;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.warning {
+  color: #ef4444;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  font-weight: 500;
 }
 
 @keyframes modalFade {
@@ -280,72 +317,4 @@ select {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
-}
-
-.form-header {
-  margin-bottom: 16px;
-  border-bottom: 1px solid #e5e7eb;
-  padding-bottom: 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.form-title {
-  color: #004a80;
-  font-size: 1.4rem;
-  font-weight: 700;
-  margin: 0;
-}
-
-.modal-close {
-  border: none;
-  background: transparent;
-  font-size: 20px;
-  cursor: pointer;
-  line-height: 1;
-}
-
-.delete-alert {
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-  padding: 16px 18px;
-  background: #f9fafb;
-  border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-left: 5px solid #b71c1c;
-  margin-bottom: 18px;
-}
-
-.delete-alert-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: #ffffff;
-  color: #b71c1c;
-  border: 1px solid rgba(183, 28, 28, 0.25);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.delete-alert-svg {
-  width: 20px;
-  height: 20px;
-}
-
-.delete-alert-title {
-  margin: 0 0 4px 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #b71c1c;
-}
-
-.delete-alert-text {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.5;
-  color: #4b5563;
 }
