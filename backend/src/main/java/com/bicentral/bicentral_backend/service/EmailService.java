@@ -150,8 +150,8 @@ public class EmailService {
         helper.setTo(toAddress);
         helper.setSubject(subject);
 
-        content = content.replace("[[name]]", Objects.requireNonNull(user.getUsername(), "username"));
-        String verifyURL = siteURL + "/api/auth/verify?code=" + Objects.requireNonNull(user.getVerificationToken(), "verification token");
+        content = content.replace("[[name]]", Objects.requireNonNull(user.getNomeExibicao(), "nome de exibição"));
+        String verifyURL = siteURL + "/api/usuarios/verify?code=" + Objects.requireNonNull(user.getVerificationToken(), "verification token");
         content = content.replace("[[URL]]", verifyURL);
 
         helper.setText(Objects.requireNonNull(content), true); // O 'true' é crucial para interpretar como HTML

@@ -18,15 +18,30 @@ public class EnvLoader implements ApplicationListener<ApplicationEnvironmentPrep
     public void onApplicationEvent(@NonNull ApplicationEnvironmentPreparedEvent event) {
         Map<String, Object> envMap = new HashMap<>();
 
-        try {
-            Files.lines(Paths.get("..env")).forEach(line -> {
-                if (line.contains("=") && !line.startsWith("#")) {
-                    String[] parts = line.split("=", 2);
-                    envMap.put(parts[0].trim(), parts[1].trim());
+        // Tenta carregar o .env do diretório raiz ou do diretório atual
+        String[] possiblePaths = {"./.env", "./backend/.env", "../.env"};
+        
+        for (String pathStr : possiblePaths) {
+            java.nio.file.Path path = Paths.get(pathStr);
+            if (Files.exists(path)) {
+                try {
+                    Files.lines(path).forEach(line -> {
+                        if (line.contains("=") && !line.startsWith("#")) {
+                            String[] parts = line.split("=", 2);
+                            envMap.put(parts[0].trim(), parts[1].trim());
+                        }
+                    });
+                    System.out.println("✅ .env carregado de: " + path.toAbsolutePath());
+                    break; // Para no primeiro que encontrar
+                } catch (IOException e) {
+                    System.err.println("⚠ Erro ao ler " + pathStr + ": " + e.getMessage());
                 }
-            });
-        } catch (IOException e) {
-            System.out.println("⚠ ..env não encontrado (ignorando)");
+            } else {
+                System.out.println("🔎 " + pathStr + " não encontrado.");
+            }
+        }
+        if (envMap.isEmpty()) {
+            System.err.println("❌ Nenhum arquivo .env foi encontrado ou carregado.");
         }
 
         ConfigurableEnvironment environment = event.getEnvironment();

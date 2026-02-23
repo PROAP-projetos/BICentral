@@ -31,8 +31,10 @@ public class UsuarioController {
         try {
             Usuario novoUsuario = usuarioService.cadastrar(usuario, getSiteURL(request));
             return ResponseEntity.ok(novoUsuario);
-        }catch(RuntimeException e){
+        }catch(RecursoJaExistenteException e){
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        } catch (RuntimeException e) {
+            throw e; // Re-throw other RuntimeExceptions to be handled by GlobalExceptionHandler
         }
     }
 
