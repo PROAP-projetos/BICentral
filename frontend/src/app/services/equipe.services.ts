@@ -6,6 +6,7 @@ export interface Equipe{
   id?: number;
   nome: string;
   descricao: string;
+  role?: 'ADMIN' | 'EDITOR' | 'VIEWER';
 }
 
 @Injectable({

@@ -4,6 +4,7 @@ package com.bicentral.bicentral_backend.controller;
 import com.bicentral.bicentral_backend.dto.EquipeRequestDTO;
 import com.bicentral.bicentral_backend.dto.EquipeResponseDTO;
 import com.bicentral.bicentral_backend.model.Equipe;
+import com.bicentral.bicentral_backend.model.MembroEquipe;
 import com.bicentral.bicentral_backend.model.Usuario;
 import com.bicentral.bicentral_backend.service.EquipeService;
 import com.bicentral.bicentral_backend.service.UsuarioService;
@@ -37,30 +38,38 @@ public class EquipeController {
         novaEquipe.setNome(dto.nome());
         novaEquipe.setDescricao((dto.descricao()));
 
-        Equipe equipeSalva = equipeService.criarEquipe(novaEquipe, criador);
-        return ResponseEntity.ok(new EquipeResponseDTO(equipeSalva));
+        MembroEquipe membroSalvo = equipeService.criarEquipe(novaEquipe, criador);
+        return ResponseEntity.ok(new EquipeResponseDTO(membroSalvo));
     }
     @GetMapping
     public ResponseEntity<List<EquipeResponseDTO>>listarMinhasEquipes(
             @AuthenticationPrincipal UserDetails userDetails
     ){
         Usuario usuario = usuarioService.buscarPorEmail(userDetails.getUsername());
-        List<Equipe> equipes = equipeService.listarEquipesUsuario(usuario.getId());
+        List<MembroEquipe> membros = equipeService.listarEquipesUsuario(usuario.getId());
 
-        List<EquipeResponseDTO> response = equipes.stream().map(EquipeResponseDTO::new).toList();
+        List<EquipeResponseDTO> response = membros.stream().map(EquipeResponseDTO::new).toList();
         return ResponseEntity.ok(response);
     }
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> removerEquipe(@PathVariable Long id){
-        equipeService.deletarEquipe(id);
+    public ResponseEntity<Void> removerEquipe(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails
+    ){
+        Usuario usuario = usuarioService.buscarPorEmail(userDetails.getUsername());
+        equipeService.deletarEquipe(id, usuario);
         return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EDITOR')")
-    public ResponseEntity<EquipeResponseDTO> updateEquipe(@PathVariable Long id, @RequestBody EquipeRequestDTO dto){
-        Equipe equipeAtualizada = equipeService.updateEquipe(id, dto);
-        return ResponseEntity.ok(new EquipeResponseDTO(equipeAtualizada));
+    public ResponseEntity<EquipeResponseDTO> updateEquipe(
+            @PathVariable Long id,
+            @RequestBody EquipeRequestDTO dto,
+            @AuthenticationPrincipal UserDetails userDetails
+    ){
+        Usuario usuario = usuarioService.buscarPorEmail(userDetails.getUsername());
+        MembroEquipe membroAtualizado = equipeService.updateEquipe(id, dto, usuario);
+        return ResponseEntity.ok(new EquipeResponseDTO(membroAtualizado));
     }
 
 

@@ -5,7 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { EquipeService, Equipe } from '../services/equipe.services';
 import { Observable } from 'rxjs';
 
-export type UserRole = 'viewer' | 'editor' | 'admin';
+export type UserRole = 'VIEWER' | 'EDITOR' | 'ADMIN';
 
 @Component({
   selector: 'app-equipe',
@@ -16,7 +16,7 @@ export type UserRole = 'viewer' | 'editor' | 'admin';
 })
 export class EquipeComponent implements OnInit {
   equipes: Equipe[] = [];
-  currentUserRole: UserRole = 'viewer';
+  currentUserRole: UserRole = 'VIEWER';
 
   isConfirmOpen = false;
   equipeToRemove: Equipe | null = null;
@@ -36,8 +36,12 @@ export class EquipeComponent implements OnInit {
     this.carregarEquipes();
   }
 
-  get isAdmin(): boolean {
-    return this.currentUserRole === 'admin';
+  podeEditar(equipe: Equipe): boolean {
+    return equipe.role === 'ADMIN' || equipe.role === 'EDITOR';
+  }
+
+  podeRemover(equipe: Equipe): boolean {
+    return equipe.role === 'ADMIN';
   }
 
   carregarEquipes(): void {
@@ -133,11 +137,12 @@ export class EquipeComponent implements OnInit {
       }
     }
 
-    role = role || localStorage.getItem('role') || 'viewer';
+    role = role || localStorage.getItem('role') || 'VIEWER';
+    role = role.toUpperCase();
 
-    if (role === 'viewer' || role === 'editor' || role === 'admin') {
+    if (role === 'VIEWER' || role === 'EDITOR' || role === 'ADMIN') {
       return role;
     }
-    return 'viewer';
+    return 'VIEWER';
   }
 }
