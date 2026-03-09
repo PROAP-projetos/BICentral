@@ -31,17 +31,20 @@ export class CadastroComponent {
   cadastrar() {
     this.http.post('/api/usuarios/cadastro', this.usuario)
       .subscribe({
-        this.registrationSuccess = true;
-        this.message = 'Cadastro realizado com sucesso! Por favor, verifique seu e-mail para ativar sua conta.';
-      }, error => {
-        if (error.status === 409) {
-          this.message = error.error;
-        } else if (error.status === 400) {
-          this.message = Object.values(error.error).join(', ');
-        } else {
-          this.message = 'Ocorreu um erro ao tentar cadastrar. Por favor, tente novamente mais tarde.';
+        next: (response) => {
+          this.registrationSuccess = true;
+          this.message = 'Cadastro realizado com sucesso! Por favor, verifique seu e-mail para ativar sua conta.';
+        },
+        error: (error) => {
+          if (error.status === 409) {
+            this.message = error.error;
+          } else if (error.status === 400) {
+            this.message = Object.values(error.error).join(', ');
+          } else {
+            this.message = 'Ocorreu um erro ao tentar cadastrar. Por favor, tente novamente mais tarde.';
+          }
+          console.error('Erro ao cadastrar usuário', error);
         }
-        console.error('Erro ao cadastrar usuário', error);
       });
   }
 }

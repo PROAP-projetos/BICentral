@@ -1,14 +1,12 @@
 package com.bicentral.bicentral_backend.controller;
 
 import com.bicentral.bicentral_backend.exception.AutenticacaoException;
+import com.bicentral.bicentral_backend.exception.RecursoJaExistenteException;
 import com.bicentral.bicentral_backend.model.Usuario;
 import com.bicentral.bicentral_backend.repository.UsuarioRepository;
 import com.bicentral.bicentral_backend.service.UsuarioService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.graphql.GraphQlProperties;
-import org.springframework.data.repository.query.Param;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -31,10 +29,15 @@ public class UsuarioController {
     @PostMapping("/cadastro")
     public ResponseEntity<?> cadastrarUsuario(@Valid @RequestBody Usuario usuario, HttpServletRequest request) {
         try {
-            Usuario novoUsuario = usuarioService.cadastrar(usuario, getSiteURL(request));
-            return ResponseEntity.ok(novoUsuario);
-        }catch(RuntimeException e){
+            usuarioService.cadastrar(usuario, getSiteURL(request));
+            Map<String, String> response = new HashMap<>();
+            response.put("mensagem", "Cadastro realizado com sucesso! Verifique seu e-mail para ativar sua conta.");
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (RecursoJaExistenteException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Erro ao processar cadastro. Tente novamente.");
         }
     }
 
