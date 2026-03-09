@@ -13,7 +13,7 @@ export interface Equipe{
   providedIn: 'root'
 })
 export class EquipeService{
-  private apiURL = 'http://localhost:8080/api/equipes';
+  private apiURL = '/api/equipes';
 
   constructor(private http: HttpClient){ }
 

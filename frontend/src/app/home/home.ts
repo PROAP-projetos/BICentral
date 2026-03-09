@@ -1,7 +1,7 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterModule, RouterLink } from '@angular/router';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Router, RouterModule } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { interval, Subscription, of } from 'rxjs';
 import { switchMap, catchError } from 'rxjs/operators';
 import { FormBuilder, ReactiveFormsModule, Validators, FormGroup } from '@angular/forms';
@@ -46,7 +46,7 @@ userName: string | null = null;
 currentRole: UserRole = 'viewer';
 
 private pollingSub?: Subscription;
-private readonly API_URL = 'http://localhost:8080/api/paineis';
+private readonly API_URL = '/api/paineis';
 
 // -------------------------
 // MODAL EDIÇÃO
@@ -141,17 +141,6 @@ constructor(
     }
   }
 
-  private getAuthHeaders(): HttpHeaders {
-    const user = this.getUserFromStorage();
-    const token = user?.token;
-
-    if (!token) return new HttpHeaders();
-
-    return new HttpHeaders({
-      Authorization: `Bearer ${token}`
-    });
-  }
-
   private handleAuthError(err: any) {
     if (err?.status === 401 || err?.status === 403) {
       this.pararPolling();
@@ -168,9 +157,7 @@ constructor(
     this.loading = true;
     this.error = null;
 
-    const headers = this.getAuthHeaders();
-
-    this.http.get<PainelDTO[]>(this.API_URL, { headers }).subscribe({
+    this.http.get<PainelDTO[]>(this.API_URL).subscribe({
       next: (data) => {
         this.processarDadosRecebidos(data);
         this.loading = false;
@@ -194,18 +181,7 @@ constructor(
 
     this.pollingSub = interval(5000).pipe(
       switchMap(() => {
-        // ✅ se modal estiver aberto, você pode pausar polling (opcional)
-        // if (this.isAddOpen || this.isEditOpen) return of(null);
-
-        const headers = this.getAuthHeaders();
-
-        if (!headers.has('Authorization')) {
-          this.pararPolling();
-          this.logout();
-          return of(null);
-        }
-
-        return this.http.get<PainelDTO[]>(this.API_URL, { headers }).pipe(
+        return this.http.get<PainelDTO[]>(this.API_URL).pipe(
           catchError((err) => {
             this.handleAuthError(err);
             return of(null);
@@ -329,9 +305,7 @@ constructor(
     this.deleting = true;
     this.deleteError = null;
 
-    const headers = this.getAuthHeaders();
-
-    this.http.delete(`${this.API_URL}/${this.deletingPainel.id}`, { headers }).subscribe({
+    this.http.delete(`${this.API_URL}/${this.deletingPainel.id}`).subscribe({
       next: () => {
         this.dashboards = this.dashboards.filter(p => p.id !== this.deletingPainel!.id);
         this.deleting = false;
@@ -419,9 +393,7 @@ constructor(
       return;
     }
 
-    const headers = this.getAuthHeaders();
-
-    this.http.put<PainelDTO>(`${this.API_URL}/${this.editingPainel.id}`, payload, { headers })
+    this.http.put<PainelDTO>(`${this.API_URL}/${this.editingPainel.id}`, payload)
       .subscribe({
         next: (atualizado) => {
           this.dashboards = this.dashboards.map(p =>

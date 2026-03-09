@@ -20,11 +20,13 @@ import java.util.Map;
 @RequestMapping("/api/usuarios")
 public class UsuarioController {
 
-    @Autowired
-    private UsuarioService usuarioService;
+    private final UsuarioService usuarioService;
+    private final UsuarioRepository usuarioRepository;
 
-    @Autowired
-    private UsuarioRepository usuarioRepository;
+    public UsuarioController(UsuarioService usuarioService, UsuarioRepository usuarioRepository) {
+        this.usuarioService = usuarioService;
+        this.usuarioRepository = usuarioRepository;
+    }
 
     @PostMapping("/cadastro")
     public ResponseEntity<?> cadastrarUsuario(@Valid @RequestBody Usuario usuario, HttpServletRequest request) {
@@ -37,7 +39,7 @@ public class UsuarioController {
     }
 
     @GetMapping("/verify")
-    public ResponseEntity<?> verifyUser(@Param("code") String code) {
+    public ResponseEntity<?> verifyUser(@RequestParam("code") String code) {
         if (usuarioService.verify(code)) {
             return ResponseEntity.ok("verify_success");
         } else {
@@ -60,9 +62,9 @@ public class UsuarioController {
 
             Map<String, String> response = new HashMap<>();
             response.put("token", token);
-
             response.put("username", usuario.getNomeExibicao());
             response.put("id", usuario.getId().toString());
+            response.put("role", "admin"); // Dono da conta tem permissão total em seus painéis pessoais
             return ResponseEntity.ok(response);
 
         } catch (AutenticacaoException e) {

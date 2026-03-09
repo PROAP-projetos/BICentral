@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -39,6 +40,7 @@ public class PowerBIScraperService {
      * Atualiza o banco para o Angular Polling funcionar.
      */
     @Async("taskExecutor")
+    @Transactional
     public void capturaCapaAsync(Long painelId) {
         Long id = Objects.requireNonNull(painelId, "painelId");
         Path tempFile = null;
@@ -153,7 +155,8 @@ public class PowerBIScraperService {
         }
     }
 
-    private void marcarComoErro(Long painelId) {
+    @Transactional
+    public void marcarComoErro(Long painelId) {
         Long id = Objects.requireNonNull(painelId, "painelId");
         painelRepository.findById(id).ifPresent(p -> {
             p.setStatusCaptura(Painel.StatusCaptura.ERRO);
@@ -179,4 +182,3 @@ public class PowerBIScraperService {
         }
     }
 }
-

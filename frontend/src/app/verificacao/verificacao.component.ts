@@ -24,7 +24,7 @@ export class VerificacaoComponent implements OnInit {
   ngOnInit(): void {
     const code = this.route.snapshot.queryParamMap.get('code');
     if (code) {
-      this.http.get(`http://localhost:8080/api/auth/verify?code=${code}`, { responseType: 'text' })
+      this.http.get(`/api/usuarios/verify?code=${code}`, { responseType: 'text' })
         .subscribe(() => {
           this.verificationSuccess = true;
           this.message = 'Sua conta foi verificada com sucesso! Você será redirecionado para o login em 5 segundos.';

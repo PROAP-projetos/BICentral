@@ -19,14 +19,15 @@ export class LoginComponent {
 
   login() {
     console.log('Iniciando tentativa de login...');
-    this.http.post('http://localhost:8080/api/usuarios/login', this.credentials)
+    this.http.post('/api/usuarios/login', this.credentials)
       .subscribe({
         next: (response: any) => {
           console.log('Resposta do Backend recebida:', response);
 
           if (response && response.token) {
-            // Limpa resíduos antigos
-            localStorage.clear();
+            // Limpa apenas resíduos de autenticação anteriores
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
 
             // 1. Salva o token puro (para uso do interceptor)
             localStorage.setItem('token', response.token);
