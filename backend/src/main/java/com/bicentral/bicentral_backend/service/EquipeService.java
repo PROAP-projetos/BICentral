@@ -1,5 +1,6 @@
 package com.bicentral.bicentral_backend.service;
 
+import com.bicentral.bicentral_backend.dto.EquipeRequestDTO;
 import com.bicentral.bicentral_backend.model.Equipe;
 import com.bicentral.bicentral_backend.model.MembroEquipe;
 import com.bicentral.bicentral_backend.model.Role;
@@ -8,6 +9,7 @@ import com.bicentral.bicentral_backend.repository.EquipeRepository;
 import com.bicentral.bicentral_backend.repository.MembroEquipeRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -23,7 +25,7 @@ public class EquipeService {
     }
 
     @Transactional
-    public Equipe criarEquipe(Equipe newEquipe, Usuario criador){
+    public MembroEquipe criarEquipe(Equipe newEquipe, Usuario criador){
 
         Equipe savedEquipe = equipeRepository.save(newEquipe);
 
@@ -32,16 +34,21 @@ public class EquipeService {
         novoMembro.setEquipe(savedEquipe);
         novoMembro.setRole(Role.ADMIN);
 
-        membroEquipeRepository.save(novoMembro);
-        return savedEquipe;
+        return membroEquipeRepository.save(novoMembro);
     }
 
     @Transactional
-    public void deletarEquipe(Long id){
-        if(!equipeRepository.existsById(id)){
-            throw new EntityNotFoundException("Equipe não encontrada");
+    public void deletarEquipe(Long id, Usuario usuarioLogado){
+        Equipe equipe = equipeRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Equipe não encontrada"));
+
+        MembroEquipe membro = membroEquipeRepository.findByUsuarioAndEquipe(usuarioLogado, equipe)
+                .orElseThrow(() -> new AccessDeniedException("Usuário não tem acesso a esta equipe"));
+
+        if (membro.getRole() != Role.ADMIN) {
+            throw new AccessDeniedException("Apenas o administrador da equipe pode deletá-la");
         }
-        equipeRepository.deleteById(id);
+
+        equipeRepository.delete(equipe);
     }
 
     public List<MembroEquipe> listarMembros(Long equipeID){
@@ -50,11 +57,27 @@ public class EquipeService {
         return membroEquipeRepository.findByEquipe(equipe);
     }
 
-    public List<Equipe>listarEquipesUsuario(Long userId){
+    public List<MembroEquipe> listarEquipesUsuario(Long userId){
         //primeiro valida o user
         Usuario user  = new Usuario();
         user.setId(userId);
-        List<MembroEquipe> membros = membroEquipeRepository.findByUsuario(user);
-        return membros.stream().map(MembroEquipe::getEquipe).toList();
+        return membroEquipeRepository.findByUsuario(user);
+    }
+
+    @Transactional
+    public MembroEquipe updateEquipe(Long id, EquipeRequestDTO dto, Usuario usuarioLogado){
+        Equipe equipe = equipeRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Equipe não encontrada"));
+
+        MembroEquipe membro = membroEquipeRepository.findByUsuarioAndEquipe(usuarioLogado, equipe)
+                .orElseThrow(() -> new AccessDeniedException("Usuário não tem acesso a esta equipe"));
+
+        if (membro.getRole() != Role.ADMIN && membro.getRole() != Role.EDITOR) {
+            throw new AccessDeniedException("Permissão insuficiente para editar a equipe");
+        }
+
+        equipe.setNome(dto.nome());
+        equipe.setDescricao(dto.descricao());
+        equipeRepository.save(equipe);
+        return membro;
     }
 }

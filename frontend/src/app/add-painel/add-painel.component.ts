@@ -44,9 +44,8 @@ erro = false;
 // alerta visual (dica)
 isNomeRepetido = false;
 
-private readonly API_URL = 'http://localhost:8080/api/paineis';
+private readonly API_URL = '/api/paineis';
 private readonly POWERBI_PREFIX = 'https://app.powerbi.com/view?r=';
-
 constructor(private http: HttpClient) {}
 
   // -------------------------

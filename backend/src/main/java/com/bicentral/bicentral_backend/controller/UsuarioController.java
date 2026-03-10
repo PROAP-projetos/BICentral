@@ -1,14 +1,12 @@
 package com.bicentral.bicentral_backend.controller;
 
 import com.bicentral.bicentral_backend.exception.AutenticacaoException;
+import com.bicentral.bicentral_backend.exception.RecursoJaExistenteException;
 import com.bicentral.bicentral_backend.model.Usuario;
 import com.bicentral.bicentral_backend.repository.UsuarioRepository;
 import com.bicentral.bicentral_backend.service.UsuarioService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.graphql.GraphQlProperties;
-import org.springframework.data.repository.query.Param;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,24 +18,31 @@ import java.util.Map;
 @RequestMapping("/api/usuarios")
 public class UsuarioController {
 
-    @Autowired
-    private UsuarioService usuarioService;
+    private final UsuarioService usuarioService;
+    private final UsuarioRepository usuarioRepository;
 
-    @Autowired
-    private UsuarioRepository usuarioRepository;
+    public UsuarioController(UsuarioService usuarioService, UsuarioRepository usuarioRepository) {
+        this.usuarioService = usuarioService;
+        this.usuarioRepository = usuarioRepository;
+    }
 
     @PostMapping("/cadastro")
     public ResponseEntity<?> cadastrarUsuario(@Valid @RequestBody Usuario usuario, HttpServletRequest request) {
         try {
-            Usuario novoUsuario = usuarioService.cadastrar(usuario, getSiteURL(request));
-            return ResponseEntity.ok(novoUsuario);
-        }catch(RuntimeException e){
+            usuarioService.cadastrar(usuario, getSiteURL(request));
+            Map<String, String> response = new HashMap<>();
+            response.put("mensagem", "Cadastro realizado com sucesso! Verifique seu e-mail para ativar sua conta.");
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (RecursoJaExistenteException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Erro ao processar cadastro. Tente novamente.");
         }
     }
 
     @GetMapping("/verify")
-    public ResponseEntity<?> verifyUser(@Param("code") String code) {
+    public ResponseEntity<?> verifyUser(@RequestParam("code") String code) {
         if (usuarioService.verify(code)) {
             return ResponseEntity.ok("verify_success");
         } else {
@@ -60,9 +65,9 @@ public class UsuarioController {
 
             Map<String, String> response = new HashMap<>();
             response.put("token", token);
-
             response.put("username", usuario.getNomeExibicao());
             response.put("id", usuario.getId().toString());
+            response.put("role", "admin"); // Dono da conta tem permissão total em seus painéis pessoais
             return ResponseEntity.ok(response);
 
         } catch (AutenticacaoException e) {

@@ -3,8 +3,9 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { EquipeService, Equipe } from '../services/equipe.services';
+import { Observable } from 'rxjs';
 
-export type UserRole = 'viewer' | 'editor' | 'admin';
+export type UserRole = 'VIEWER' | 'EDITOR' | 'ADMIN';
 
 @Component({
   selector: 'app-equipe',
@@ -15,7 +16,7 @@ export type UserRole = 'viewer' | 'editor' | 'admin';
 })
 export class EquipeComponent implements OnInit {
   equipes: Equipe[] = [];
-  currentUserRole: UserRole = 'viewer';
+  currentUserRole: UserRole = 'VIEWER';
 
   isConfirmOpen = false;
   equipeToRemove: Equipe | null = null;
@@ -25,6 +26,9 @@ export class EquipeComponent implements OnInit {
     descricao: ''
   };
 
+  isEditando = false;
+  idEquipeSendoEditada: number | null = null;
+
   constructor(private equipeService: EquipeService) {}
 
   ngOnInit(): void {
@@ -32,8 +36,12 @@ export class EquipeComponent implements OnInit {
     this.carregarEquipes();
   }
 
-  get isAdmin(): boolean {
-    return this.currentUserRole === 'admin';
+  podeEditar(equipe: Equipe): boolean {
+    return equipe.role === 'ADMIN' || equipe.role === 'EDITOR';
+  }
+
+  podeRemover(equipe: Equipe): boolean {
+    return equipe.role === 'ADMIN';
   }
 
   carregarEquipes(): void {
@@ -55,6 +63,31 @@ export class EquipeComponent implements OnInit {
       error: (erro) => console.error('Erro ao criar equipe', erro)
     });
   }
+  salvar(): void {
+    if (this.isEditando && this.idEquipeSendoEditada) {
+      this.equipeService.atualizar(this.idEquipeSendoEditada, this.novaEquipe).subscribe({
+        next: () => {
+          this.carregarEquipes(); // Recarrega a lista
+          this.cancelarEdicao();
+        }
+      });
+    } else {
+      this.criarEquipe(); // Sua função original de POST
+    }
+  }
+
+  prepararEdicao(equipe: Equipe){
+    this.isEditando = true;
+    this.idEquipeSendoEditada = equipe.id!;
+    this.novaEquipe = {...equipe};
+  }
+
+  cancelarEdicao(){
+    this.isEditando = false;
+    this.idEquipeSendoEditada = null;
+    this.novaEquipe = {nome: '', descricao: ''};
+  }
+
 
   removerEquipe(equipe: Equipe): void {
     this.equipeToRemove = equipe;
@@ -104,11 +137,12 @@ export class EquipeComponent implements OnInit {
       }
     }
 
-    role = role || localStorage.getItem('role') || 'viewer';
+    role = role || localStorage.getItem('role') || 'VIEWER';
+    role = role.toUpperCase();
 
-    if (role === 'viewer' || role === 'editor' || role === 'admin') {
+    if (role === 'VIEWER' || role === 'EDITOR' || role === 'ADMIN') {
       return role;
     }
-    return 'viewer';
+    return 'VIEWER';
   }
 }

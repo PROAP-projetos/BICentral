@@ -11,7 +11,7 @@
     <div class="hero-text">
       <h1>Gerenciar Equipes</h1>
       <p class="subtitle">
-        Crie e visualize os times cadastrados no sistema.
+        Crie, edite e visualize os times cadastrados no sistema.
       </p>
     </div>
     <div class="role-pill">
@@ -40,10 +40,21 @@
         </div>
         <div class="cell-email">{{ eq.descricao || 'Sem descrição' }}</div>
         <div>
-           <span class="role-chip role-viewer">#{{ eq.id }}</span>
+           <span class="role-chip" [ngClass]="{
+             'role-admin': eq.role === 'ADMIN',
+             'role-editor': eq.role === 'EDITOR',
+             'role-viewer': eq.role === 'VIEWER'
+           }">{{ eq.role }}</span>
         </div>
-        <div style="text-align: right;">
-          <button class="btn-icon" title="Remover" (click)="removerEquipe(eq)">
+        <div style="text-align: right; display: flex; justify-content: flex-end; gap: 0.5rem;">
+
+          <button class="btn-icon" title="Editar" (click)="prepararEdicao(eq)" *ngIf="podeEditar(eq)">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+
+          <button class="btn-icon btn-danger-icon" title="Remover" (click)="removerEquipe(eq)" *ngIf="podeRemover(eq)">
             <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
@@ -59,11 +70,13 @@
 
   <section class="card">
     <div class="card-header">
-      <h2>Criar Nova Equipe</h2>
-      <span class="hint">Salva direto no Banco de Dados</span>
+      <h2>{{ isEditando ? 'Editar Equipe' : 'Criar Nova Equipe' }}</h2>
+      <span class="hint">
+        {{ isEditando ? 'Alterando dados da equipe #' + idEquipeSendoEditada : 'Salva direto no Banco de Dados (Supabase)' }}
+      </span>
     </div>
 
-    <form class="form" (ngSubmit)="criarEquipe()">
+    <form class="form" (ngSubmit)="salvar()">
       <label>
         Nome da Equipe
         <input type="text" [(ngModel)]="novaEquipe.nome" name="nome" placeholder="Ex: Time de Desenvolvimento" required />
@@ -73,17 +86,24 @@
         <input type="text" [(ngModel)]="novaEquipe.descricao" name="descricao" placeholder="Propósito da equipe" />
       </label>
 
-      <button class="btn btn-primary" type="submit">Criar Equipe</button>
+      <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+        <button class="btn btn-primary" type="submit">
+          {{ isEditando ? 'Salvar Alterações' : 'Criar Equipe' }}
+        </button>
+
+        <button *ngIf="isEditando" class="btn btn-secondary" type="button" (click)="cancelarEdicao()">
+          Cancelar
+        </button>
+      </div>
     </form>
   </section>
 
-  <!-- Modal de Confirmação -->
   <div class="modal-overlay" *ngIf="isConfirmOpen" (click)="onConfirmOverlayClick($event)">
     <div class="modal-content">
-      <h3>Confirmar Remoção</h3>
+      <h3>Confirmar Remoção</h3>
       <p>Deseja realmente excluir a equipe <strong>{{ equipeToRemove?.nome }}</strong>?</p>
-      <p class="warning">Esta ação não pode ser desfeita e removerá todos os vínculos desta equipe.</p>
-      
+      <p class="warning">Esta ação não pode ser desfeita e removerá todos os vínculos desta equipe na PROPLAN.</p>
+
       <div class="modal-footer">
         <button class="btn btn-secondary" (click)="fecharConfirmacao()">Cancelar</button>
         <button class="btn btn-danger" (click)="confirmarRemocao()">Excluir</button>

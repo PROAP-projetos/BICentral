@@ -6,13 +6,14 @@ export interface Equipe{
   id?: number;
   nome: string;
   descricao: string;
+  role?: 'ADMIN' | 'EDITOR' | 'VIEWER';
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class EquipeService{
-  private apiURL = 'http://localhost:8080/api/equipes';
+  private apiURL = '/api/equipes';
 
   constructor(private http: HttpClient){ }
 
@@ -27,4 +28,11 @@ export class EquipeService{
   listarMinhasEquipes(): Observable<Equipe[]>{
     return this.http.get<Equipe[]>(this.apiURL)
   }
+  atualizar(id: number, equipe: Equipe): Observable<Equipe>{
+    return this.http.put<Equipe>(`${this.apiURL}/${id}`, equipe);
+  }
+
+
+
+
 }
