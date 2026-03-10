@@ -7,6 +7,7 @@ import { DashboardComponent } from './dashboard/dashboard.component';
 import { VerificacaoComponent } from './verificacao/verificacao.component';
 import { AddPainelComponent } from './add-painel/add-painel.component';
 import { EquipeComponent } from './equipe/equipe.component';
+import { SuporteComponent } from './suporte/suporte.component';
 
 import { authGuard } from './auth.guard';
 
@@ -21,6 +22,7 @@ export const routes: Routes = [
 
   // Equipes
   { path: 'equipe', component: EquipeComponent, canActivate: [authGuard] },
+  { path: 'suporte', component: SuporteComponent, canActivate: [authGuard] },
 
   // Painéis (CRUD)
   { path: 'adicionar-painel', component: AddPainelComponent, canActivate: [authGuard] },

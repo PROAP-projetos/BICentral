@@ -7,10 +7,12 @@ import com.bicentral.bicentral_backend.repository.UsuarioRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.Objects;
 import java.util.UUID;
@@ -21,40 +23,63 @@ public class UsuarioService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final JwtService jwtService; // Injetando o serviço de Token
+    private final TransactionTemplate transactionTemplate;
     private static final Logger logger = LoggerFactory.getLogger(UsuarioService.class);
 
     @Autowired
     public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder, 
-                          EmailService emailService, JwtService jwtService) {
+                          EmailService emailService, JwtService jwtService, TransactionTemplate transactionTemplate) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
         this.jwtService = jwtService; // Inicializando o JwtService
+        this.transactionTemplate = transactionTemplate;
     }
 
-    @Transactional
     public Usuario cadastrar(Usuario usuarioParaCadastrar, String siteURL) {
         Objects.requireNonNull(siteURL, "siteURL");
 
-        usuarioParaCadastrar.setNome(usuarioParaCadastrar.getNome().trim());
-        usuarioParaCadastrar.setEmail(usuarioParaCadastrar.getEmail().trim().toLowerCase());
+        String nomeNormalizado = usuarioParaCadastrar.getNome().trim();
+        String emailNormalizado = usuarioParaCadastrar.getEmail().trim().toLowerCase();
 
-        if (usuarioRepository.findByNome(usuarioParaCadastrar.getNome()).isPresent()) {
-            throw new RecursoJaExistenteException("O nome de usuário '" + usuarioParaCadastrar.getNome() + "' já está em uso.");
+        Usuario savedUser = transactionTemplate.execute(status -> {
+            usuarioRepository.lockCadastroKey("cadastro:email:" + emailNormalizado);
+            usuarioRepository.lockCadastroKey("cadastro:nome:" + nomeNormalizado.toLowerCase());
+
+            if (usuarioRepository.existsByEmailIgnoreCase(emailNormalizado)) {
+                throw new RecursoJaExistenteException("Este e-mail já está cadastrado. Faça login para continuar.");
+            }
+            if (usuarioRepository.existsByNomeIgnoreCase(nomeNormalizado)) {
+                throw new RecursoJaExistenteException("Este nome de usuário já está em uso. Escolha outro para continuar.");
+            }
+
+            usuarioParaCadastrar.setNome(nomeNormalizado);
+            usuarioParaCadastrar.setEmail(emailNormalizado);
+            usuarioParaCadastrar.setPassword(passwordEncoder.encode(usuarioParaCadastrar.getPassword()));
+            usuarioParaCadastrar.setVerificationToken(UUID.randomUUID().toString());
+            usuarioParaCadastrar.setEnabled(false);
+
+            try {
+                return usuarioRepository.save(usuarioParaCadastrar);
+            } catch (DataIntegrityViolationException ex) {
+                String rootMessage = ex.getMostSpecificCause() != null
+                        ? ex.getMostSpecificCause().getMessage()
+                        : ex.getMessage();
+                String normalizedMessage = rootMessage == null ? "" : rootMessage.toLowerCase();
+
+                if (normalizedMessage.contains("email")) {
+                    throw new RecursoJaExistenteException("Este e-mail já está cadastrado. Faça login para continuar.");
+                }
+                if (normalizedMessage.contains("username") || normalizedMessage.contains("nome")) {
+                    throw new RecursoJaExistenteException("Este nome de usuário já está em uso. Escolha outro para continuar.");
+                }
+                throw ex;
+            }
+        });
+
+        if (savedUser == null) {
+            throw new RuntimeException("Erro ao processar cadastro.");
         }
-        if (usuarioRepository.findByEmail(usuarioParaCadastrar.getEmail()).isPresent()) {
-            throw new RecursoJaExistenteException("O email '" + usuarioParaCadastrar.getEmail() + "' já está em uso.");
-        }
-
-        String senhaCodificada = passwordEncoder.encode(usuarioParaCadastrar.getPassword());
-        usuarioParaCadastrar.setPassword(senhaCodificada);
-
-        // UUID usado apenas para verificação de e-mail, NÃO para login
-        String randomCode = UUID.randomUUID().toString();
-        usuarioParaCadastrar.setVerificationToken(randomCode);
-        usuarioParaCadastrar.setEnabled(false);
-
-        Usuario savedUser = usuarioRepository.save(usuarioParaCadastrar);
 
         try {
             emailService.sendVerificationEmail(savedUser, siteURL);

@@ -9,7 +9,7 @@
     </ul>
 
     <div class="nav-right-section">
-      <a class="nav-text-link" href="javascript:void(0)">Suporte</a>
+      <a class="nav-text-link" routerLink="/suporte">Suporte</a>
 
       <span *ngIf="isLoggedIn" class="user-greeting">Olá, {{ userName }}</span>
 
@@ -40,72 +40,125 @@
   </button>
 </nav>
 
-<main class="content-area">
+<div class="home-body" [class.welcome-mode]="showWelcomeOverlay">
+  <main class="content-area">
+    <ng-container *ngIf="showWelcomeOverlay; else dashboardSection">
+      <section class="welcome-hero">
+        <div class="welcome-card">
+          <div class="welcome-layout">
+            <div class="welcome-main">
+              <div class="welcome-top">
+                <span class="welcome-badge">{{ welcomeSlides[welcomeStep].badge }}</span>
+              </div>
 
-  <div *ngIf="loading && dashboards.length === 0" class="loading-section">
-    Carregando painéis da PROAP...
-  </div>
+              <h2 class="welcome-title">{{ welcomeSlides[welcomeStep].title }}</h2>
+              <p class="welcome-text">{{ welcomeSlides[welcomeStep].text }}</p>
 
-  <div *ngIf="error" class="error-section">
-    {{ error }}
-  </div>
+              <div class="welcome-steps" *ngIf="!isWelcomeClosing">
+                <button
+                  type="button"
+                  class="welcome-step-dot"
+                  *ngFor="let slide of welcomeSlides; let i = index"
+                  [class.active]="i === welcomeStep"
+                  (click)="goToWelcomeStep(i)"
+                  [attr.aria-label]="'Ir para etapa ' + (i + 1)">
+                </button>
+              </div>
 
-  <div class="dashboard-grid">
-    <a *ngFor="let painel of dashboards; trackBy: trackById"
-       [href]="painel.linkPowerBi"
-       target="_blank"
-       rel="noreferrer"
-       class="dashboard-card-link">
+              <div class="welcome-actions" *ngIf="!isWelcomeClosing">
+                <button type="button" class="welcome-btn ghost" (click)="previousWelcomeStep()" [disabled]="welcomeStep === 0 || isWelcomeClosing">
+                  Voltar
+                </button>
+                <button type="button" class="welcome-btn solid" (click)="nextWelcomeStep()" [disabled]="isWelcomeClosing">
+                  {{ welcomeStep === welcomeSlides.length - 1 ? 'Começar a gerenciar painéis' : 'Próximo' }}
+                </button>
+              </div>
+            </div>
 
-      <div class="dashboard-card">
-        <div class="dashboard-image-wrapper">
+            <aside class="welcome-mascot">
+              <img src="/mascote.png" alt="Mascote BICentral" class="mascote-img" />
+              <p class="mascot-caption">Seu robô assistente para organizar e acompanhar painéis no BICentral.</p>
+            </aside>
+          </div>
+          <button class="welcome-skip corner" type="button" (click)="closeWelcomeOverlay()" [disabled]="isWelcomeClosing">Pular introdução</button>
 
-          <img *ngIf="painel.statusCaptura === 'CONCLUIDA' && painel.previewSrc"
-               [src]="painel.previewSrc"
-               [alt]="'Capa do Painel ' + painel.nome"
-               class="dashboard-capa-menor"
-               (load)="onImageLoad(painel)"
-               (error)="onImageError(painel)"
-               loading="lazy" />
+          <div class="welcome-outro" *ngIf="isWelcomeClosing">
+            <p class="welcome-outro-title">{{ welcomeOutroTitle }}</p>
+            <p class="welcome-outro-subtitle">{{ welcomeOutroSubtitle }}</p>
+          </div>
+        </div>
+      </section>
+    </ng-container>
 
-          <div class="image-placeholder" *ngIf="painel.statusCaptura !== 'CONCLUIDA'">
-            <div class="loader-content">
-              <span *ngIf="painel.statusCaptura === 'PROCESSANDO'" class="status-msg">
-                Gerando capa...
-              </span>
-              <span *ngIf="painel.statusCaptura === 'PENDENTE'" class="status-msg">
-                Aguardando captura...
-              </span>
-              <span *ngIf="painel.statusCaptura === 'ERRO'" class="status-msg error-msg">
-                Capa indisponível
-              </span>
+    <ng-template #dashboardSection>
+      <div *ngIf="loading && dashboards.length === 0" class="loading-section">
+        Carregando painéis da PROAP...
+      </div>
+
+      <div *ngIf="error" class="error-section">
+        {{ error }}
+      </div>
+
+      <div class="dashboard-grid">
+        <a *ngFor="let painel of dashboards; trackBy: trackById"
+           [href]="painel.linkPowerBi"
+           target="_blank"
+           rel="noreferrer"
+           class="dashboard-card-link">
+
+          <div class="dashboard-card">
+            <div class="dashboard-image-wrapper">
+
+              <img *ngIf="painel.statusCaptura === 'CONCLUIDA' && painel.previewSrc"
+                   [src]="painel.previewSrc"
+                   [alt]="'Capa do Painel ' + painel.nome"
+                   class="dashboard-capa-menor"
+                   (load)="onImageLoad(painel)"
+                   (error)="onImageError(painel)"
+                   loading="lazy" />
+
+              <div class="image-placeholder" *ngIf="painel.statusCaptura !== 'CONCLUIDA'">
+                <div class="loader-content">
+                  <span *ngIf="painel.statusCaptura === 'PROCESSANDO'" class="status-msg">
+                    Gerando capa...
+                  </span>
+                  <span *ngIf="painel.statusCaptura === 'PENDENTE'" class="status-msg">
+                    Aguardando captura...
+                  </span>
+                  <span *ngIf="painel.statusCaptura === 'ERRO'" class="status-msg error-msg">
+                    Capa indisponível
+                  </span>
+                </div>
+              </div>
+
+              <div class="image-placeholder"
+                   *ngIf="painel.statusCaptura === 'CONCLUIDA' && !painel.carregada">
+                <span class="status-msg">Carregando imagem...</span>
+              </div>
+
+            </div>
+
+            <h3 class="dashboard-title-below-image">
+              {{ painel.nome }}
+            </h3>
+
+            <div class="card-actions" *ngIf="isLoggedIn && canEdit">
+              <button class="btn-action btn-edit"
+                      type="button"
+                      (click)="abrirEdicao(painel, $event)">
+                Editar
+              </button>
             </div>
           </div>
-
-          <div class="image-placeholder"
-               *ngIf="painel.statusCaptura === 'CONCLUIDA' && !painel.carregada">
-            <span class="status-msg">Carregando imagem...</span>
-          </div>
-
-        </div>
-
-        <h3 class="dashboard-title-below-image">
-          {{ painel.nome }}
-        </h3>
-
-        <!-- AÇÕES -->
-        <div class="card-actions" *ngIf="isLoggedIn && canEdit">
-          <button class="btn-action btn-edit"
-                  type="button"
-                  (click)="abrirEdicao(painel, $event)">
-            Editar
-          </button>
-        </div>
+        </a>
       </div>
-    </a>
-  </div>
+    </ng-template>
+  </main>
 
-</main>
+  <footer class="home-footer">
+    Desenvolvido pelos estagiários da PROAP • UFT • 2026
+  </footer>
+</div>
 
 <!-- ===================== -->
 <!-- MODAL EDITAR (fica como está) -->

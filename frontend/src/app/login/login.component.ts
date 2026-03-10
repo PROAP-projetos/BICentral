@@ -14,10 +14,12 @@ import { Router, RouterLink } from '@angular/router';
 export class LoginComponent {
   credentials = { email: '', password: '' };
   message: string | null = null;
+  messageType: 'error' | 'success' | 'info' = 'error';
 
   constructor(private http: HttpClient, private router: Router) { }
 
   login() {
+    this.message = null;
     console.log('Iniciando tentativa de login...');
     this.http.post('/api/usuarios/login', this.credentials)
       .subscribe({
@@ -54,13 +56,32 @@ export class LoginComponent {
           }
         },
         error: (error) => {
-          if (error.status === 401 || error.status === 403) {
-            this.message = error.error || 'Email ou senha inválidos.';
-          } else {
-            this.message = 'Erro ao conectar com o servidor.';
-          }
+          this.messageType = 'error';
+          this.message = this.extractErrorMessage(error);
           console.error('Erro detalhado no login:', error);
         }
       });
+  }
+
+  private extractErrorMessage(error: any): string {
+    const backendError = error?.error;
+
+    if (typeof backendError === 'string' && backendError.trim()) {
+      return backendError;
+    }
+
+    if (backendError?.mensagem) {
+      return backendError.mensagem;
+    }
+
+    if (backendError?.message) {
+      return backendError.message;
+    }
+
+    if (error?.status === 401 || error?.status === 403) {
+      return 'Email ou senha inválidos.';
+    }
+
+    return 'Erro ao conectar com o servidor.';
   }
 }

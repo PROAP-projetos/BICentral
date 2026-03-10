@@ -158,5 +158,38 @@ public class EmailService {
 
         mailSender.send(message);
     }
+
+    public void sendSupportEmail(
+            @NonNull String nome,
+            @NonNull String email,
+            @NonNull String assunto,
+            @NonNull String mensagem
+    ) throws MessagingException, UnsupportedEncodingException {
+        String fromAddress = "bicentraluft@gmail.com";
+        String senderName = "BI Central - Suporte";
+        String toAddress = "bicentraluft@gmail.com";
+
+        String assuntoFinal = "[Suporte BICentral] " + assunto.trim();
+        String conteudo = """
+                Novo contato recebido pelo formulário de suporte.
+
+                Nome: %s
+                E-mail: %s
+                Assunto: %s
+
+                Mensagem:
+                %s
+                """.formatted(nome.trim(), email.trim(), assunto.trim(), mensagem.trim());
+
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
+        helper.setFrom(fromAddress, senderName);
+        helper.setTo(toAddress);
+        helper.setReplyTo(email.trim());
+        helper.setSubject(assuntoFinal);
+        helper.setText(conteudo, false);
+
+        mailSender.send(message);
+    }
 }
 

@@ -20,6 +20,7 @@ carregada?: boolean;
 }
 
 interface UsuarioLocalStorage {
+  id?: string;
   token?: string;
   username?: string;
   email?: string;
@@ -44,6 +45,30 @@ error: string | null = null;
 isLoggedIn = false;
 userName: string | null = null;
 currentRole: UserRole = 'viewer';
+showWelcomeOverlay = false;
+welcomeStep = 0;
+isWelcomeClosing = false;
+welcomeOutroTitle = 'Que bom ter voce aqui.';
+welcomeOutroSubtitle = 'Preparando seu espaco para organizar paineis...';
+private welcomeTimers: number[] = [];
+
+readonly welcomeSlides = [
+  {
+    badge: 'Bem-vindo ao BICentral',
+    title: 'Seu centro para organizar os painéis da PROAP',
+    text: 'Aqui você centraliza os links dos painéis, mantém tudo em um único lugar e facilita o acesso diário da equipe.'
+  },
+  {
+    badge: 'Como funciona',
+    title: 'Cadastre, visualize e atualize sem complicação',
+    text: 'Use o botão "Adicionar Painel", acompanhe a capa gerada automaticamente e edite os painéis sempre que precisar.'
+  },
+  {
+    badge: 'Comece agora',
+    title: 'Gerencie seus painéis com mais controle',
+    text: 'Monte sua biblioteca de dashboards e mantenha sua rotina de análise mais rápida e organizada dentro do BICentral.'
+  }
+];
 
 private pollingSub?: Subscription;
 private readonly API_URL = '/api/paineis';
@@ -94,12 +119,14 @@ constructor(
       return;
     }
 
+    this.initializeWelcomeOverlay();
     this.loadDashboards();
     this.startPolling();
   }
 
   ngOnDestroy(): void {
     this.pararPolling();
+    this.clearWelcomeTimers();
   }
 
   trackById(index: number, item: PainelDTO) {
@@ -451,6 +478,72 @@ constructor(
     this.isLoggedIn = true;
     this.userName = user.username || 'Usuario';
     this.currentRole = this.getUserRole();
+  }
+
+  private initializeWelcomeOverlay(): void {
+    const key = this.getWelcomeStorageKey();
+    this.showWelcomeOverlay = localStorage.getItem(key) !== '1';
+    this.welcomeStep = 0;
+  }
+
+  private getWelcomeStorageKey(): string {
+    const user = this.getUserFromStorage();
+    const userKey = user?.id || user?.email || user?.username || 'default';
+    return `bicentral_welcome_seen_${userKey}`;
+  }
+
+  closeWelcomeOverlay(): void {
+    this.clearWelcomeTimers();
+    this.isWelcomeClosing = false;
+    this.showWelcomeOverlay = false;
+    localStorage.setItem(this.getWelcomeStorageKey(), '1');
+  }
+
+  nextWelcomeStep(): void {
+    if (this.isWelcomeClosing) return;
+
+    if (this.welcomeStep >= this.welcomeSlides.length - 1) {
+      this.playWelcomeOutro();
+      return;
+    }
+
+    this.welcomeStep += 1;
+  }
+
+  previousWelcomeStep(): void {
+    if (this.welcomeStep <= 0) return;
+    this.welcomeStep -= 1;
+  }
+
+  goToWelcomeStep(index: number): void {
+    if (this.isWelcomeClosing) return;
+    if (index < 0 || index >= this.welcomeSlides.length) return;
+    this.welcomeStep = index;
+  }
+
+  private playWelcomeOutro(): void {
+    this.clearWelcomeTimers();
+    this.isWelcomeClosing = true;
+    this.welcomeOutroTitle = 'Que bom ter voce aqui.';
+    this.welcomeOutroSubtitle = 'Preparando seu espaco para organizar paineis...';
+
+    this.welcomeTimers.push(
+      window.setTimeout(() => {
+        this.welcomeOutroTitle = 'Tudo pronto!';
+        this.welcomeOutroSubtitle = 'Agora voce ja pode gerenciar seus paineis.';
+      }, 1100)
+    );
+
+    this.welcomeTimers.push(
+      window.setTimeout(() => {
+        this.closeWelcomeOverlay();
+      }, 2600)
+    );
+  }
+
+  private clearWelcomeTimers(): void {
+    this.welcomeTimers.forEach((timer) => window.clearTimeout(timer));
+    this.welcomeTimers = [];
   }
 
   logout(): void {

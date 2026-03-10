@@ -34,10 +34,13 @@ public class UsuarioController {
             response.put("mensagem", "Cadastro realizado com sucesso! Verifique seu e-mail para ativar sua conta.");
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (RecursoJaExistenteException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+            Map<String, String> response = new HashMap<>();
+            response.put("mensagem", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Erro ao processar cadastro. Tente novamente.");
+            Map<String, String> response = new HashMap<>();
+            response.put("mensagem", "Erro ao processar cadastro. Tente novamente.");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 

@@ -116,14 +116,105 @@ input[type="password"]:focus {
 
 /* --- 7. Alertas --- */
 
-.alert {
-  padding: 1rem;
-  border: 1px solid transparent;
-  border-radius: .25rem;
+.log-wrapper {
+  margin-top: 4px;
 }
 
-.alert-info {
-  color: #0c5460;
-  background-color: #e7f3fe;
-  border-color: #b8daff;
+.premium-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 18px;
+  background-color: var(--color-surface);
+  border-radius: 12px;
+  border: 1px solid #dfe5ec;
+  border-left-width: 6px;
+}
+
+.alert-icon-wrapper {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+}
+
+.alert-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.alert-content {
+  flex: 1;
+}
+
+.alert-title {
+  margin: 0 0 4px 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.alert-message {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.35;
+  color: var(--color-text);
+}
+
+.alert-action-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 12px;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  color: #ffffff;
+  background: var(--color-primary);
+  border-radius: 999px;
+  transition: background-color 0.2s ease;
+}
+
+.alert-action-link:hover {
+  background: var(--color-primary-hover);
+  text-decoration: none;
+}
+
+.premium-alert.error {
+  border-left-color: var(--color-error);
+  background: #fff8f8;
+}
+
+.premium-alert.error .alert-icon,
+.premium-alert.error .alert-title {
+  color: var(--color-error);
+}
+
+.premium-alert.error .alert-icon-wrapper {
+  border-color: rgba(244, 67, 54, 0.25);
+  background: rgba(244, 67, 54, 0.08);
+}
+
+.premium-alert.success {
+  border-left-color: var(--color-success);
+}
+
+.premium-alert.success .alert-icon,
+.premium-alert.success .alert-title {
+  color: var(--color-success);
+}
+
+.premium-alert.info {
+  border-left-color: var(--color-info);
+}
+
+.premium-alert.info .alert-icon,
+.premium-alert.info .alert-title {
+  color: var(--color-info);
 }

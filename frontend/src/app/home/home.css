@@ -551,3 +551,29 @@ label {
   color: #d32f2f;
   font-size: 12px;
 }
+
+/* Ajuste fino do onboarding na Home (garante espaçamento mesmo com resets globais) */
+.welcome-card {
+  padding: clamp(28px, 4vw, 46px) !important;
+}
+
+.welcome-top {
+  margin-bottom: 10px;
+}
+
+.welcome-title {
+  margin: 0 0 14px 0 !important;
+  padding: 0 !important;
+}
+
+.welcome-text {
+  margin: 0 0 8px 0 !important;
+}
+
+.welcome-steps {
+  margin-top: 18px !important;
+}
+
+.welcome-actions {
+  margin-top: 22px !important;
+}

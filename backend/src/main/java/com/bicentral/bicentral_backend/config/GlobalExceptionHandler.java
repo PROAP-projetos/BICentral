@@ -1,5 +1,6 @@
 package com.bicentral.bicentral_backend.config;
 
+import com.bicentral.bicentral_backend.exception.RecursoJaExistenteException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -41,6 +42,13 @@ public class GlobalExceptionHandler {
         Map<String, String> error = new HashMap<>();
         error.put("mensagem", ex.getReason());
         return new ResponseEntity<>(error, ex.getStatusCode());
+    }
+
+    @ExceptionHandler(RecursoJaExistenteException.class)
+    public ResponseEntity<Map<String, String>> handleRecursoJaExistente(RecursoJaExistenteException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("mensagem", ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 
     // 3. O QUE VOCÊ PRECISA: Captura a trava do SQL (uk_link_power_bi)
