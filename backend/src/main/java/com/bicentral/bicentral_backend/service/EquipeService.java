@@ -11,8 +11,10 @@ import com.bicentral.bicentral_backend.repository.MembroEquipeRepository;
 import com.bicentral.bicentral_backend.repository.UsuarioRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -130,13 +132,13 @@ public class EquipeService {
         MembroEquipe membroParaRemover = membroEquipeRepository.findByUsuarioAndEquipe(usuarioParaRemover, equipe)
                 .orElseThrow(() -> new EntityNotFoundException("Usuário não é membro desta equipe"));
 
-        // Não permitir remover a si mesmo se for o único admin (opcional, mas recomendado)
-        if (usuarioParaRemover.getId().equals(usuarioLogado.getId())) {
-             long adminsCount = membroEquipeRepository.findByEquipe(equipe).stream()
-                     .filter(m -> m.getRole() == Role.ADMIN).count();
-             if (adminsCount <= 1) {
-                 throw new RuntimeException("Não é possível remover o único administrador da equipe");
-             }
+        // Se for remover um ADMIN, deve garantir que não é o ÚLTIMO
+        if (membroParaRemover.getRole() == Role.ADMIN) {
+            long adminsCount = membroEquipeRepository.findByEquipe(equipe).stream()
+                    .filter(m -> m.getRole() == Role.ADMIN).count();
+            if (adminsCount <= 1) {
+                throw new ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Não é possível remover o último administrador da equipe");
+            }
         }
 
         membroEquipeRepository.delete(membroParaRemover);
@@ -159,6 +161,15 @@ public class EquipeService {
 
         MembroEquipe membro = membroEquipeRepository.findByUsuarioAndEquipe(usuarioMembro, equipe)
                 .orElseThrow(() -> new EntityNotFoundException("Usuário não é membro desta equipe"));
+
+        // Se o membro atual é ADMIN e está sendo alterado para outro papel, verificar se não é o único
+        if (membro.getRole() == Role.ADMIN && novoRole != Role.ADMIN) {
+            long adminsCount = membroEquipeRepository.findByEquipe(equipe).stream()
+                    .filter(m -> m.getRole() == Role.ADMIN).count();
+            if (adminsCount <= 1) {
+                throw new ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Não é possível rebaixar o único administrador da equipe");
+            }
+        }
 
         membro.setRole(novoRole);
         return membroEquipeRepository.save(membro);
