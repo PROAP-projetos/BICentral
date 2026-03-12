@@ -7,106 +7,158 @@
 </header>
 
 <main class="page">
+  <!-- Feedback Global -->
+  <div *ngIf="mensagemFeedback" class="feedback-banner" [ngClass]="tipoFeedback">
+    {{ mensagemFeedback }}
+    <button class="btn-close" (click)="limparFeedback()">×</button>
+  </div>
+
   <section class="hero">
     <div class="hero-text">
       <h1>Gerenciar Equipes</h1>
       <p class="subtitle">
-        Crie, edite e visualize os times cadastrados no sistema.
+        Crie, edite e gerencie os membros dos times cadastrados.
       </p>
     </div>
     <div class="role-pill">
-      Role atual: <strong>{{ currentUserRole }}</strong>
+      Perfil Global: <strong>{{ currentUserRole }}</strong>
     </div>
   </section>
 
-  <section class="card">
-    <div class="card-header">
-      <h2>Minhas Equipes</h2>
-      <span class="count">{{ equipes.length }} total</span>
-    </div>
-
-    <div class="table">
-      <div class="table-row table-head">
-        <div>Nome da Equipe</div>
-        <div>Descrição</div>
-        <div>ID</div>
-        <div style="text-align: right;">Ações</div>
+  <div class="layout-grid">
+    <!-- Coluna de Equipes -->
+    <section class="card teams-column">
+      <div class="card-header">
+        <h2>Minhas Equipes</h2>
+        <span class="count">{{ equipes.length }} total</span>
       </div>
 
-      <div class="table-row" *ngFor="let eq of equipes">
-        <div class="cell-name">
-          <span class="avatar">{{ eq.nome.slice(0, 1) | uppercase }}</span>
-          <span>{{ eq.nome }}</span>
+      <div class="table">
+        <div class="table-row table-head">
+          <div>Equipe</div>
+          <div style="text-align: right;">Ações</div>
         </div>
-        <div class="cell-email">{{ eq.descricao || 'Sem descrição' }}</div>
-        <div>
-           <span class="role-chip" [ngClass]="{
-             'role-admin': eq.role === 'ADMIN',
-             'role-editor': eq.role === 'EDITOR',
-             'role-viewer': eq.role === 'VIEWER'
-           }">{{ eq.role }}</span>
+
+        <div class="table-row team-item" 
+             *ngFor="let eq of equipes" 
+             [ngClass]="{'active-team': equipeAtiva?.id === eq.id}"
+             (click)="selecionarEquipe(eq)">
+          <div class="cell-name">
+            <span class="avatar">{{ eq.nome.slice(0, 1) | uppercase }}</span>
+            <div class="team-info">
+              <span class="team-name">{{ eq.nome }}</span>
+              <span class="role-chip-small" [ngClass]="'role-' + eq.role?.toLowerCase()">{{ eq.role }}</span>
+            </div>
+          </div>
+          <div class="actions-col" (click)="$event.stopPropagation()">
+            <button class="btn-icon" title="Editar" (click)="prepararEdicao(eq)" *ngIf="podeEditar(eq)">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <button class="btn-icon btn-danger-icon" title="Remover" (click)="removerEquipe(eq)" *ngIf="podeRemover(eq)">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
         </div>
-        <div style="text-align: right; display: flex; justify-content: flex-end; gap: 0.5rem;">
 
-          <button class="btn-icon" title="Editar" (click)="prepararEdicao(eq)" *ngIf="podeEditar(eq)">
-            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-
-          <button class="btn-icon btn-danger-icon" title="Remover" (click)="removerEquipe(eq)" *ngIf="podeRemover(eq)">
-            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
+        <div *ngIf="equipes.length === 0" class="empty-state">
+          Nenhuma equipe encontrada.
         </div>
       </div>
 
-      <div *ngIf="equipes.length === 0" style="padding: 1rem; text-align: center; color: #6b7280;">
-        Nenhuma equipe encontrada. Crie uma abaixo!
+      <!-- Formulário de Equipe -->
+      <div class="team-form-section">
+        <h3 class="section-title">{{ isEditando ? 'Editar Equipe' : 'Criar Equipe' }}</h3>
+        <form class="form-compact" (ngSubmit)="salvar()">
+          <input type="text" [(ngModel)]="novaEquipe.nome" name="nome" placeholder="Nome da equipe" required />
+          <input type="text" [(ngModel)]="novaEquipe.descricao" name="descricao" placeholder="Descrição (opcional)" />
+          <div class="form-actions-compact">
+            <button class="btn btn-primary btn-sm" type="submit">{{ isEditando ? 'Salvar' : 'Criar' }}</button>
+            <button *ngIf="isEditando" class="btn btn-secondary btn-sm" type="button" (click)="cancelarEdicao()">Cancelar</button>
+          </div>
+        </form>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <section class="card">
-    <div class="card-header">
-      <h2>{{ isEditando ? 'Editar Equipe' : 'Criar Nova Equipe' }}</h2>
-      <span class="hint">
-        {{ isEditando ? 'Alterando dados da equipe #' + idEquipeSendoEditada : 'Salva direto no Banco de Dados (Supabase)' }}
-      </span>
-    </div>
-
-    <form class="form" (ngSubmit)="salvar()">
-      <label>
-        Nome da Equipe
-        <input type="text" [(ngModel)]="novaEquipe.nome" name="nome" placeholder="Ex: Time de Desenvolvimento" required />
-      </label>
-      <label>
-        Descrição
-        <input type="text" [(ngModel)]="novaEquipe.descricao" name="descricao" placeholder="Propósito da equipe" />
-      </label>
-
-      <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-        <button class="btn btn-primary" type="submit">
-          {{ isEditando ? 'Salvar Alterações' : 'Criar Equipe' }}
-        </button>
-
-        <button *ngIf="isEditando" class="btn btn-secondary" type="button" (click)="cancelarEdicao()">
-          Cancelar
-        </button>
+    <!-- Coluna de Membros -->
+    <section class="card members-column">
+      <div class="card-header">
+        <h2>Membros da Equipe</h2>
+        <span class="hint" *ngIf="equipeAtiva">{{ equipeAtiva.nome }}</span>
       </div>
-    </form>
-  </section>
 
+      <div *ngIf="!equipeAtiva" class="empty-selection">
+        <svg width="48" height="48" fill="none" stroke="#cbd5e1" stroke-width="1.5" viewBox="0 0 24 24">
+          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2m8-10a4 4 0 100-8 4 4 0 000 8zm14 0h-6m3-3v6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <p>Selecione uma equipe para gerenciar os membros</p>
+      </div>
+
+      <div *ngIf="equipeAtiva">
+        <!-- Adicionar Membro (Somente ADMIN da equipe) -->
+        <div class="add-member-box" *ngIf="podeGerenciarMembros(equipeAtiva)">
+          <h4>Adicionar Membro</h4>
+          <form class="form-compact" (ngSubmit)="adicionarMembro()">
+            <input type="email" [(ngModel)]="novoMembroEmail" name="email" placeholder="E-mail do usuário" required />
+            <select [(ngModel)]="novoMembroRole" name="role">
+              <option value="VIEWER">VIEWER</option>
+              <option value="EDITOR">EDITOR</option>
+              <option value="ADMIN">ADMIN</option>
+            </select>
+            <button class="btn btn-primary btn-sm" type="submit">Adicionar</button>
+          </form>
+        </div>
+
+        <div class="carregando-spinner" *ngIf="carregandoMembros">Carregando...</div>
+
+        <div class="members-list" *ngIf="!carregandoMembros">
+          <div class="member-row" *ngFor="let m of membros">
+            <div class="member-info">
+              <span class="member-name">{{ m.nomeExibicao }}</span>
+              <span class="member-email">{{ m.email }}</span>
+            </div>
+            
+            <div class="member-actions">
+              <select class="role-select-compact" 
+                      [ngModel]="m.role" 
+                      (ngModelChange)="alterarPapel(m, $event)"
+                      *ngIf="podeGerenciarMembros(equipeAtiva)">
+                <option value="VIEWER">VIEWER</option>
+                <option value="EDITOR">EDITOR</option>
+                <option value="ADMIN">ADMIN</option>
+              </select>
+              <span class="role-chip-small" *ngIf="!podeGerenciarMembros(equipeAtiva)" [ngClass]="'role-' + m.role.toLowerCase()">
+                {{ m.role }}
+              </span>
+
+              <button class="btn-icon btn-danger-icon" 
+                      (click)="removerMembro(m)" 
+                      *ngIf="podeGerenciarMembros(equipeAtiva)">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div *ngIf="membros.length === 0" class="empty-state">Esta equipe ainda não possui membros.</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Modal de Confirmação de Equipe -->
   <div class="modal-overlay" *ngIf="isConfirmOpen" (click)="onConfirmOverlayClick($event)">
     <div class="modal-content">
-      <h3>Confirmar Remoção</h3>
+      <h3>Excluir Equipe</h3>
       <p>Deseja realmente excluir a equipe <strong>{{ equipeToRemove?.nome }}</strong>?</p>
-      <p class="warning">Esta ação não pode ser desfeita e removerá todos os vínculos desta equipe na PROPLAN.</p>
+      <p class="warning">Esta ação é irreversível e removerá todos os acessos vinculados.</p>
 
       <div class="modal-footer">
         <button class="btn btn-secondary" (click)="fecharConfirmacao()">Cancelar</button>
-        <button class="btn btn-danger" (click)="confirmarRemocao()">Excluir</button>
+        <button class="btn btn-danger" (click)="confirmarRemocao()">Confirmar Exclusão</button>
       </div>
     </div>
   </div>

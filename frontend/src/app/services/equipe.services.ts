@@ -9,6 +9,13 @@ export interface Equipe{
   role?: 'ADMIN' | 'EDITOR' | 'VIEWER';
 }
 
+export interface MembroEquipe {
+  usuarioId: number;
+  nomeExibicao: string;
+  email: string;
+  role: 'ADMIN' | 'EDITOR' | 'VIEWER';
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -32,7 +39,19 @@ export class EquipeService{
     return this.http.put<Equipe>(`${this.apiURL}/${id}`, equipe);
   }
 
+  listarMembros(equipeId: number): Observable<MembroEquipe[]> {
+    return this.http.get<MembroEquipe[]>(`${this.apiURL}/${equipeId}/membros`);
+  }
 
+  adicionarMembro(equipeId: number, email: string, role: string): Observable<MembroEquipe> {
+    return this.http.post<MembroEquipe>(`${this.apiURL}/${equipeId}/membros`, { email, role });
+  }
 
+  removerMembro(equipeId: number, usuarioId: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiURL}/${equipeId}/membros/${usuarioId}`);
+  }
 
+  alterarPapel(equipeId: number, usuarioId: number, role: string): Observable<MembroEquipe> {
+    return this.http.put<MembroEquipe>(`${this.apiURL}/${equipeId}/membros/${usuarioId}`, { role });
+  }
 }
