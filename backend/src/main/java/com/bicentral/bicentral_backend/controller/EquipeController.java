@@ -3,14 +3,14 @@ package com.bicentral.bicentral_backend.controller;
 
 import com.bicentral.bicentral_backend.dto.EquipeRequestDTO;
 import com.bicentral.bicentral_backend.dto.EquipeResponseDTO;
+import com.bicentral.bicentral_backend.dto.MembroEquipeRequestDTO;
+import com.bicentral.bicentral_backend.dto.MembroEquipeResponseDTO;
 import com.bicentral.bicentral_backend.model.Equipe;
 import com.bicentral.bicentral_backend.model.MembroEquipe;
 import com.bicentral.bicentral_backend.model.Usuario;
 import com.bicentral.bicentral_backend.service.EquipeService;
 import com.bicentral.bicentral_backend.service.UsuarioService;
-import org.apache.coyote.Response;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -72,7 +72,51 @@ public class EquipeController {
         return ResponseEntity.ok(new EquipeResponseDTO(membroAtualizado));
     }
 
+    // --- ENDPOINTS DE MEMBROS ---
 
+    @GetMapping("/{equipeId}/membros")
+    public ResponseEntity<List<MembroEquipeResponseDTO>> listarMembros(
+            @PathVariable Long equipeId
+    ) {
+        List<MembroEquipe> membros = equipeService.listarMembros(equipeId);
+        List<MembroEquipeResponseDTO> response = membros.stream()
+                .map(MembroEquipeResponseDTO::new)
+                .toList();
+        return ResponseEntity.ok(response);
+    }
 
+    @PostMapping("/{equipeId}/membros")
+    public ResponseEntity<MembroEquipeResponseDTO> adicionarMembro(
+            @PathVariable Long equipeId,
+            @RequestBody MembroEquipeRequestDTO dto,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        Usuario usuarioLogado = usuarioService.buscarPorEmail(userDetails.getUsername());
+        MembroEquipe novoMembro = equipeService.adicionarMembro(equipeId, dto, usuarioLogado);
+        return ResponseEntity.ok(new MembroEquipeResponseDTO(novoMembro));
+    }
 
+    @DeleteMapping("/{equipeId}/membros/{usuarioId}")
+    public ResponseEntity<Void> removerMembro(
+            @PathVariable Long equipeId,
+            @PathVariable Long usuarioId,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        Usuario usuarioLogado = usuarioService.buscarPorEmail(userDetails.getUsername());
+        equipeService.removerMembro(equipeId, usuarioId, usuarioLogado);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{equipeId}/membros/{usuarioId}")
+    public ResponseEntity<MembroEquipeResponseDTO> alterarPapelMembro(
+            @PathVariable Long equipeId,
+            @PathVariable Long usuarioId,
+            @RequestBody MembroEquipeRequestDTO dto,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        Usuario usuarioLogado = usuarioService.buscarPorEmail(userDetails.getUsername());
+        MembroEquipe membroAtualizado = equipeService.alterarPapelMembro(equipeId, usuarioId, dto.role(), usuarioLogado);
+        return ResponseEntity.ok(new MembroEquipeResponseDTO(membroAtualizado));
+    }
 }
+
