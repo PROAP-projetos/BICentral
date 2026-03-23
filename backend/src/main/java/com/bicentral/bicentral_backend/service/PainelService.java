@@ -6,8 +6,7 @@ import com.bicentral.bicentral_backend.model.Painel;
 import com.bicentral.bicentral_backend.model.Usuario;
 import com.bicentral.bicentral_backend.repository.PainelRepository;
 import com.bicentral.bicentral_backend.repository.UsuarioRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -16,88 +15,25 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.List;
-import java.util.Objects;
 
 @Service
 public class PainelService {
 
-    private static final Logger logger = LoggerFactory.getLogger(PainelService.class);
+    @Value("${supabase.url}")
+    private String supabaseUrl;
 
-    private static final String PREFIXO_POWER_BI = "https://app.powerbi.com/view?r=";
+    @Value("${supabase.bucket}")
+    private String supabaseBucket;
 
     private final PainelRepository painelRepository;
     private final UsuarioRepository usuarioRepository;
     private final PowerBIScraperService scraperService;
-    private final SupabaseStorageService supabaseStorageService;
 
-    public PainelService(
-            PainelRepository painelRepository,
-            UsuarioRepository usuarioRepository,
-            PowerBIScraperService scraperService,
-            SupabaseStorageService supabaseStorageService
-    ) {
+    public PainelService(PainelRepository painelRepository, UsuarioRepository usuarioRepository, PowerBIScraperService scraperService) {
         this.painelRepository = painelRepository;
         this.usuarioRepository = usuarioRepository;
         this.scraperService = scraperService;
-        this.supabaseStorageService = supabaseStorageService;
-    }
-
-    // -------------------------
-    // Helpers
-    // -------------------------
-
-    private Usuario getUsuarioLogado() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication == null
-                || authentication.getName() == null
-                || "anonymousUser".equals(authentication.getName())) {
-            throw new AutenticacaoException("Usuário não autenticado");
-        }
-
-        String email = authentication.getName();
-        return usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new AutenticacaoException("Usuário não encontrado: " + email));
-    }
-
-    private String trimOrNull(String value) {
-        if (value == null) return null;
-        String v = value.trim();
-        return v.isEmpty() ? null : v;
-    }
-
-    private void validarLinkPowerBi(String link) {
-        if (link == null) return;
-
-        if (!link.startsWith(PREFIXO_POWER_BI)) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Link inválido. O link deve começar com: " + PREFIXO_POWER_BI
-            );
-        }
-
-        try {
-            URI uri = new URI(link);
-            boolean hostValido = "app.powerbi.com".equalsIgnoreCase(uri.getHost());
-            boolean caminhoValido = "/view".equals(uri.getPath());
-            String query = uri.getQuery();
-            boolean temToken = query != null && query.contains("r=");
-
-            if (!hostValido || !caminhoValido || !temToken) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "Link inválido. Verifique se o link do Power BI está completo."
-                );
-            }
-        } catch (URISyntaxException e) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Link inválido. Verifique se o link do Power BI está completo.",
-                    e
-            );
-        }
     }
 
     private PainelDTO toDTO(Painel painel) {
@@ -105,163 +41,92 @@ public class PainelService {
         dto.setId(painel.getId());
         dto.setNome(painel.getNome());
         dto.setLinkPowerBi(painel.getLinkPowerBi());
+        dto.setStatusCaptura(painel.getStatusCaptura());
 
         String path = painel.getImagemCapaUrl();
-        if (path != null && !path.isBlank()) {
-            try {
-                dto.setImagemCapaUrl(supabaseStorageService.createSignedUrl(path, 3600));
-            } catch (Exception e) {
-                dto.setImagemCapaUrl(null);
-                logger.warn("Falha ao gerar signed URL para {}", path, e);
-            }
-        } else {
-            dto.setImagemCapaUrl(null);
-        }
+        if (path != null && !path.isEmpty()) {
+            // Garante que a URL não termine com barra para não duplicar no link
+            String urlBase = supabaseUrl.replaceAll("/$", "");
 
-        dto.setStatusCaptura(painel.getStatusCaptura());
+            if (path.startsWith("http")) {
+                dto.setImagemCapaUrl(path);
+            } else {
+                // Monta o link público: URL + API Storage + Bucket + Caminho do arquivo
+                String urlFinal = String.format("%s/storage/v1/object/public/%s/%s",
+                        urlBase, supabaseBucket, path);
+                dto.setImagemCapaUrl(urlFinal);
+            }
+        }
         return dto;
     }
 
-    // -------------------------
-    // CREATE
-    // -------------------------
+    private Usuario getUsuarioLogado() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || "anonymousUser".equals(auth.getName())) {
+            throw new AutenticacaoException("Usuário não autenticado");
+        }
+        return usuarioRepository.findByEmail(auth.getName())
+                .orElseThrow(() -> new AutenticacaoException("Usuário não encontrado"));
+    }
+
+    private void validarLinkPowerBi(String link) {
+        String prefixo = "https://app.powerbi.com/view?r=";
+        if (link == null || !link.startsWith(prefixo)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Link do Power BI inválido.");
+        }
+    }
 
     @Transactional
     public PainelDTO criarPainel(Painel painel) {
         Usuario usuario = getUsuarioLogado();
+        String link = painel.getLinkPowerBi().trim();
+        validarLinkPowerBi(link);
 
-        String linkLimpo = trimOrNull(painel.getLinkPowerBi());
-        validarLinkPowerBi(linkLimpo);
-
-        boolean duplicado = painelRepository.existsByLinkPowerBiAndUsuario_Id(linkLimpo, usuario.getId());
-        if (duplicado) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Você já possui este painel cadastrado na sua lista."
-            );
+        if (painelRepository.existsByLinkPowerBiAndUsuario_Id(link, usuario.getId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Painel já cadastrado.");
         }
 
         painel.setUsuario(usuario);
-        painel.setLinkPowerBi(linkLimpo);
+        painel.setLinkPowerBi(link);
         painel.setStatusCaptura(Painel.StatusCaptura.PENDENTE);
-        painel.setImagemCapaUrl(null);
-
-        Painel painelSalvo = painelRepository.save(painel);
-        logger.info("Painel criado com sucesso ID: {}", painelSalvo.getId());
-
-        return toDTO(painelSalvo);
+        return toDTO(painelRepository.save(painel));
     }
-
-    // -------------------------
-    // READ (LIST) - MEUS PAINÉIS
-    // -------------------------
 
     public List<PainelDTO> listarMeusPaineis() {
-        Usuario usuario = getUsuarioLogado();
-
-        return painelRepository.findAllByUsuario_Id(usuario.getId())
-                .stream()
-                .map(this::toDTO)
-                .toList();
+        return painelRepository.findAllByUsuario_Id(getUsuarioLogado().getId())
+                .stream().map(this::toDTO).toList();
     }
-
-    // -------------------------
-    // READ - by ID (só se for do usuário)
-    // -------------------------
 
     public PainelDTO buscarPorId(Long id) {
-        Usuario usuario = getUsuarioLogado();
-
-        Painel painel = painelRepository.findByIdAndUsuario_Id(id, usuario.getId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Painel não encontrado."));
-
-        return toDTO(painel);
+        return painelRepository.findByIdAndUsuario_Id(id, getUsuarioLogado().getId())
+                .map(this::toDTO)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
-
-    // -------------------------
-    // UPDATE
-    // -------------------------
 
     @Transactional
     public PainelDTO atualizarPainel(Long id, PainelDTO dto) {
-        Usuario usuario = getUsuarioLogado();
+        Painel painel = painelRepository.findByIdAndUsuario_Id(id, getUsuarioLogado().getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
 
-        Painel painel = painelRepository.findByIdAndUsuario_Id(id, usuario.getId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Painel não encontrado."));
+        if (dto.getNome() != null) painel.setNome(dto.getNome().trim());
 
-        boolean linkMudou = false;
-
-        // 1) Nome: altera sem mexer em scraping
-        String nomeNovo = trimOrNull(dto.getNome());
-        if (nomeNovo != null && !nomeNovo.equals(trimOrNull(painel.getNome()))) {
-            painel.setNome(nomeNovo);
-        }
-
-        // 2) Link: só valida/processa se veio no payload
         if (dto.getLinkPowerBi() != null) {
-            String novoLink = trimOrNull(dto.getLinkPowerBi());
-            if (novoLink != null) {
+            String novoLink = dto.getLinkPowerBi().trim();
+            if (!novoLink.equals(painel.getLinkPowerBi())) {
                 validarLinkPowerBi(novoLink);
-
-                // normalize também o que vem do banco (pra não disparar scraping por espaço)
-                String linkAtual = trimOrNull(painel.getLinkPowerBi());
-
-                if (linkAtual == null || !linkAtual.equals(novoLink)) {
-                    boolean duplicado = painelRepository.existsByLinkPowerBiAndUsuario_IdAndIdNot(
-                            novoLink, usuario.getId(), id
-                    );
-                    if (duplicado) {
-                        throw new ResponseStatusException(
-                                HttpStatus.CONFLICT,
-                                "Você já possui este painel cadastrado na sua lista."
-                        );
-                    }
-
-                    painel.setLinkPowerBi(novoLink);
-                    linkMudou = true;
-
-                    // ✅ se link mudou, reseta scraping
-                    painel.setStatusCaptura(Painel.StatusCaptura.PENDENTE);
-                    painel.setImagemCapaUrl(null);
-                }
-            }
-        }
-
-        Painel salvo = painelRepository.save(Objects.requireNonNull(painel, "painel"));
-
-        // ✅ só dispara scraping se link mudou
-        if (linkMudou) {
-            try {
+                painel.setLinkPowerBi(novoLink);
+                painel.setStatusCaptura(Painel.StatusCaptura.PENDENTE);
+                painel.setImagemCapaUrl(null);
                 scraperService.capturaCapaAsync(id);
-            } catch (Exception e) {
-                logger.error("Erro ao iniciar captura assíncrona após update para ID: {}", id, e);
             }
         }
-
-        return toDTO(salvo);
+        return toDTO(painelRepository.save(painel));
     }
-
-    // -------------------------
-    // DELETE
-    // -------------------------
 
     @Transactional
     public void deletarPainel(Long id) {
-        Usuario usuario = getUsuarioLogado();
-
-        Painel painel = painelRepository.findByIdAndUsuario_Id(id, usuario.getId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Painel não encontrado."));
-
-        if (painel.getImagemCapaUrl() != null) {
-            String pathInBucket = "paineis/" + painel.getId() + ".png";
-            try {
-                supabaseStorageService.deleteFile(pathInBucket);
-            } catch (Exception e) {
-                logger.warn("Falha ao deletar imagem no Supabase para painel ID: {}", id, e);
-            }
-        }
-
-        painelRepository.delete(Objects.requireNonNull(painel, "painel"));
-        logger.info("Painel ID: {} deletado (usuarioId={}).", id, usuario.getId());
+        Painel painel = painelRepository.findByIdAndUsuario_Id(id, getUsuarioLogado().getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        painelRepository.delete(painel);
     }
 }
