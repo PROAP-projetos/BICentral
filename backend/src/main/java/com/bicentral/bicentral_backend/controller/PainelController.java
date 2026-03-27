@@ -29,7 +29,6 @@ public class PainelController {
         this.scraperService = scraperService;
     }
 
-    // ✅ CREATE
     @PostMapping
     public ResponseEntity<PainelDTO> criarPainel(@Valid @RequestBody Painel novoPainel) {
         PainelDTO dtoSalvo = painelService.criarPainel(novoPainel);
@@ -47,49 +46,33 @@ public class PainelController {
                 .body(dtoSalvo);
     }
 
-    /**
-     * ✅ READ - listagem "home"
-     * Front está chamando: GET /api/paineis/com-capa
-     */
     @GetMapping("/com-capa")
     public ResponseEntity<List<PainelDTO>> listarComCapa() {
         return ResponseEntity.ok(painelService.listarMeusPaineis());
     }
 
-    /**
-     * ✅ READ - listagem padrão
-     * Melhor: manter também como "meus painéis" (pra não vazar dados).
-     * Se quiser manter o /com-capa no front, ok. Mas este endpoint é útil também.
-     */
     @GetMapping
     public ResponseEntity<List<PainelDTO>> listar() {
         return ResponseEntity.ok(painelService.listarMeusPaineis());
     }
 
-    /**
-     * ✅ READ - by id
-     * Importante: restringe a números pra nunca conflitar com /com-capa.
-     */
     @GetMapping("/{id:\\d+}")
     public ResponseEntity<PainelDTO> buscarPorId(@PathVariable Long id) {
         return ResponseEntity.ok(painelService.buscarPorId(id));
     }
 
-    // ✅ UPDATE (PUT)
     @PutMapping("/{id}")
     public ResponseEntity<PainelDTO> atualizar(@PathVariable Long id, @Valid @RequestBody PainelDTO dto) {
         PainelDTO atualizado = painelService.atualizarPainel(id, dto);
         return ResponseEntity.ok(atualizado);
     }
 
-    // ✅ DELETE
     @DeleteMapping("/{id:\\d+}")
     public ResponseEntity<Void> deletar(@PathVariable Long id) {
         painelService.deletarPainel(id);
         return ResponseEntity.noContent().build();
     }
 
-    // ✅ Ação manual (não é CRUD)
     @PostMapping("/{id:\\d+}/atualizar-capa")
     public ResponseEntity<String> atualizarCapa(@PathVariable Long id) {
         // valida se existe e se é do usuário

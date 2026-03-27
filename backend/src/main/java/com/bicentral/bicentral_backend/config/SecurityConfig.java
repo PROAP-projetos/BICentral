@@ -30,7 +30,8 @@ public class SecurityConfig {
             "/api/usuarios/login",
             "/api/usuarios/verify",
             "/auth/**",
-            "/error"
+            "/error",
+            "/ai/test/**"
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
