@@ -25,7 +25,6 @@
         <lombok.version>1.18.32</lombok.version>
     </properties>
 
-    <!-- BOM do LangChain4j: gerencia versões de todos os módulos automaticamente -->
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -39,7 +38,6 @@
     </dependencyManagement>
 
     <dependencies>
-        <!-- ── Spring Boot ─────────────────────────────────────────── -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
@@ -65,7 +63,6 @@
             <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
 
-        <!-- ── JWT ────────────────────────────────────────────────── -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
@@ -84,13 +81,11 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- ── Banco de dados ─────────────────────────────────────── -->
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
         </dependency>
 
-        <!-- ── Lombok ─────────────────────────────────────────────── -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -98,7 +93,6 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- ── Playwright / WebDriver ─────────────────────────────── -->
         <dependency>
             <groupId>com.microsoft.playwright</groupId>
             <artifactId>playwright</artifactId>
@@ -110,7 +104,17 @@
             <version>5.5.3</version>
         </dependency>
 
-        <!-- ── LangChain4j (versões gerenciadas pelo BOM acima) ───── -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>2.0.27</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.2.3</version>
+        </dependency>
+
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
@@ -128,7 +132,6 @@
             <artifactId>langchain4j-ollama-spring-boot-starter</artifactId>
         </dependency>
 
-        <!-- ── Testes ─────────────────────────────────────────────── -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
