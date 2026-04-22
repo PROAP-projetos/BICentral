@@ -22,4 +22,10 @@ public interface PainelRepository extends JpaRepository<Painel, Long> {
 
     // ✅ listagem do dono
     List<Painel> findAllByUsuario_Id(Long usuarioId);
+
+    // busca todos os painéis que pertencem a uma equipe específica
+    List<Painel> findByEquipeId(Long equipeId);
+
+    // busca um painel específico dentro de uma equipe (segurança extra)
+    Optional<Painel> findByIdAndEquipeId(Long id, Long equipeId);
 }

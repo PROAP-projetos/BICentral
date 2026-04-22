@@ -2,8 +2,10 @@ package com.bicentral.bicentral_backend.service;
 
 import com.bicentral.bicentral_backend.dto.PainelDTO;
 import com.bicentral.bicentral_backend.exception.AutenticacaoException;
+import com.bicentral.bicentral_backend.model.Equipe;
 import com.bicentral.bicentral_backend.model.Painel;
 import com.bicentral.bicentral_backend.model.Usuario;
+import com.bicentral.bicentral_backend.repository.EquipeRepository;
 import com.bicentral.bicentral_backend.repository.PainelRepository;
 import com.bicentral.bicentral_backend.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,11 +31,13 @@ public class PainelService {
     private final PainelRepository painelRepository;
     private final UsuarioRepository usuarioRepository;
     private final PowerBIScraperService scraperService;
+    private final EquipeRepository equipeRepository;
 
-    public PainelService(PainelRepository painelRepository, UsuarioRepository usuarioRepository, PowerBIScraperService scraperService) {
+    public PainelService(PainelRepository painelRepository, UsuarioRepository usuarioRepository, PowerBIScraperService scraperService, EquipeRepository equipeRepository) {
         this.painelRepository = painelRepository;
         this.usuarioRepository = usuarioRepository;
         this.scraperService = scraperService;
+        this.equipeRepository = equipeRepository;
     }
 
     private PainelDTO toDTO(Painel painel) {
@@ -77,36 +81,40 @@ public class PainelService {
     }
 
     @Transactional
-    public PainelDTO criarPainel(Painel painel) {
+    public PainelDTO criarPainel(Long equipeId, Painel painel) {
         Usuario usuario = getUsuarioLogado();
         String link = painel.getLinkPowerBi().trim();
         validarLinkPowerBi(link);
 
-        if (painelRepository.existsByLinkPowerBiAndUsuario_Id(link, usuario.getId())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Painel já cadastrado.");
+        Equipe equipe = equipeRepository.findById(equipeId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Equipe não encontrada"));
+
+        if (painelRepository.findByIdAndEquipeId(painel.getId(), equipeId).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Painel já cadastrado nesta equipe.");
         }
 
         painel.setUsuario(usuario);
+        painel.setEquipe(equipe);
         painel.setLinkPowerBi(link);
         painel.setStatusCaptura(Painel.StatusCaptura.PENDENTE);
         return toDTO(painelRepository.save(painel));
     }
 
-    public List<PainelDTO> listarMeusPaineis() {
-        return painelRepository.findAllByUsuario_Id(getUsuarioLogado().getId())
+    public List<PainelDTO> listarPorEquipe(Long equipeId) {
+        return painelRepository.findByEquipeId(equipeId)
                 .stream().map(this::toDTO).toList();
     }
 
-    public PainelDTO buscarPorId(Long id) {
-        return painelRepository.findByIdAndUsuario_Id(id, getUsuarioLogado().getId())
+    public PainelDTO buscarPorIdAndEquipe(Long id, Long equipeId) {
+        return painelRepository.findByIdAndEquipeId(id, equipeId)
                 .map(this::toDTO)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Painel não encontrado nesta equipe"));
     }
 
     @Transactional
-    public PainelDTO atualizarPainel(Long id, PainelDTO dto) {
-        Painel painel = painelRepository.findByIdAndUsuario_Id(id, getUsuarioLogado().getId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    public PainelDTO atualizarPainel(Long id, Long equipeId, PainelDTO dto) {
+        Painel painel = painelRepository.findByIdAndEquipeId(id, equipeId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Painel não encontrado nesta equipe"));
 
         if (dto.getNome() != null) painel.setNome(dto.getNome().trim());
 
@@ -124,9 +132,9 @@ public class PainelService {
     }
 
     @Transactional
-    public void deletarPainel(Long id) {
-        Painel painel = painelRepository.findByIdAndUsuario_Id(id, getUsuarioLogado().getId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    public void deletarPainel(Long id, Long equipeId) {
+        Painel painel = painelRepository.findByIdAndEquipeId(id, equipeId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Painel não encontrado nesta equipe"));
         painelRepository.delete(painel);
     }
 }
