@@ -87,10 +87,109 @@ nav ul li a:hover,
   align-items: center;
 }
 
+.team-menu {
+  position: relative;
+}
+
+.team-menu-trigger {
+  max-width: 240px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.team-menu-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 280px;
+  max-width: 360px;
+  padding: 8px;
+  border-radius: 12px;
+  background: var(--color-surface);
+  border: 1px solid rgba(0, 74, 128, 0.12);
+  box-shadow: 0 16px 32px rgba(0, 74, 128, 0.18);
+  display: none;
+  z-index: 100;
+}
+
+.team-menu:hover .team-menu-popover,
+.team-menu:focus-within .team-menu-popover {
+  display: block;
+}
+
+.team-menu-item {
+  width: 100%;
+  border: 1px solid transparent !important;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 4px;
+  background: transparent;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.team-menu-item:hover {
+  background: rgba(0, 74, 128, 0.08);
+}
+
+.team-menu-item.active {
+  background: rgba(0, 74, 128, 0.12);
+  border-color: rgba(0, 74, 128, 0.18) !important;
+}
+
+.team-item-name {
+  font-weight: 600;
+}
+
+.team-item-role {
+  font-size: 0.75rem;
+  letter-spacing: 0.4px;
+  color: var(--color-info);
+  font-weight: 700;
+}
+
+.team-menu-manage {
+  all: unset;
+  display: block;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border-top: 1px solid rgba(0, 74, 128, 0.12) !important;
+  background: transparent;
+  color: var(--color-text) !important;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.team-menu-manage:hover {
+  color: var(--color-primary) !important;
+  background: rgba(0, 74, 128, 0.08);
+}
+
+.team-menu-manage:focus,
+.team-menu-manage:active,
+.team-menu-manage:visited {
+  color: var(--color-text) !important;
+}
+
 .nav-item-with-dropdown::after {
   content: '▾';
   margin-left: 5px;
   font-size: 0.8rem;
+  transition: transform 0.2s ease;
+}
+
+.team-menu:hover::after,
+.team-menu:focus-within::after {
+  transform: rotate(180deg);
 }
 
 .nav-right-section {
@@ -254,6 +353,7 @@ h2 {
   text-decoration: none;
   font-size: 0.95rem;
 }
+
 .card-actions{
   position: absolute;
   right: 12px;

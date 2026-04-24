@@ -70,7 +70,6 @@ public class UsuarioController {
             response.put("token", token);
             response.put("username", usuario.getNomeExibicao());
             response.put("id", usuario.getId().toString());
-            response.put("role", "admin"); // Dono da conta tem permissão total em seus painéis pessoais
             return ResponseEntity.ok(response);
 
         } catch (AutenticacaoException e) {

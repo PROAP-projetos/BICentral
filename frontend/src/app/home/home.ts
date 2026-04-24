@@ -5,6 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { interval, Subscription, of } from 'rxjs';
 import { switchMap, catchError } from 'rxjs/operators';
 import { FormBuilder, ReactiveFormsModule, Validators, FormGroup } from '@angular/forms';
+import { EquipeService, Equipe } from '../services/equipe.services';
 
 // ✅ ajuste o path real do seu projeto
 import { AddPainelComponent } from '../add-painel/add-painel.component';
@@ -27,7 +28,19 @@ interface UsuarioLocalStorage {
   role?: string;
 }
 
-type UserRole = 'viewer' | 'editor' | 'admin';
+type UserRole = 'VIEWER' | 'EDITOR' | 'ADMIN';
+
+interface EquipeSelecionada {
+  id: number;
+  nome: string;
+  role: UserRole;
+}
+
+interface EquipeMenuItem {
+  id: number;
+  nome: string;
+  role: UserRole;
+}
 
 @Component({
 selector: 'app-home',
@@ -37,14 +50,17 @@ templateUrl: './home.html',
 styleUrls: ['./home.css']
 })
 export class HomeComponent implements OnInit, OnDestroy {
+private static readonly SELECTED_EQUIPE_KEY = 'bicentral_selected_equipe';
 
 dashboards: PainelDTO[] = [];
+equipesMenu: EquipeMenuItem[] = [];
 loading = true;
 error: string | null = null;
 
 isLoggedIn = false;
 userName: string | null = null;
-currentRole: UserRole = 'viewer';
+currentRole: UserRole = 'VIEWER';
+equipeSelecionada: EquipeSelecionada | null = null;
 showWelcomeOverlay = false;
 welcomeStep = 0;
 isWelcomeClosing = false;
@@ -71,7 +87,17 @@ readonly welcomeSlides = [
 ];
 
 private pollingSub?: Subscription;
-private readonly API_URL = '/api/paineis';
+
+get canEdit(): boolean {
+  return this.currentRole === 'ADMIN' || this.currentRole === 'EDITOR';
+}
+
+get apiUrl(): string | null {
+  if (!this.equipeSelecionada?.id) {
+    return null;
+  }
+  return `/api/equipes/${this.equipeSelecionada.id}/paineis`;
+}
 
 // -------------------------
 // MODAL EDIÇÃO
@@ -100,7 +126,8 @@ isAddOpen = false;
 constructor(
     private http: HttpClient,
     private router: Router,
-    private fb: FormBuilder
+  private fb: FormBuilder,
+  private equipeService: EquipeService
   ) {
     this.editForm = this.fb.group({
       nome: ['', [Validators.required, Validators.minLength(2)]],
@@ -120,6 +147,7 @@ constructor(
     }
 
     this.initializeWelcomeOverlay();
+    this.carregarEquipesMenu();
     this.loadDashboards();
     this.startPolling();
   }
@@ -135,27 +163,97 @@ constructor(
     get nomesExistentes(): string[] {
     return (this.dashboards ?? []).map(p => p.nome ?? '');
   }
-
-  get canEdit(): boolean {
-    return this.currentRole === 'admin' || this.currentRole === 'editor';
-  }
   // -------------------------
   // AUTH HELPERS
   // -------------------------
-  private getUserRole(): UserRole {
-    const user = this.getUserFromStorage();
-    let role: string | null = user?.role ?? null;
-
-    if (!role) {
-      role = localStorage.getItem('role');
-    }
-
-    if (role === 'viewer' || role === 'editor' || role === 'admin') {
-      return role;
-    }
-
-    return 'viewer';
+  get equipeMenuLabel(): string {
+    return this.equipeSelecionada?.nome || 'Minha Equipe';
   }
+
+  private toEquipeMenuItem(equipe: Equipe): EquipeMenuItem | null {
+    if (!equipe.id) {
+      return null;
+    }
+
+    const role = (equipe.role || 'VIEWER').toUpperCase();
+    const roleNormalizado: UserRole =
+      role === 'ADMIN' || role === 'EDITOR' || role === 'VIEWER' ? role : 'VIEWER';
+
+    return {
+      id: equipe.id,
+      nome: equipe.nome,
+      role: roleNormalizado
+    };
+  }
+
+  private salvarEquipeSelecionada(equipe: EquipeMenuItem): void {
+    localStorage.setItem(HomeComponent.SELECTED_EQUIPE_KEY, JSON.stringify(equipe));
+  }
+
+  carregarEquipesMenu(): void {
+    this.equipeService.listarMinhasEquipes().subscribe({
+      next: (equipes) => {
+        this.equipesMenu = (equipes || [])
+          .map((equipe) => this.toEquipeMenuItem(equipe))
+          .filter((equipe): equipe is EquipeMenuItem => !!equipe)
+          .sort((a, b) => a.nome.localeCompare(b.nome));
+
+        if (this.equipeSelecionada && !this.equipesMenu.some((e) => e.id === this.equipeSelecionada?.id)) {
+          this.equipeSelecionada = null;
+          this.currentRole = 'VIEWER';
+        }
+      },
+      error: () => {
+        this.equipesMenu = [];
+      }
+    });
+  }
+
+  selecionarEquipeDoMenu(equipe: EquipeMenuItem): void {
+    this.equipeSelecionada = equipe;
+    this.currentRole = equipe.role;
+    this.salvarEquipeSelecionada(equipe);
+    this.isAddOpen = false;
+    this.loadDashboards();
+    this.startPolling();
+  }
+
+    private getUserRoleFromEquipe(): UserRole {
+      const role = (this.equipeSelecionada?.role || 'VIEWER').toUpperCase();
+      if (role === 'VIEWER' || role === 'EDITOR' || role === 'ADMIN') {
+        return role;
+      }
+      return 'VIEWER';
+  }
+
+    private loadEquipeSelecionada(): void {
+      const raw = localStorage.getItem(HomeComponent.SELECTED_EQUIPE_KEY);
+      if (!raw) {
+        this.equipeSelecionada = null;
+        this.currentRole = 'VIEWER';
+        return;
+      }
+
+      try {
+        const equipe = JSON.parse(raw) as Partial<EquipeSelecionada>;
+        if (!equipe.id || !equipe.nome) {
+          this.equipeSelecionada = null;
+          this.currentRole = 'VIEWER';
+          return;
+        }
+
+        const role = (equipe.role || 'VIEWER').toUpperCase() as UserRole;
+        this.equipeSelecionada = {
+          id: equipe.id,
+          nome: equipe.nome,
+          role: (role === 'VIEWER' || role === 'EDITOR' || role === 'ADMIN') ? role : 'VIEWER'
+        };
+        this.currentRole = this.getUserRoleFromEquipe();
+      } catch {
+        this.equipeSelecionada = null;
+        this.currentRole = 'VIEWER';
+      }
+    }
 
   private getUserFromStorage(): UsuarioLocalStorage | null {
     const userStr = localStorage.getItem('user');
@@ -169,9 +267,13 @@ constructor(
   }
 
   private handleAuthError(err: any) {
-    if (err?.status === 401 || err?.status === 403) {
+    if (err?.status === 401) {
       this.pararPolling();
       this.logout();
+      return true;
+    }
+    if (err?.status === 403) {
+      this.error = 'Permissão insuficiente para esta ação na equipe selecionada.';
       return true;
     }
     return false;
@@ -181,10 +283,20 @@ constructor(
   // Listagem
   // -------------------------
   loadDashboards(): void {
+    this.loadEquipeSelecionada();
+
+    const apiUrl = this.apiUrl;
+    if (!apiUrl) {
+      this.loading = false;
+      this.dashboards = [];
+      this.error = 'Selecione uma equipe em "Minha Equipe" para visualizar os painéis.';
+      return;
+    }
+
     this.loading = true;
     this.error = null;
 
-    this.http.get<PainelDTO[]>(this.API_URL).subscribe({
+    this.http.get<PainelDTO[]>(apiUrl).subscribe({
       next: (data) => {
         this.processarDadosRecebidos(data);
         this.loading = false;
@@ -206,9 +318,14 @@ constructor(
   private startPolling(): void {
     this.pararPolling();
 
+    const apiUrl = this.apiUrl;
+    if (!apiUrl) {
+      return;
+    }
+
     this.pollingSub = interval(5000).pipe(
       switchMap(() => {
-        return this.http.get<PainelDTO[]>(this.API_URL).pipe(
+        return this.http.get<PainelDTO[]>(apiUrl).pipe(
           catchError((err) => {
             this.handleAuthError(err);
             return of(null);
@@ -281,6 +398,14 @@ constructor(
   // ✅ ADD (POPUP COMPONENT)
   // -------------------------
   abrirAdicionar(): void {
+    if (!this.canEdit) {
+      this.error = 'Permissão insuficiente: somente EDITOR e ADMIN podem criar painéis.';
+      return;
+    }
+    if (!this.apiUrl) {
+      this.error = 'Selecione uma equipe antes de criar um painel.';
+      return;
+    }
     this.isAddOpen = true;
   }
 
@@ -329,10 +454,17 @@ constructor(
   confirmarExclusao() {
     if (!this.deletingPainel) return;
 
+    const apiUrl = this.apiUrl;
+    if (!apiUrl) {
+      this.deleting = false;
+      this.deleteError = 'Selecione uma equipe para excluir o painel.';
+      return;
+    }
+
     this.deleting = true;
     this.deleteError = null;
 
-    this.http.delete(`${this.API_URL}/${this.deletingPainel.id}`).subscribe({
+    this.http.delete(`${apiUrl}/${this.deletingPainel.id}`).subscribe({
       next: () => {
         this.dashboards = this.dashboards.filter(p => p.id !== this.deletingPainel!.id);
         this.deleting = false;
@@ -343,6 +475,7 @@ constructor(
       error: (err) => {
         if (this.handleAuthError(err)) {
           this.deleting = false;
+          this.deleteError = 'Permissão insuficiente para excluir painel nesta equipe.';
           this.fecharExcluir();
           return;
         }
@@ -384,6 +517,12 @@ constructor(
   salvarEdicao() {
     if (!this.editingPainel) return;
 
+    const apiUrl = this.apiUrl;
+    if (!apiUrl) {
+      this.editError = 'Selecione uma equipe para editar o painel.';
+      return;
+    }
+
     if (this.editForm.invalid) {
       this.editForm.markAllAsTouched();
       return;
@@ -420,7 +559,7 @@ constructor(
       return;
     }
 
-    this.http.put<PainelDTO>(`${this.API_URL}/${this.editingPainel.id}`, payload)
+    this.http.put<PainelDTO>(`${apiUrl}/${this.editingPainel.id}`, payload)
       .subscribe({
         next: (atualizado) => {
           this.dashboards = this.dashboards.map(p =>
@@ -433,7 +572,13 @@ constructor(
           this.fecharEdicao();
         },
         error: (err) => {
-          if (this.handleAuthError(err)) return;
+          if (this.handleAuthError(err)) {
+            if (err?.status === 403) {
+              this.editError = 'Permissão insuficiente para editar painel nesta equipe.';
+            }
+            this.savingEdit = false;
+            return;
+          }
 
           if (err?.status === 409) {
             this.editError = 'Você já possui este painel cadastrado (link duplicado).';
@@ -471,13 +616,13 @@ constructor(
     if (!user?.token) {
       this.isLoggedIn = false;
       this.userName = null;
-      this.currentRole = 'viewer';
+      this.currentRole = 'VIEWER';
       return;
     }
 
     this.isLoggedIn = true;
     this.userName = user.username || 'Usuario';
-    this.currentRole = this.getUserRole();
+    this.loadEquipeSelecionada();
   }
 
   private initializeWelcomeOverlay(): void {

@@ -28,6 +28,7 @@ export class AddPainelComponent {
 
 // ✅ Agora a Home pode passar a lista de nomes existentes pra validar duplicado
 @Input() nomesExistentes: string[] = [];
+@Input() equipeId: number | null = null;
 
 @Output() fechar = new EventEmitter<void>();
 @Output() salvo = new EventEmitter<PainelDTO>();
@@ -44,9 +45,16 @@ erro = false;
 // alerta visual (dica)
 isNomeRepetido = false;
 
-private readonly API_URL = '/api/paineis';
 private readonly POWERBI_PREFIX = 'https://app.powerbi.com/view?r=';
 constructor(private http: HttpClient) {}
+
+  private getApiUrl(): string | null {
+    if (!this.equipeId) {
+      return null;
+    }
+
+    return `/api/equipes/${this.equipeId}/paineis`;
+  }
 
   // -------------------------
   // Modal helpers
@@ -180,11 +188,17 @@ constructor(private http: HttpClient) {}
       return;
     }
 
+    const apiUrl = this.getApiUrl();
+    if (!apiUrl) {
+      this.setErro('Selecione uma equipe antes de cadastrar um painel.');
+      return;
+    }
+
     this.carregando = true;
 
     const payload = { nome, linkPowerBi };
 
-    this.http.post<PainelDTO>(this.API_URL, payload, { headers }).subscribe({
+    this.http.post<PainelDTO>(apiUrl, payload, { headers }).subscribe({
       next: (criado) => {
         this.carregando = false;
 
@@ -207,7 +221,11 @@ constructor(private http: HttpClient) {}
         }
 
         if (err?.status === 401 || err?.status === 403) {
-          this.setErro('Sua sessão expirou. Faça login novamente.');
+          if (err?.status === 401) {
+            this.setErro('Sua sessão expirou. Faça login novamente.');
+          } else {
+            this.setErro('Você não tem permissão para criar painéis nesta equipe.');
+          }
           return;
         }
 

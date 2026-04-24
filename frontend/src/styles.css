@@ -229,14 +229,19 @@ footer {
 }
 
 .welcome-btn.solid {
-  background: #ff9a4c;
+  background: var(--color-primary);
   color: #ffffff;
   padding: 10px 26px !important;
-  box-shadow: 0 8px 18px rgba(255, 154, 76, 0.3);
+  box-shadow: 0 10px 24px rgba(0, 74, 128, 0.22);
 }
 
 .welcome-btn:hover:not(:disabled) {
   transform: translateY(-1px);
+}
+
+.welcome-btn.solid:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  box-shadow: 0 14px 28px rgba(0, 74, 128, 0.28);
 }
 
 @keyframes welcomeOutroFade {

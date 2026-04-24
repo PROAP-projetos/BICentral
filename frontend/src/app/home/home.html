@@ -3,9 +3,29 @@
 
   <nav>
     <ul>
-      <li class="nav-item-with-dropdown">
-        <a class="nav-text-link" routerLink="/equipe">Minha Equipe</a>
+      <li class="nav-item-with-dropdown team-menu" *ngIf="isLoggedIn; else equipeFallbackLink">
+        <a class="nav-text-link team-menu-trigger" href="javascript:void(0)">{{ equipeMenuLabel }}</a>
+
+        <div class="team-menu-popover" *ngIf="equipesMenu.length > 0">
+          <button
+            type="button"
+            class="team-menu-item"
+            *ngFor="let equipe of equipesMenu"
+            [class.active]="equipeSelecionada?.id === equipe.id"
+            (click)="selecionarEquipeDoMenu(equipe)">
+            <span class="team-item-name">{{ equipe.nome }}</span>
+            <span class="team-item-role">{{ equipe.role }}</span>
+          </button>
+
+          <a class="team-menu-manage" routerLink="/equipe">Gerenciar equipes</a>
+        </div>
       </li>
+
+      <ng-template #equipeFallbackLink>
+        <li class="nav-item-with-dropdown">
+          <a class="nav-text-link" routerLink="/equipe">Minha Equipe</a>
+        </li>
+      </ng-template>
     </ul>
 
     <div class="nav-right-section">
@@ -34,7 +54,7 @@
   <button
     type="button"
     class="sub-nav-button"
-    *ngIf="isLoggedIn"
+    *ngIf="isLoggedIn && canEdit"
     (click)="abrirAdicionar()">
     Adicionar Painel
   </button>
@@ -276,6 +296,7 @@
 <app-add-painel
   *ngIf="isAddOpen"
   [nomesExistentes]="nomesExistentes"
+  [equipeId]="equipeSelecionada?.id || null"
   (fechar)="fecharAdicionar()"
   (salvo)="onPainelSalvo($event)">
 </app-add-painel>
