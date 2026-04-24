@@ -25,15 +25,17 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-public class SecurityConfig {
+    public class SecurityConfig {
 
-    private static final String[] PUBLIC_ENDPOINTS = {
+        private static final String[] PUBLIC_ENDPOINTS = {
             "/api/usuarios/cadastro",
             "/api/usuarios/login",
             "/api/usuarios/verify",
+            "/api/convites/aceitar", 
             "/auth/**",
             "/error",
-            "/ai/test/**"
+            "/ai/test/**",
+            "/favicon.ico"           // Mantido apenas para evitar aquele erro 500 chato no navegador ao testar rotas no 8080
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -49,13 +51,14 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
+                    // Esse é o log que você vê quando dá 401
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     response.setContentType("application/json");
                     response.setCharacterEncoding(StandardCharsets.UTF_8.name());
                     response.getWriter().write("{\"error\":\"UNAUTHORIZED\"}");
                 }))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                        .requestMatchers(PUBLIC_ENDPOINTS).permitAll() 
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
