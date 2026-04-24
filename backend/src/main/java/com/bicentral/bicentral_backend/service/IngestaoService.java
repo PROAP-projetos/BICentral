@@ -120,7 +120,7 @@ public class IngestaoService {
         return chunks;
     }
 
-    public void mockSalvarNoBanco(List<String> chunks, String equipe, String acesso, String nomeArquivo) {
+    public List<ChunkDTO> montarChunksComMetadados(List<String> chunks, String equipe, String acesso, String nomeArquivo) {
         List<ChunkDTO> listaParaSalvar = new ArrayList<>();
         String grupoId = java.util.UUID.randomUUID().toString();
 
@@ -133,6 +133,12 @@ public class IngestaoService {
                     nomeArquivo
             ));
         }
+
+        return listaParaSalvar;
+    }
+
+    public void mockSalvarNoBanco(List<String> chunks, String equipe, String acesso, String nomeArquivo) {
+        List<ChunkDTO> listaParaSalvar = montarChunksComMetadados(chunks, equipe, acesso, nomeArquivo);
 
         // Código para salvar em ficheiro JSON
         try {
