@@ -3,12 +3,17 @@ package com.bicentral.bicentral_backend.controller;
 
 import com.bicentral.bicentral_backend.dto.EquipeRequestDTO;
 import com.bicentral.bicentral_backend.dto.EquipeResponseDTO;
+import com.bicentral.bicentral_backend.dto.ConviteEquipeRequestDTO;
+import com.bicentral.bicentral_backend.dto.ConviteEquipeResponseDTO;
 import com.bicentral.bicentral_backend.dto.MembroEquipeRequestDTO;
 import com.bicentral.bicentral_backend.dto.MembroEquipeResponseDTO;
 import com.bicentral.bicentral_backend.model.Equipe;
 import com.bicentral.bicentral_backend.model.MembroEquipe;
 import com.bicentral.bicentral_backend.model.Usuario;
+import com.bicentral.bicentral_backend.service.ConviteEquipeService;
 import com.bicentral.bicentral_backend.service.EquipeService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import com.bicentral.bicentral_backend.service.UsuarioService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -22,10 +27,12 @@ import java.util.List;
 public class EquipeController {
     private final EquipeService equipeService;
     private final UsuarioService usuarioService;
+    private final ConviteEquipeService conviteEquipeService;
 
-    public EquipeController(EquipeService equipeService, UsuarioService usuarioService){
+    public EquipeController(EquipeService equipeService, UsuarioService usuarioService, ConviteEquipeService conviteEquipeService){
         this.equipeService = equipeService;
         this.usuarioService = usuarioService;
+        this.conviteEquipeService = conviteEquipeService;
     }
     @PostMapping
     public ResponseEntity<EquipeResponseDTO> criarEquipe(
@@ -96,6 +103,23 @@ public class EquipeController {
         return ResponseEntity.ok(new MembroEquipeResponseDTO(novoMembro));
     }
 
+    @PostMapping("/{equipeId}/convites")
+    public ResponseEntity<ConviteEquipeResponseDTO> enviarConvite(
+            @PathVariable Long equipeId,
+            @Valid @RequestBody ConviteEquipeRequestDTO dto,
+            @AuthenticationPrincipal UserDetails userDetails,
+            HttpServletRequest request
+    ) {
+        Usuario usuarioLogado = usuarioService.buscarPorEmail(userDetails.getUsername());
+        ConviteEquipeResponseDTO convite = conviteEquipeService.enviarConvite(
+                equipeId,
+                dto,
+                usuarioLogado,
+                getSiteURL(request)
+        );
+        return ResponseEntity.ok(convite);
+    }
+
     @DeleteMapping("/{equipeId}/membros/{usuarioId}")
     public ResponseEntity<Void> removerMembro(
             @PathVariable Long equipeId,
@@ -117,6 +141,11 @@ public class EquipeController {
         Usuario usuarioLogado = usuarioService.buscarPorEmail(userDetails.getUsername());
         MembroEquipe membroAtualizado = equipeService.alterarPapelMembro(equipeId, usuarioId, dto.role(), usuarioLogado);
         return ResponseEntity.ok(new MembroEquipeResponseDTO(membroAtualizado));
+    }
+
+    private String getSiteURL(HttpServletRequest request) {
+        String siteURL = request.getRequestURL().toString();
+        return siteURL.replace(request.getServletPath(), "");
     }
 }
 

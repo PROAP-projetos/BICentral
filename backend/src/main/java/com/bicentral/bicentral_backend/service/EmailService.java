@@ -1,5 +1,7 @@
 package com.bicentral.bicentral_backend.service;
 
+import com.bicentral.bicentral_backend.model.Equipe;
+import com.bicentral.bicentral_backend.model.Role;
 import com.bicentral.bicentral_backend.model.Usuario;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -10,6 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.lang.NonNull;
 
 import java.io.UnsupportedEncodingException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
 
@@ -21,13 +25,17 @@ import java.util.Objects;
 @Service
 public class EmailService {
 
+    private static final String FROM_ADDRESS = "bicentraluft@gmail.com";
+    private static final String SENDER_NAME = "BI Central";
+    private static final DateTimeFormatter INVITE_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm");
+
     @Autowired
     private JavaMailSender mailSender;
 
     public void sendVerificationEmail(@NonNull Usuario user, @NonNull String siteURL) throws MessagingException, UnsupportedEncodingException {
         String toAddress = Objects.requireNonNull(user.getEmail(), "user email");
-        String fromAddress = "bicentraluft@gmail.com"; // Lembre-se: Este email DEVE estar validado no Brevo
-        String senderName = "BI Central";
+        String fromAddress = FROM_ADDRESS; // Lembre-se: Este email DEVE estar validado no Brevo
+        String senderName = SENDER_NAME;
         String subject = "Verifique seu cadastro";
 
         String content = """
@@ -165,9 +173,9 @@ public class EmailService {
             @NonNull String assunto,
             @NonNull String mensagem
     ) throws MessagingException, UnsupportedEncodingException {
-        String fromAddress = "bicentraluft@gmail.com";
+        String fromAddress = FROM_ADDRESS;
         String senderName = "BI Central - Suporte";
-        String toAddress = "bicentraluft@gmail.com";
+        String toAddress = FROM_ADDRESS;
 
         String assuntoFinal = "[Suporte BICentral] " + assunto.trim();
         String conteudo = """
@@ -188,6 +196,87 @@ public class EmailService {
         helper.setReplyTo(email.trim());
         helper.setSubject(assuntoFinal);
         helper.setText(conteudo, false);
+
+        mailSender.send(message);
+    }
+
+    public void sendTeamInviteEmail(
+            @NonNull Equipe equipe,
+            @NonNull String email,
+            @NonNull Role role,
+            @NonNull String inviteUrl,
+            @NonNull LocalDateTime expiraEm
+    ) throws MessagingException, UnsupportedEncodingException {
+        String assunto = "Convite para a equipe " + equipe.getNome();
+        String expiraEmFormatado = expiraEm.format(INVITE_DATE_FORMATTER);
+
+        String content = """
+                <!DOCTYPE html>
+                <html lang="pt-BR">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Convite para equipe</title>
+                </head>
+                <body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#1a1a1a;">
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%%">
+                        <tr>
+                            <td style="padding:24px 12px;">
+                                <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%%" style="max-width:620px;background:#ffffff;border:1px solid rgba(0,74,128,0.08);border-radius:16px;overflow:hidden;">
+                                    <tr>
+                                        <td style="padding:28px 32px;background:#004a80;color:#ffffff;">
+                                            <div style="font-size:24px;font-weight:700;letter-spacing:0.2px;">BICentral</div>
+                                            <div style="margin-top:8px;font-size:14px;opacity:0.92;">Convite para acesso a equipe</div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:32px;">
+                                            <div style="display:inline-block;padding:8px 14px;border-radius:999px;background:rgba(0,74,128,0.08);color:#004a80;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;">
+                                                Convite pendente
+                                            </div>
+                                            <h1 style="margin:18px 0 12px;font-size:28px;line-height:1.2;color:#113956;">Você foi convidado para a equipe %s</h1>
+                                            <p style="margin:0 0 12px;font-size:16px;line-height:1.65;color:#3b556b;">
+                                                O BICentral recebeu uma solicitação para adicionar o e-mail <strong>%s</strong> à equipe <strong>%s</strong> com o papel <strong>%s</strong>.
+                                            </p>
+                                            <p style="margin:0 0 24px;font-size:16px;line-height:1.65;color:#3b556b;">
+                                                Para concluir, aceite o convite pelo botão abaixo. Este link expira em <strong>%s</strong>.
+                                            </p>
+                                            <table border="0" cellpadding="0" cellspacing="0">
+                                                <tr>
+                                                    <td>
+                                                        <a href="%s" target="_blank" style="display:inline-block;padding:14px 24px;background:#004a80;color:#ffffff;text-decoration:none;font-weight:700;border-radius:10px;">
+                                                            Aceitar convite
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                            <div style="margin-top:24px;padding:16px 18px;border-radius:12px;background:#f8fbff;border:1px solid rgba(0,74,128,0.08);">
+                                                <div style="font-size:13px;font-weight:700;color:#004a80;margin-bottom:8px;">Dica</div>
+                                                <div style="font-size:14px;line-height:1.55;color:#486174;">
+                                                    Se você ainda não possui cadastro no BICentral com este e-mail, conclua seu cadastro antes de aceitar o convite.
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:20px 32px;border-top:1px solid #e8eef5;font-size:12px;color:#7b8a97;">
+                                            Se você não esperava este convite, ignore este e-mail.
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </body>
+                </html>
+                """.formatted(equipe.getNome(), email, equipe.getNome(), role.name(), expiraEmFormatado, inviteUrl);
+
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+        helper.setFrom(FROM_ADDRESS, SENDER_NAME);
+        helper.setTo(email);
+        helper.setSubject(assunto);
+        helper.setText(content, true);
 
         mailSender.send(message);
     }
