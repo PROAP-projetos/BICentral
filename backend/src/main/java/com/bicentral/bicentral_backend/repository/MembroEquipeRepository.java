@@ -16,6 +16,7 @@ public interface MembroEquipeRepository extends JpaRepository<MembroEquipe, Long
     Optional<MembroEquipe> findByUsuarioAndEquipe(Usuario user, Equipe equipe);
 
     Optional<MembroEquipe> findByEquipeIdAndUsuarioId(Long equipeId, Long usuarioId);
+    boolean existsByEquipeIdAndUsuarioId(Long equipeId, Long usuarioId);
     boolean existsByEquipeIdAndUsuarioIdAndRole(Long equipeId, Long usuarioId, Role role);
     
     List<MembroEquipe> findByUsuario(Usuario user);

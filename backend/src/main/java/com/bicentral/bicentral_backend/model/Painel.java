@@ -7,7 +7,12 @@ import java.time.LocalDateTime;
 
 @Data
 @Entity
-@Table(name = "add_painel")
+@Table(
+        name = "add_painel",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_painel_equipe_link", columnNames = {"equipe_id", "link_power_bi"})
+        }
+)
 @NoArgsConstructor
 public class Painel {
 
@@ -17,7 +22,7 @@ public class Painel {
 
     private String nome;
 
-    @Column(name = "link_power_bi", nullable = false, unique = true)
+    @Column(name = "link_power_bi", nullable = false)
     private String linkPowerBi;
 
     @Column(name = "imagem_capa_url", columnDefinition = "text")
@@ -33,10 +38,6 @@ public class Painel {
     @ManyToOne
     @JoinColumn(name = "equipe_id")
     private Equipe equipe;
-
-    @ManyToOne
-    @JoinColumn(name = "usuario_id", nullable = false)
-    private Usuario usuario;
 
     public enum StatusCaptura {
         PENDENTE, PROCESSANDO, CONCLUIDA, ERRO

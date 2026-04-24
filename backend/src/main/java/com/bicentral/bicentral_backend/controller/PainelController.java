@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Objects;
 
 @RestController
-//@RequestMapping("/api/paineis")
 @RequestMapping("/api/equipes/{equipeId}/paineis") //nova rota
 
 public class PainelController {

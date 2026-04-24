@@ -61,13 +61,6 @@
   margin: 0.35rem 0 0;
 }
 
-.role-pill {
-  background: #f2f3f5;
-  padding: 0.5rem 1rem;
-  border-radius: 999px;
-  font-size: 0.9rem;
-}
-
 /* Layout Grid */
 .layout-grid {
   display: grid;

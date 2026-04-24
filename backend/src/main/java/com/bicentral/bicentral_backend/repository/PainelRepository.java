@@ -2,30 +2,45 @@ package com.bicentral.bicentral_backend.repository;
 
 import com.bicentral.bicentral_backend.model.Painel;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
 
 public interface PainelRepository extends JpaRepository<Painel, Long> {
+    boolean existsByLinkPowerBiAndEquipeId(String linkPowerBi, Long equipeId);
 
-    // ✅ duplicidade na vitrine do usuário (não global)
-    boolean existsByLinkPowerBiAndUsuario_Id(String linkPowerBi, Long usuarioId);
+    boolean existsByLinkPowerBiAndEquipeIdAndIdNot(String linkPowerBi, Long equipeId, Long id);
 
-    // ✅ útil se você quiser buscar o painel pelo link dentro do dono
-    Optional<Painel> findByLinkPowerBiAndUsuario_Id(String linkPowerBi, Long usuarioId);
+    @Query("""
+            select p
+            from Painel p
+            where p.equipe.id = :equipeId
+                and exists (
+                        select 1
+                        from MembroEquipe m
+                        where m.equipe.id = :equipeId
+                            and m.usuario.email = :email
+                )
+            """)
+    List<Painel> findByEquipeIdForMember(@Param("equipeId") Long equipeId, @Param("email") String email);
 
-    // ✅ segurança: só mexe no que é dele
-    Optional<Painel> findByIdAndUsuario_Id(Long id, Long usuarioId);
-
-    // ✅ update: checa duplicata ignorando o próprio painel
-    boolean existsByLinkPowerBiAndUsuario_IdAndIdNot(String linkPowerBi, Long usuarioId, Long id);
-
-    // ✅ listagem do dono
-    List<Painel> findAllByUsuario_Id(Long usuarioId);
-
-    // busca todos os painéis que pertencem a uma equipe específica
-    List<Painel> findByEquipeId(Long equipeId);
-
-    // busca um painel específico dentro de uma equipe (segurança extra)
-    Optional<Painel> findByIdAndEquipeId(Long id, Long equipeId);
+    @Query("""
+            select p
+            from Painel p
+            where p.id = :id
+                and p.equipe.id = :equipeId
+                and exists (
+                        select 1
+                        from MembroEquipe m
+                        where m.equipe.id = :equipeId
+                            and m.usuario.email = :email
+                )
+            """)
+    Optional<Painel> findByIdAndEquipeIdForMember(
+            @Param("id") Long id,
+            @Param("equipeId") Long equipeId,
+            @Param("email") String email
+    );
 }

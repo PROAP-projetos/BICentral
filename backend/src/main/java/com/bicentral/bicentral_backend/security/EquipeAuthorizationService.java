@@ -2,7 +2,6 @@ package com.bicentral.bicentral_backend.security;
 
 import com.bicentral.bicentral_backend.model.MembroEquipe;
 import com.bicentral.bicentral_backend.repository.MembroEquipeRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
@@ -11,9 +10,11 @@ import java.util.Optional;
 
 @Component("equipeSecurity") // O nome entre aspas permite usar no @PreAuthorize
 public class EquipeAuthorizationService {
+    private final MembroEquipeRepository membroEquipeRepository;
 
-    @Autowired
-    private MembroEquipeRepository membroEquipeRepository;
+    public EquipeAuthorizationService(MembroEquipeRepository membroEquipeRepository) {
+        this.membroEquipeRepository = membroEquipeRepository;
+    }
 
     /**
      * Verifica se o usuário logado tem um dos papéis necessários na equipe informada.

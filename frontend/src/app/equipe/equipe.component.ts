@@ -14,8 +14,9 @@ export type UserRole = 'VIEWER' | 'EDITOR' | 'ADMIN';
   styleUrls: ['./equipe.component.css']
 })
 export class EquipeComponent implements OnInit {
+  private static readonly SELECTED_EQUIPE_KEY = 'bicentral_selected_equipe';
+
   equipes: Equipe[] = [];
-  currentUserRole: UserRole = 'VIEWER';
 
   isConfirmOpen = false;
   equipeToRemove: Equipe | null = null;
@@ -41,7 +42,6 @@ export class EquipeComponent implements OnInit {
   constructor(private equipeService: EquipeService) {}
 
   ngOnInit(): void {
-    this.currentUserRole = this.getRoleFromStorage();
     this.carregarEquipes();
   }
 
@@ -59,15 +59,51 @@ export class EquipeComponent implements OnInit {
 
   carregarEquipes(): void {
     this.equipeService.listarMinhasEquipes().subscribe({
-      next: (dados) => this.equipes = dados,
+      next: (dados) => {
+        this.equipes = dados;
+        this.restaurarEquipeSelecionada();
+      },
       error: (erro) => console.error('Erro ao buscar equipes', erro)
     });
   }
 
   selecionarEquipe(equipe: Equipe): void {
     this.equipeAtiva = equipe;
+    this.salvarEquipeSelecionada(equipe);
     this.carregarMembros(equipe.id!);
     this.limparFeedback();
+  }
+
+  private restaurarEquipeSelecionada(): void {
+    const raw = localStorage.getItem(EquipeComponent.SELECTED_EQUIPE_KEY);
+    if (!raw) return;
+
+    try {
+      const saved = JSON.parse(raw) as { id?: number };
+      if (!saved?.id) return;
+
+      const match = this.equipes.find((eq) => eq.id === saved.id);
+      if (match?.id) {
+        this.equipeAtiva = match;
+        this.salvarEquipeSelecionada(match);
+        this.carregarMembros(match.id);
+      }
+    } catch {
+      localStorage.removeItem(EquipeComponent.SELECTED_EQUIPE_KEY);
+    }
+  }
+
+  private salvarEquipeSelecionada(equipe: Equipe): void {
+    if (!equipe.id) return;
+
+    localStorage.setItem(
+      EquipeComponent.SELECTED_EQUIPE_KEY,
+      JSON.stringify({
+        id: equipe.id,
+        nome: equipe.nome,
+        role: (equipe.role || 'VIEWER').toUpperCase()
+      })
+    );
   }
 
   carregarMembros(equipeId: number): void {
@@ -151,6 +187,9 @@ export class EquipeComponent implements OnInit {
         this.equipes.push(equipeCriada);
         this.novaEquipe = { nome: '', descricao: '' }; // Limpa o form
         this.exibirFeedback('Equipe criada com sucesso!', 'sucesso');
+        if (!this.equipeAtiva) {
+          this.selecionarEquipe(equipeCriada);
+        }
       },
       error: (erro) => {
         this.exibirFeedback('Erro ao criar equipe.', 'erro');
@@ -202,6 +241,7 @@ export class EquipeComponent implements OnInit {
         if (this.equipeAtiva?.id === id) {
           this.equipeAtiva = null;
           this.membros = [];
+          localStorage.removeItem(EquipeComponent.SELECTED_EQUIPE_KEY);
         }
         this.exibirFeedback('Equipe removida com sucesso.', 'sucesso');
         this.fecharConfirmacao();
@@ -223,26 +263,5 @@ export class EquipeComponent implements OnInit {
     if ((ev.target as HTMLElement).classList.contains('modal-overlay')) {
       this.fecharConfirmacao();
     }
-  }
-
-  private getRoleFromStorage(): UserRole {
-    const userStr = localStorage.getItem('user');
-    let role: string | null = null;
-
-    if (userStr) {
-      try {
-        role = JSON.parse(userStr)?.role ?? null;
-      } catch {
-        role = null;
-      }
-    }
-
-    role = role || localStorage.getItem('role') || 'VIEWER';
-    role = role.toUpperCase();
-
-    if (role === 'VIEWER' || role === 'EDITOR' || role === 'ADMIN') {
-      return role;
-    }
-    return 'VIEWER';
   }
 }
