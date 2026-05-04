@@ -2,7 +2,7 @@
 
 ## Minha parte
 
-Criar o caminho entre a tela do chat e o Agente de IA.
+Criar o caminho entre a tela de ingestao da Neci e o pipeline de IA da Dallyla.
 
 ## Em que pe esta o agente hoje
 
@@ -23,105 +23,83 @@ Onde esta no codigo:
 - `backend/src/main/java/com/bicentral/bicentral_backend/dto/ChunkDTO.java`
 - `backend/src/main/java/com/bicentral/bicentral_backend/controller/AiTestController.java`
 
-O que ainda falta para o agente:
+O que ainda falta para esta sprint:
 
-- Endpoint oficial do agente.
-- Ligacao entre endpoint e servico de IA.
-- Embeddings.
-- Supabase Vector.
-- Busca semantica.
-- Resposta final usando Gemini com os chunks encontrados.
+- Endpoint oficial de ingestao.
+- Receber arquivo pela tela da Neci.
+- Receber equipe/origem.
+- Receber visibilidade do documento: `PUBLICO` ou `PRIVADO`.
+- Chamar o `IngestaoService`.
+- Ligar a ingestao com os embeddings/Supabase Vector da Dallyla.
 
-Importante:
+## Regra De Negocio Importante
 
-- Documento publico: pode ser consultado por qualquer usuario autenticado.
-- Documento privado: so pode ser consultado por usuarios/equipes autorizadas.
-- O usuario nao escolhe se a busca sera publica ou privada.
-- O backend deve enviar para a IA o contexto do usuario/equipe, e a busca deve considerar:
-  - documentos publicos;
-  - documentos privados permitidos para a equipe do usuario.
-- Essa regra minima entra nesta sprint, porque protege o agente de usar documento privado de equipe errada.
+Na ingestao, o usuario escolhe se o documento sera `PUBLICO` ou `PRIVADO`.
+
+Essa escolha fica salva como metadado do documento/chunk.
+
+Na pratica:
+
+- Documento `PUBLICO`: pode ser consultado futuramente por qualquer usuario autenticado.
+- Documento `PRIVADO`: so pode ser consultado futuramente pela equipe autorizada.
+- Documento privado precisa ficar vinculado a equipe correta no momento da ingestao.
+- O backend nao deve aceitar equipe/visibilidade sem validar com o usuario autenticado e as regras ja existentes.
 
 ## O que eu preciso fazer agora
 
 - Criar o endpoint:
 
-`POST /api/agente/perguntar`
+`POST /api/ia/ingestao`
 
-- Fazer esse endpoint receber uma pergunta.
-- Fazer esse endpoint receber a equipe.
-- No primeiro momento, retornar uma resposta falsa para o frontend testar.
-- Depois, trocar a resposta falsa pela chamada real ao servico da Dallyla.
-- Retornar a resposta sempre no mesmo formato.
-- Garantir que o endpoint use a autenticacao e as regras de equipe que ja existem.
-- Garantir que a busca do agente respeite documentos publicos e privados.
-- Nao deixar o frontend decidir livremente qual equipe/acesso sera usado sem validar com o usuario autenticado.
+- Fazer esse endpoint receber arquivo.
+- Fazer esse endpoint receber equipe/origem.
+- Fazer esse endpoint receber visibilidade: `PUBLICO` ou `PRIVADO`.
+- Chamar o `IngestaoService` ja existente para extrair, limpar e fatiar o texto.
+- Retornar uma resposta simples para a tela da Neci testar.
+- Depois, integrar com o servico da Dallyla para gerar embeddings e salvar no Supabase Vector.
+- Garantir que documento privado fique vinculado a equipe correta.
 
 ## O que eu preciso entregar no fim da sprint
 
-- Endpoint `/api/agente/perguntar` funcionando.
-- Frontend conseguindo chamar esse endpoint.
-- Resposta voltando no formato combinado.
-- Endpoint ligado ao servico real de IA quando a Dallyla finalizar.
-- Regra minima de visibilidade funcionando:
-  - documento `PUBLICO` pode ser usado;
-  - documento `PRIVADO` so pode ser usado se for da equipe do usuario.
-
-## Regra De Negocio Importante
-
-O frontend nao deve mandar um campo `acesso` para escolher se a pergunta vai consultar documento publico ou privado.
-
-Quem aplica essa regra e o backend junto com o servico de IA.
-
-Na pratica:
-
-- O backend identifica o usuario autenticado.
-- O backend identifica a equipe ativa ou valida a equipe enviada.
-- A IA deve buscar apenas:
-  - documentos `PUBLICO`;
-  - documentos `PRIVADO` vinculados a equipe do usuario.
-- Documento privado de outra equipe nao pode ser enviado para o Gemini.
+- Endpoint `/api/ia/ingestao` funcionando.
+- Frontend da Neci conseguindo enviar documento.
+- Backend usando o `IngestaoService` ja existente.
+- Documento/chunks gerados com equipe e visibilidade.
+- Endpoint pronto para chamar a geracao de embeddings da Dallyla.
 
 ## Posso comecar agora?
 
-Sim. Pode criar o endpoint com resposta falsa primeiro.
+Sim. Pode criar o endpoint com retorno simples primeiro.
 
-Isso libera a Neci para fazer a tela sem esperar a IA ficar pronta.
+Isso libera a Neci para fazer a tela sem esperar Supabase Vector ficar pronto.
 
 ## Dependo de alguem?
 
 No inicio, nao.
 
-No final, depende da Dallyla entregar o servico de IA para substituir a resposta falsa pela resposta real.
+No final, depende da Dallyla entregar o servico de embeddings/Supabase Vector para completar a ingestao real.
 
 ## Exemplo do que o endpoint vai receber
 
-```json
-{
-  "pergunta": "Qual e a politica visual da UFT?",
-  "equipe": "COMUNICACAO"
-}
+```text
+arquivo: manual-uft.pdf
+equipe: COMUNICACAO
+visibilidade: PUBLICO
 ```
 
 ## Exemplo do que o endpoint vai devolver
 
 ```json
 {
-  "resposta": "Texto gerado pelo agente.",
-  "fontes": [
-    {
-      "nomeArquivo": "manual-uft.pdf",
-      "grupoId": "uuid-do-documento",
-      "equipe": "COMUNICACAO",
-      "visibilidade": "PUBLICO"
-    }
-  ]
+  "mensagem": "Documento enviado para ingestao.",
+  "status": "PROCESSANDO"
 }
 ```
 
 ## Nao preciso mexer nisso agora
 
-- Tela do chat.
-- Chunking, porque ja existe.
+- Tela de chat.
+- Endpoint de pergunta do agente.
 - Autenticacao do zero.
 - Regras de equipe do zero.
+- Chunking do zero, porque ja existe.

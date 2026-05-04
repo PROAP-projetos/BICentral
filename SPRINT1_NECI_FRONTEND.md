@@ -4,6 +4,24 @@
 
 Criar a tela de ingestao de documentos para o Agente de IA.
 
+## Atencao Importante
+
+Nao substituir a funcionalidade que ja existe de **Adicionar Painel**, onde o usuario informa o link do Power BI.
+
+Essa funcionalidade de paineis continua existindo do jeito atual.
+
+A tela de ingestao para IA deve ser uma nova entrada dentro do BICentral, por exemplo um botao separado como:
+
+`Ingestao para IA`
+
+Esse botao deve abrir a tela de envio de documentos para alimentar o agente.
+
+Resumo:
+
+- Adicionar Painel: continua servindo para cadastrar link de Power BI.
+- Ingestao para IA: nova funcionalidade para enviar documentos usados pelo agente.
+- Uma coisa nao deve substituir a outra.
+
 ## Referencia visual
 
 Usar como base a imagem de referencia enviada na conversa:
