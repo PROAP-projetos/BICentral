@@ -2,7 +2,7 @@
 
 ## Minha parte
 
-Criar a tela do chat do Agente de IA.
+Criar a tela de ingestao de documentos para o Agente de IA.
 
 ## Referencia visual
 
@@ -14,13 +14,13 @@ Essa imagem serve como direcao visual para organizacao da tela: area principal g
 
 Importante: remover o campo **Painel relacionado**. Esse campo nao sera usado agora.
 
-Na tela de ingestao/chat do agente, manter apenas o que faz sentido para o agente:
+Na tela de ingestao do agente, manter apenas o que faz sentido para enviar documentos para a IA:
 
-- Upload ou area principal de interacao.
+- Upload de documentos.
 - Equipe/origem.
 - Nivel de acesso do documento: `PUBLICO` ou `PRIVADO`.
 - Resumo dos arquivos/documentos.
-- Botao principal de confirmacao ou envio.
+- Botao principal de confirmar ingestao.
 
 ## Em que pe esta o agente hoje
 
@@ -43,7 +43,7 @@ Onde esta no codigo:
 
 O que ainda falta para o agente:
 
-- Tela de chat.
+- Tela de ingestao conectada ao backend.
 - Endpoint oficial do agente.
 - Embeddings.
 - Supabase Vector.
@@ -55,66 +55,68 @@ Importante:
 - Documento publico: pode ser consultado por qualquer usuario autenticado.
 - Documento privado: so pode ser consultado por usuarios/equipes autorizadas.
 - Quem decide isso e o backend/IA na hora da busca. A tela nao deve deixar o usuario escolher se quer buscar em documento publico ou privado.
-- Nesta sprint, o chat nao tera campo de publico/privado.
-- O usuario apenas pergunta; o sistema aplica a permissao sozinho.
+- Nesta tela, o usuario escolhe a visibilidade do documento no momento da ingestao: `PUBLICO` ou `PRIVADO`.
+- Depois, quando o chat existir, o usuario nao escolhe publico/privado na pergunta. O sistema aplica a permissao sozinho.
 
 ## O que eu preciso fazer agora
 
-- Criar uma tela para o Agente IA.
-- Colocar um campo para digitar a pergunta.
-- Colocar um botao para enviar.
-- Criar uma area para mostrar a resposta.
-- Mostrar quando estiver carregando.
-- Mostrar mensagem quando der erro.
-- Deixar um espaco para mostrar as fontes usadas pela IA.
-- Conectar a tela ao endpoint:
+- Criar a tela de ingestao de documentos para IA.
+- Criar area de upload de arquivos.
+- Permitir selecionar equipe/origem.
+- Permitir selecionar o nivel de acesso do documento:
+  - `PUBLICO`;
+  - `PRIVADO`.
+- Remover o campo **Painel relacionado**.
+- Mostrar lista dos arquivos selecionados.
+- Mostrar status de processamento:
+  - aguardando;
+  - processando;
+  - processado;
+  - erro.
+- Criar botao para confirmar ingestao.
+- Conectar a tela ao endpoint de ingestao que o Lean criar.
 
-`POST /api/agente/perguntar`
+Endpoint esperado:
+
+`POST /api/ia/ingestao`
 
 ## O que eu preciso entregar no fim da sprint
 
-- Tela de chat funcionando.
-- Usuario consegue enviar uma pergunta.
-- Resposta aparece na tela.
-- Tela mostra carregamento enquanto espera.
-- Tela mostra erro se a chamada falhar.
+- Tela de ingestao funcionando visualmente.
+- Usuario consegue selecionar arquivos.
+- Usuario consegue escolher equipe/origem.
+- Usuario consegue escolher se o documento e `PUBLICO` ou `PRIVADO`.
+- Usuario consegue confirmar a ingestao.
+- Tela mostra processamento e erro quando acontecer.
 
 ## Posso comecar agora?
 
 Sim. Pode comecar mesmo antes da IA estar pronta.
 
-Enquanto a Dallyla termina a IA, Lean pode criar uma resposta falsa temporaria para voce testar a tela.
+Enquanto a Dallyla termina embeddings/Supabase Vector, Lean pode criar um endpoint temporario para voce testar o envio da ingestao.
 
 ## Dependo de alguem?
 
-Dependo do Lean criar o endpoint:
+Dependo do Lean criar o endpoint de ingestao:
 
-`POST /api/agente/perguntar`
+`POST /api/ia/ingestao`
 
-No inicio, esse endpoint pode retornar uma resposta falsa so para testar o frontend.
+No inicio, esse endpoint pode retornar uma resposta simples so para testar o frontend.
 
 ## Exemplo do que a tela vai enviar
 
-```json
-{
-  "pergunta": "Qual e a politica visual da UFT?",
-  "equipe": "COMUNICACAO"
-}
+```text
+arquivo: manual-uft.pdf
+equipe: COMUNICACAO
+visibilidade: PUBLICO
 ```
 
 ## Exemplo do que a tela vai receber
 
 ```json
 {
-  "resposta": "Texto gerado pelo agente.",
-  "fontes": [
-    {
-      "nomeArquivo": "manual-uft.pdf",
-      "grupoId": "uuid-do-documento",
-      "equipe": "COMUNICACAO",
-      "visibilidade": "PUBLICO"
-    }
-  ]
+  "mensagem": "Documento enviado para ingestao.",
+  "status": "PROCESSANDO"
 }
 ```
 
@@ -123,6 +125,6 @@ No inicio, esse endpoint pode retornar uma resposta falsa so para testar o front
 - Embeddings.
 - Supabase Vector.
 - Logica da IA.
-- Campo para escolher documento publico/privado no chat.
+- Tela de chat.
 - Autenticacao.
 - Regras de equipe.
