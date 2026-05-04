@@ -5,8 +5,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const token = localStorage.getItem('token');
   const userJson = localStorage.getItem('user');
 
-  // 2. Ignora a rota de login para não enviar token vazio ou antigo
-  if (req.url.includes('/api/usuarios/login')) {
+  // 2. Ignora rotas públicas para não enviar token vazio ou antigo
+  if (req.url.includes('/api/usuarios/login') || req.url.includes('/api/convites/aceitar')) {
     return next(req);
   }
 

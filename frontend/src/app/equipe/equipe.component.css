@@ -223,6 +223,13 @@
   color: #475569;
 }
 
+.invite-help {
+  margin: 0 0 0.9rem;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: #64748b;
+}
+
 .form-compact {
   display: flex;
   gap: 0.5rem;

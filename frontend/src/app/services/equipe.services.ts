@@ -11,7 +11,25 @@ export interface Equipe{
 
 export interface MembroEquipe {
   usuarioId: number;
-  nomeExibicao: string;
+  nome: string;
+  email: string;
+  role: 'ADMIN' | 'EDITOR' | 'VIEWER';
+}
+
+export interface ConviteEquipe {
+  id: number;
+  equipeId: number;
+  equipeNome: string;
+  email: string;
+  role: 'ADMIN' | 'EDITOR' | 'VIEWER';
+  status: 'PENDENTE' | 'ACEITO' | 'EXPIRADO';
+  expiraEm: string;
+}
+
+export interface AceiteConviteResponse {
+  mensagem: string;
+  equipeId: number;
+  equipeNome: string;
   email: string;
   role: 'ADMIN' | 'EDITOR' | 'VIEWER';
 }
@@ -47,11 +65,19 @@ export class EquipeService{
     return this.http.post<MembroEquipe>(`${this.apiURL}/${equipeId}/membros`, { email, role });
   }
 
+  enviarConvite(equipeId: number, email: string, role: string): Observable<ConviteEquipe> {
+    return this.http.post<ConviteEquipe>(`${this.apiURL}/${equipeId}/convites`, { email, role });
+  }
+
   removerMembro(equipeId: number, usuarioId: number): Observable<void> {
     return this.http.delete<void>(`${this.apiURL}/${equipeId}/membros/${usuarioId}`);
   }
 
   alterarPapel(equipeId: number, usuarioId: number, role: string): Observable<MembroEquipe> {
     return this.http.put<MembroEquipe>(`${this.apiURL}/${equipeId}/membros/${usuarioId}`, { role });
+  }
+
+  aceitarConvite(token: string): Observable<AceiteConviteResponse> {
+    return this.http.post<AceiteConviteResponse>(`/api/convites/aceitar`, { token });
   }
 }

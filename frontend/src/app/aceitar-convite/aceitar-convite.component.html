@@ -1,0 +1,18 @@
+<main class="invite-page">
+  <section class="invite-card">
+    <div class="invite-badge" [class.error]="!success && !loading">
+      {{ loading ? 'Processando' : (success ? 'Acesso liberado' : 'Atenção') }}
+    </div>
+
+    <h1>{{ title }}</h1>
+    <p class="invite-message">{{ message }}</p>
+
+    <div class="invite-loader" *ngIf="loading"></div>
+
+    <div class="invite-actions" *ngIf="!loading">
+      <a class="invite-btn primary" *ngIf="success" routerLink="/equipe">Ir para equipes</a>
+      <a class="invite-btn primary" *ngIf="!success" routerLink="/login">Ir para login</a>
+      <a class="invite-btn secondary" *ngIf="!success" routerLink="/cadastro">Criar conta</a>
+    </div>
+  </section>
+</main>

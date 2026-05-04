@@ -20,6 +20,8 @@ export class EquipeComponent implements OnInit {
 
   isConfirmOpen = false;
   equipeToRemove: Equipe | null = null;
+  isMemberConfirmOpen = false;
+  memberToRemove: MembroEquipe | null = null;
 
   novaEquipe: Equipe = {
     nome: '',
@@ -32,8 +34,8 @@ export class EquipeComponent implements OnInit {
   // Gestão de Membros
   membros: MembroEquipe[] = [];
   equipeAtiva: Equipe | null = null;
-  novoMembroEmail = '';
-  novoMembroRole: UserRole = 'VIEWER';
+  conviteEmail = '';
+  conviteRole: UserRole = 'VIEWER';
   
   mensagemFeedback = '';
   tipoFeedback: 'sucesso' | 'erro' = 'sucesso';
@@ -120,17 +122,17 @@ export class EquipeComponent implements OnInit {
     });
   }
 
-  adicionarMembro(): void {
-    if (!this.equipeAtiva || !this.novoMembroEmail) return;
+  enviarConvite(): void {
+    if (!this.equipeAtiva || !this.conviteEmail) return;
 
-    this.equipeService.adicionarMembro(this.equipeAtiva.id!, this.novoMembroEmail, this.novoMembroRole).subscribe({
+    this.equipeService.enviarConvite(this.equipeAtiva.id!, this.conviteEmail, this.conviteRole).subscribe({
       next: () => {
-        this.exibirFeedback('Membro adicionado com sucesso!', 'sucesso');
-        this.carregarMembros(this.equipeAtiva!.id!);
-        this.novoMembroEmail = '';
+        this.exibirFeedback('Convite enviado com sucesso.', 'sucesso');
+        this.conviteEmail = '';
+        this.conviteRole = 'VIEWER';
       },
       error: (erro) => {
-        const msg = erro.error?.mensagem || 'Erro ao adicionar membro. Verifique o e-mail e as permissões.';
+        const msg = erro.error?.mensagem || 'Erro ao enviar convite. Verifique o e-mail e as permissões.';
         this.exibirFeedback(msg, 'erro');
       }
     });
@@ -138,16 +140,23 @@ export class EquipeComponent implements OnInit {
 
   removerMembro(membro: MembroEquipe): void {
     if (!this.equipeAtiva) return;
-    if (!confirm(`Deseja remover ${membro.nomeExibicao} da equipe?`)) return;
+    this.memberToRemove = membro;
+    this.isMemberConfirmOpen = true;
+  }
 
-    this.equipeService.removerMembro(this.equipeAtiva.id!, membro.usuarioId).subscribe({
+  confirmarRemocaoMembro(): void {
+    if (!this.equipeAtiva || !this.memberToRemove) return;
+
+    this.equipeService.removerMembro(this.equipeAtiva.id!, this.memberToRemove.usuarioId).subscribe({
       next: () => {
         this.exibirFeedback('Membro removido com sucesso!', 'sucesso');
         this.carregarMembros(this.equipeAtiva!.id!);
+        this.fecharConfirmacaoMembro();
       },
       error: (erro) => {
         const msg = erro.error?.mensagem || 'Erro ao remover membro.';
         this.exibirFeedback(msg, 'erro');
+        this.fecharConfirmacaoMembro();
       }
     });
   }
@@ -259,9 +268,20 @@ export class EquipeComponent implements OnInit {
     this.equipeToRemove = null;
   }
 
+  fecharConfirmacaoMembro(): void {
+    this.isMemberConfirmOpen = false;
+    this.memberToRemove = null;
+  }
+
   onConfirmOverlayClick(ev: MouseEvent): void {
     if ((ev.target as HTMLElement).classList.contains('modal-overlay')) {
       this.fecharConfirmacao();
+    }
+  }
+
+  onMemberConfirmOverlayClick(ev: MouseEvent): void {
+    if ((ev.target as HTMLElement).classList.contains('modal-overlay')) {
+      this.fecharConfirmacaoMembro();
     }
   }
 }

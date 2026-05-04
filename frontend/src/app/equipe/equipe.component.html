@@ -95,17 +95,20 @@
       </div>
 
       <div *ngIf="equipeAtiva">
-        <!-- Adicionar Membro (Somente ADMIN da equipe) -->
+        <!-- Convite de Membro (Somente ADMIN da equipe) -->
         <div class="add-member-box" *ngIf="podeGerenciarMembros(equipeAtiva)">
-          <h4>Adicionar Membro</h4>
-          <form class="form-compact" (ngSubmit)="adicionarMembro()">
-            <input type="email" [(ngModel)]="novoMembroEmail" name="email" placeholder="E-mail do usuário" required />
-            <select [(ngModel)]="novoMembroRole" name="role">
+          <h4>Enviar convite</h4>
+          <p class="invite-help">
+            Convide um usuário por e-mail e defina o papel que ele receberá ao aceitar.
+          </p>
+          <form class="form-compact" (ngSubmit)="enviarConvite()">
+            <input type="email" [(ngModel)]="conviteEmail" name="inviteEmail" placeholder="E-mail do convidado" required />
+            <select [(ngModel)]="conviteRole" name="inviteRole">
               <option value="VIEWER">VIEWER</option>
               <option value="EDITOR">EDITOR</option>
               <option value="ADMIN">ADMIN</option>
             </select>
-            <button class="btn btn-primary btn-sm" type="submit">Adicionar</button>
+            <button class="btn btn-primary btn-sm" type="submit">Enviar convite</button>
           </form>
         </div>
 
@@ -114,7 +117,7 @@
         <div class="members-list" *ngIf="!carregandoMembros">
           <div class="member-row" *ngFor="let m of membros">
             <div class="member-info">
-              <span class="member-name">{{ m.nomeExibicao }}</span>
+              <span class="member-name">{{ m.nome }}</span>
               <span class="member-email">{{ m.email }}</span>
             </div>
             
@@ -156,6 +159,19 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" (click)="fecharConfirmacao()">Cancelar</button>
         <button class="btn btn-danger" (click)="confirmarRemocao()">Confirmar Exclusão</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" *ngIf="isMemberConfirmOpen" (click)="onMemberConfirmOverlayClick($event)">
+    <div class="modal-content">
+      <h3>Remover membro</h3>
+      <p>Deseja realmente remover <strong>{{ memberToRemove?.nome }}</strong> da equipe <strong>{{ equipeAtiva?.nome }}</strong>?</p>
+      <p class="warning">O acesso dessa pessoa à equipe será removido imediatamente.</p>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="fecharConfirmacaoMembro()">Cancelar</button>
+        <button class="btn btn-danger" (click)="confirmarRemocaoMembro()">Confirmar remoção</button>
       </div>
     </div>
   </div>

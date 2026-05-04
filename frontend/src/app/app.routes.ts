@@ -8,6 +8,7 @@ import { VerificacaoComponent } from './verificacao/verificacao.component';
 import { AddPainelComponent } from './add-painel/add-painel.component';
 import { EquipeComponent } from './equipe/equipe.component';
 import { SuporteComponent } from './suporte/suporte.component';
+import { AceitarConviteComponent } from './aceitar-convite/aceitar-convite.component';
 
 import { authGuard } from './auth.guard';
 
@@ -19,6 +20,7 @@ export const routes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: 'cadastro', component: CadastroComponent },
   { path: 'verificar-email', component: VerificacaoComponent },
+  { path: 'aceitar-convite', component: AceitarConviteComponent },
 
   // Equipes
   { path: 'equipe', component: EquipeComponent, canActivate: [authGuard] },
