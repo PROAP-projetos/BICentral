@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 interface ArquivoUpload {
   arquivo: File;
   status: 'AGUARDANDO' | 'PROCESSANDO' | 'PROCESSADO' | 'ERRO';
+  progresso: number;
 }
 
 @Component({
@@ -21,7 +22,7 @@ export class IngestaoIaComponent {
 
   arquivos: ArquivoUpload[] = [];
 
-  equipeSelecionada = '';
+  equipeSelecionada = 'COMUNICACAO';
 
   visibilidade = 'PUBLICO';
 
@@ -32,24 +33,27 @@ export class IngestaoIaComponent {
   erro = false;
 
   equipes = [
-    'COMUNICACAO',
-    'FINANCEIRO',
-    'PROAP',
-    'ADMINISTRACAO'
+    'COPLAN',
+    'Orçamento',
+    'Desenvolvimento'
   ];
 
   onArquivosSelecionados(event: Event): void {
+
     const input = event.target as HTMLInputElement;
 
     if (!input.files) return;
 
     for (let i = 0; i < input.files.length; i++) {
+
       const arquivo = input.files[i];
 
       this.arquivos.push({
         arquivo,
-        status: 'AGUARDANDO'
+        status: 'AGUARDANDO',
+        progresso: 0
       });
+
     }
   }
 
@@ -60,39 +64,80 @@ export class IngestaoIaComponent {
   confirmarIngestao(): void {
 
     if (this.arquivos.length === 0) {
-      this.erro = true;
-      this.mensagem = 'Selecione ao menos um arquivo.';
-      return;
-    }
 
-    if (!this.equipeSelecionada) {
       this.erro = true;
-      this.mensagem = 'Selecione uma equipe.';
+
+      this.mensagem = 'Selecione ao menos um documento para ingestão.';
+
       return;
     }
 
     this.carregando = true;
+
     this.erro = false;
+
     this.mensagem = '';
 
-    this.arquivos.forEach(arquivo => {
-      arquivo.status = 'PROCESSANDO';
+    this.arquivos.forEach((item, index) => {
+
+      item.status = 'PROCESSANDO';
+
+      let progresso = 0;
+
+      const intervalo = setInterval(() => {
+
+        progresso += 10;
+
+        item.progresso = progresso;
+
+        if (progresso >= 100) {
+
+          clearInterval(intervalo);
+
+          item.status = 'PROCESSADO';
+
+          item.progresso = 100;
+
+          const todosFinalizados = this.arquivos.every(
+            arquivo => arquivo.status === 'PROCESSADO'
+          );
+
+          if (todosFinalizados) {
+
+            this.carregando = false;
+
+            this.mensagem =
+              'Todos os documentos foram enviados para a fila de ingestão da IA.';
+          }
+        }
+
+      }, 250 + (index * 100));
+
     });
-
-    setTimeout(() => {
-
-      this.arquivos.forEach(arquivo => {
-        arquivo.status = 'PROCESSADO';
-      });
-
-      this.carregando = false;
-      this.mensagem = 'Documentos enviados para ingestão com sucesso.';
-
-    }, 2000);
   }
 
   getQuantidadeArquivos(): number {
     return this.arquivos.length;
+  }
+
+  getArquivosProcessados(): number {
+
+    return this.arquivos.filter(
+      arquivo => arquivo.status === 'PROCESSADO'
+    ).length;
+
+  }
+
+  getTamanhoFormatado(bytes: number): string {
+
+    if (bytes < 1024) return bytes + ' B';
+
+    if (bytes < 1024 * 1024) {
+      return (bytes / 1024).toFixed(1) + ' KB';
+    }
+
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+
   }
 
 }

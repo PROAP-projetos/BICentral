@@ -1,18 +1,29 @@
 <div class="page-container">
 
+  <div class="top-header">
+
+    <div>
+      <h1>Ingestão de Documentos IA</h1>
+      <p>
+        Gerencie documentos utilizados pelo agente inteligente do BICentral.
+      </p>
+    </div>
+
+    <div class="header-badge">
+      IA ENABLED
+    </div>
+
+  </div>
+
   <div class="content-grid">
 
-    <!-- ÁREA PRINCIPAL -->
+    <!-- CONTEÚDO PRINCIPAL -->
     <section class="main-card">
 
-      <div class="header">
-        <h1>Ingestão para IA</h1>
-        <p>
-          Envie documentos para alimentar o agente inteligente.
-        </p>
+      <div class="section-title">
+        Upload de Documentos
       </div>
 
-      <!-- UPLOAD -->
       <div class="upload-area">
 
         <input
@@ -23,6 +34,16 @@
           hidden
         >
 
+        <div class="upload-icon">
+          ↑
+        </div>
+
+        <h3>Arraste arquivos ou selecione</h3>
+
+        <p>
+          PDF, XLSX e documentos estruturados
+        </p>
+
         <button
           class="upload-button"
           (click)="fileInput.click()">
@@ -31,22 +52,15 @@
 
         </button>
 
-        <p class="upload-hint">
-          PDFs e planilhas .xlsx
-        </p>
-
       </div>
 
-      <!-- CONFIGURAÇÕES -->
-      <div class="form-section">
+      <div class="config-grid">
 
         <div class="form-group">
 
           <label>Equipe / Origem</label>
 
           <select [(ngModel)]="equipeSelecionada">
-
-            <option value="">Selecione</option>
 
             <option
               *ngFor="let equipe of equipes"
@@ -62,7 +76,7 @@
 
         <div class="form-group">
 
-          <label>Visibilidade</label>
+          <label>Nível de acesso</label>
 
           <select [(ngModel)]="visibilidade">
 
@@ -80,20 +94,50 @@
 
       </div>
 
-      <!-- LISTA -->
-      <div class="arquivo-lista">
+      <div class="section-title arquivos-title">
+        Documentos Selecionados
+      </div>
 
-        <div
-          class="arquivo-item"
-          *ngFor="let item of arquivos; let i = index">
+      <div
+        class="arquivo-card"
+        *ngFor="let item of arquivos; let i = index">
+
+        <div class="arquivo-left">
+
+          <div class="arquivo-icon">
+            📄
+          </div>
 
           <div class="arquivo-info">
 
-            <strong>{{ item.arquivo.name }}</strong>
+            <div class="arquivo-nome">
+              {{ item.arquivo.name }}
+            </div>
 
-            <span class="arquivo-status">
-              {{ item.status }}
-            </span>
+            <div class="arquivo-meta">
+
+              {{ getTamanhoFormatado(item.arquivo.size) }}
+
+              •
+
+              {{ item.arquivo.type || 'documento' }}
+
+            </div>
+
+          </div>
+
+        </div>
+
+        <div class="arquivo-right">
+
+          <div
+            class="status-badge"
+            [class.processando]="item.status === 'PROCESSANDO'"
+            [class.processado]="item.status === 'PROCESSADO'"
+            [class.aguardando]="item.status === 'AGUARDANDO'"
+          >
+
+            {{ item.status }}
 
           </div>
 
@@ -101,29 +145,35 @@
             class="remover-btn"
             (click)="removerArquivo(i)">
 
-            Remover
+            ✕
 
           </button>
 
         </div>
 
-      </div>
+        <div
+          class="progress-bar"
+          *ngIf="item.status === 'PROCESSANDO' || item.status === 'PROCESSADO'">
 
-      <!-- AÇÕES -->
-      <div class="actions">
+          <div
+            class="progress-fill"
+            [style.width.%]="item.progresso">
 
-        <button
-          class="confirmar-btn"
-          [disabled]="carregando"
-          (click)="confirmarIngestao()">
+          </div>
 
-          {{ carregando ? 'Processando...' : 'Confirmar Ingestão' }}
-
-        </button>
+        </div>
 
       </div>
 
-      <!-- ALERTAS -->
+      <button
+        class="confirmar-btn"
+        [disabled]="carregando"
+        (click)="confirmarIngestao()">
+
+        {{ carregando ? 'Processando ingestão...' : 'Confirmar Ingestão' }}
+
+      </button>
+
       <div
         *ngIf="mensagem"
         class="mensagem"
@@ -135,26 +185,52 @@
 
     </section>
 
-    <!-- LATERAL -->
+    <!-- SIDEBAR -->
     <aside class="sidebar">
 
       <div class="sidebar-card">
 
-        <h3>Resumo</h3>
+        <h3>Resumo da Ingestão</h3>
 
         <div class="summary-item">
-          <span>Arquivos</span>
+          <span>Total de arquivos</span>
           <strong>{{ getQuantidadeArquivos() }}</strong>
         </div>
 
         <div class="summary-item">
+          <span>Processados</span>
+          <strong>{{ getArquivosProcessados() }}</strong>
+        </div>
+
+        <div class="summary-item">
           <span>Equipe</span>
-          <strong>{{ equipeSelecionada || '-' }}</strong>
+          <strong>{{ equipeSelecionada }}</strong>
         </div>
 
         <div class="summary-item">
           <span>Visibilidade</span>
           <strong>{{ visibilidade }}</strong>
+        </div>
+
+      </div>
+
+      <div class="sidebar-card">
+
+        <h3>Status do Sistema</h3>
+
+        <div class="system-status">
+          <div class="status-dot"></div>
+          Serviço de ingestão operacional
+        </div>
+
+        <div class="system-status">
+          <div class="status-dot"></div>
+          Pipeline de chunking ativo
+        </div>
+
+        <div class="system-status">
+          <div class="status-dot"></div>
+          Processamento semântico disponível
         </div>
 
       </div>
