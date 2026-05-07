@@ -1,0 +1,172 @@
+* {
+  box-sizing: border-box;
+}
+
+.page-container {
+  min-height: 100vh;
+  background: #f4f7fb;
+  padding: 40px;
+}
+
+.content-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.main-card,
+.sidebar-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+}
+
+.header h1 {
+  margin: 0;
+  color: #004a80;
+}
+
+.header p {
+  color: #666;
+  margin-top: 8px;
+}
+
+.upload-area {
+  margin-top: 24px;
+  padding: 32px;
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  text-align: center;
+  background: #fafcff;
+}
+
+.upload-button {
+  background: #004a80;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.upload-button:hover {
+  background: #00365c;
+}
+
+.upload-hint {
+  margin-top: 12px;
+  color: #777;
+  font-size: 14px;
+}
+
+.form-section {
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.form-group select {
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #d0d7e2;
+}
+
+.arquivo-lista {
+  margin-top: 24px;
+}
+
+.arquivo-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.arquivo-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.arquivo-status {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #555;
+}
+
+.remover-btn {
+  border: none;
+  background: #dc2626;
+  color: white;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.actions {
+  margin-top: 24px;
+}
+
+.confirmar-btn {
+  width: 100%;
+  background: #004a80;
+  color: white;
+  border: none;
+  padding: 14px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.confirmar-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.sidebar-card h3 {
+  margin-top: 0;
+  color: #004a80;
+}
+
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.mensagem {
+  margin-top: 20px;
+  padding: 14px;
+  border-radius: 8px;
+  background: #dcfce7;
+  color: #166534;
+}
+
+.mensagem.erro {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+@media (max-width: 900px) {
+
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+
+}

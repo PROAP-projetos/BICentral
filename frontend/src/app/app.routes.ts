@@ -9,6 +9,7 @@ import { AddPainelComponent } from './add-painel/add-painel.component';
 import { EquipeComponent } from './equipe/equipe.component';
 import { SuporteComponent } from './suporte/suporte.component';
 import { AceitarConviteComponent } from './aceitar-convite/aceitar-convite.component';
+import { IngestaoIaComponent } from './pages/ingestao-ia/ingestao-ia';
 
 import { authGuard } from './auth.guard';
 
@@ -29,9 +30,12 @@ export const routes: Routes = [
   // Painéis (CRUD)
   { path: 'adicionar-painel', component: AddPainelComponent, canActivate: [authGuard] },
 
+  { path: 'ingestao-ia', component: IngestaoIaComponent },
+
   // Outras páginas protegidas
   { path: 'dashboard', component: DashboardComponent, canActivate: [authGuard] },
 
   // Fallback
   { path: '**', redirectTo: '' }
+
 ];

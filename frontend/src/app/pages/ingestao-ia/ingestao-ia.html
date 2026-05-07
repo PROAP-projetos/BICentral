@@ -1,0 +1,166 @@
+<div class="page-container">
+
+  <div class="content-grid">
+
+    <!-- ÁREA PRINCIPAL -->
+    <section class="main-card">
+
+      <div class="header">
+        <h1>Ingestão para IA</h1>
+        <p>
+          Envie documentos para alimentar o agente inteligente.
+        </p>
+      </div>
+
+      <!-- UPLOAD -->
+      <div class="upload-area">
+
+        <input
+          type="file"
+          multiple
+          #fileInput
+          (change)="onArquivosSelecionados($event)"
+          hidden
+        >
+
+        <button
+          class="upload-button"
+          (click)="fileInput.click()">
+
+          Selecionar Arquivos
+
+        </button>
+
+        <p class="upload-hint">
+          PDFs e planilhas .xlsx
+        </p>
+
+      </div>
+
+      <!-- CONFIGURAÇÕES -->
+      <div class="form-section">
+
+        <div class="form-group">
+
+          <label>Equipe / Origem</label>
+
+          <select [(ngModel)]="equipeSelecionada">
+
+            <option value="">Selecione</option>
+
+            <option
+              *ngFor="let equipe of equipes"
+              [value]="equipe">
+
+              {{ equipe }}
+
+            </option>
+
+          </select>
+
+        </div>
+
+        <div class="form-group">
+
+          <label>Visibilidade</label>
+
+          <select [(ngModel)]="visibilidade">
+
+            <option value="PUBLICO">
+              PUBLICO
+            </option>
+
+            <option value="PRIVADO">
+              PRIVADO
+            </option>
+
+          </select>
+
+        </div>
+
+      </div>
+
+      <!-- LISTA -->
+      <div class="arquivo-lista">
+
+        <div
+          class="arquivo-item"
+          *ngFor="let item of arquivos; let i = index">
+
+          <div class="arquivo-info">
+
+            <strong>{{ item.arquivo.name }}</strong>
+
+            <span class="arquivo-status">
+              {{ item.status }}
+            </span>
+
+          </div>
+
+          <button
+            class="remover-btn"
+            (click)="removerArquivo(i)">
+
+            Remover
+
+          </button>
+
+        </div>
+
+      </div>
+
+      <!-- AÇÕES -->
+      <div class="actions">
+
+        <button
+          class="confirmar-btn"
+          [disabled]="carregando"
+          (click)="confirmarIngestao()">
+
+          {{ carregando ? 'Processando...' : 'Confirmar Ingestão' }}
+
+        </button>
+
+      </div>
+
+      <!-- ALERTAS -->
+      <div
+        *ngIf="mensagem"
+        class="mensagem"
+        [class.erro]="erro">
+
+        {{ mensagem }}
+
+      </div>
+
+    </section>
+
+    <!-- LATERAL -->
+    <aside class="sidebar">
+
+      <div class="sidebar-card">
+
+        <h3>Resumo</h3>
+
+        <div class="summary-item">
+          <span>Arquivos</span>
+          <strong>{{ getQuantidadeArquivos() }}</strong>
+        </div>
+
+        <div class="summary-item">
+          <span>Equipe</span>
+          <strong>{{ equipeSelecionada || '-' }}</strong>
+        </div>
+
+        <div class="summary-item">
+          <span>Visibilidade</span>
+          <strong>{{ visibilidade }}</strong>
+        </div>
+
+      </div>
+
+    </aside>
+
+  </div>
+
+</div>
