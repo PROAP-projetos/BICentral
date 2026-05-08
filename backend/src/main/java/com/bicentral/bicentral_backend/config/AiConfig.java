@@ -1,11 +1,15 @@
 package com.bicentral.bicentral_backend.config;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
+import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
+import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 
 @Configuration
 public class AiConfig {
@@ -18,6 +22,9 @@ public class AiConfig {
 
     @Value("${ollama.model.name:llama3}")
     private String ollamaModelName;
+
+    @Value("${ollama.embedding.model.name:nomic-embed-text}")
+    private String ollamaEmbeddingModelName;
 
     @Bean("geminiModel")
     public ChatLanguageModel geminiModel() {
@@ -32,6 +39,23 @@ public class AiConfig {
         return OllamaChatModel.builder()
                 .baseUrl(ollamaBaseUrl)
                 .modelName(ollamaModelName)
+                .build();
+    }
+    @Primary
+    @Bean("geminiEmbeddingModel")
+    public EmbeddingModel geminiEmbeddingModel() {
+        return GoogleAiEmbeddingModel.builder()
+                .apiKey(geminiApiKey)
+                .modelName("gemini-embedding-001")
+                .outputDimensionality(768)
+                .build();
+    }
+
+    @Bean("ollamaEmbeddingModel")
+    public EmbeddingModel ollamaEmbeddingModel() {
+        return OllamaEmbeddingModel.builder()
+                .baseUrl(ollamaBaseUrl)
+                .modelName(ollamaEmbeddingModelName)
                 .build();
     }
 }
