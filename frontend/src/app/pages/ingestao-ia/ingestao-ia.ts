@@ -12,45 +12,26 @@ interface ArquivoUpload {
 @Component({
   selector: 'app-ingestao-ia',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule
-  ],
+  imports: [CommonModule, FormsModule],
   templateUrl: './ingestao-ia.html',
   styleUrls: ['./ingestao-ia.css']
 })
 export class IngestaoIaComponent {
-
   arquivos: ArquivoUpload[] = [];
-
   equipeSelecionada = 'COPLAN';
   painelRelacionado = 'Painel do PAT';
   visibilidade = 'PRIVADO';
-
   carregando = false;
   mensagem = '';
   erro = false;
   timeoutMensagem: any = null;
 
-  equipes = [
-    'COPLAN',
-    'Orçamento',
-    'Desenvolvimento',
-    'Comunicação',
-    'Governança'
-  ];
-
-  paineis = [
-    'Painel do PAT',
-    'Painel Estratégico',
-    'Painel de Riscos',
-    'Dashboard PROAP'
-  ];
+  equipes = ['COPLAN', 'Orçamento', 'Desenvolvimento', 'Comunicação'];
+  paineis = ['Painel do PAT', 'Painel Estratégico', 'Painel de Riscos'];
 
   onArquivosSelecionados(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (!input.files) return;
-
     this.adicionarArquivos(input.files);
     input.value = '';
   }
@@ -63,7 +44,6 @@ export class IngestaoIaComponent {
   onDrop(event: DragEvent): void {
     event.preventDefault();
     event.stopPropagation();
-
     const files = event.dataTransfer?.files;
     if (files && files.length > 0) {
       this.adicionarArquivos(files);
@@ -71,23 +51,8 @@ export class IngestaoIaComponent {
   }
 
   private adicionarArquivos(files: FileList): void {
-    const maxSize = 50 * 1024 * 1024; // 50 MB
-
     for (let i = 0; i < files.length; i++) {
       const arquivo = files[i];
-
-      if (arquivo.size > maxSize) {
-        this.mostrarMensagem(`Arquivo ${arquivo.name} excede o limite de 50MB`, true);
-        continue;
-      }
-
-      const extensao = arquivo.name.split('.').pop()?.toLowerCase();
-      const allowed = ['xlsx', 'csv', 'docx', 'pdf'];
-      if (!extensao || !allowed.includes(extensao)) {
-        this.mostrarMensagem(`Formato não permitido: ${arquivo.name}`, true);
-        continue;
-      }
-
       this.arquivos.push({
         arquivo,
         status: 'AGUARDANDO',
@@ -102,18 +67,19 @@ export class IngestaoIaComponent {
 
   confirmarIngestao(): void {
     if (this.arquivos.length === 0) {
-      this.mostrarMensagem('Selecione ao menos um documento para ingestão.', true);
+      this.mostrarMensagem('Selecione ao menos um documento.', true);
       return;
     }
 
     this.carregando = true;
-    this.erro = false;
-
-    const processados: number[] = [];
+    let concluidos = 0;
 
     this.arquivos.forEach((item, index) => {
       if (item.status === 'PROCESSADO') {
-        processados.push(index);
+        concluidos++;
+        if (concluidos === this.arquivos.length) {
+          this.carregando = false;
+        }
         return;
       }
 
@@ -121,38 +87,25 @@ export class IngestaoIaComponent {
       let progresso = 0;
 
       const intervalo = setInterval(() => {
-        progresso += 12 + Math.floor(Math.random() * 8);
+        progresso += 15 + Math.random() * 10;
         item.progresso = Math.min(progresso, 100);
 
         if (progresso >= 100) {
           clearInterval(intervalo);
           item.status = 'PROCESSADO';
-          item.progresso = 100;
-          processados.push(index);
+          concluidos++;
 
-          if (processados.length === this.arquivos.length) {
+          if (concluidos === this.arquivos.length) {
             this.carregando = false;
-            this.mostrarMensagem(
-              `${this.arquivos.length} documento(s) enviado(s) para a fila de ingestão da IA.`,
-              false
-            );
+            this.mostrarMensagem(`${this.arquivos.length} documento(s) enviado(s) para ingestão.`, false);
           }
         }
-      }, 200 + (index * 80));
+      }, 200 + index * 80);
     });
-
-    if (this.arquivos.every(a => a.status === 'PROCESSADO')) {
-      this.carregando = false;
-      this.mostrarMensagem('Documentos já processados anteriormente.', false);
-    }
   }
 
   getQuantidadeArquivos(): number {
     return this.arquivos.length;
-  }
-
-  getArquivosProcessados(): number {
-    return this.arquivos.filter(arquivo => arquivo.status === 'PROCESSADO').length;
   }
 
   getTamanhoFormatado(bytes: number): string {
@@ -161,56 +114,26 @@ export class IngestaoIaComponent {
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   }
 
-  getIconeArquivo(nome: string): string {
-    const ext = nome.split('.').pop()?.toLowerCase();
-    switch (ext) {
-      case 'xlsx': return '📊';
-      case 'csv': return '📈';
-      case 'pdf': return '📄';
-      case 'docx': return '📝';
-      default: return '📁';
-    }
-  }
-
   getTipoArquivo(nome: string): string {
     const ext = nome.split('.').pop()?.toLowerCase();
-    switch (ext) {
-      case 'xlsx': return 'Planilha Excel';
-      case 'csv': return 'CSV';
-      case 'pdf': return 'PDF';
-      case 'docx': return 'Word';
-      default: return 'Documento';
-    }
-  }
-
-  getStatusTexto(status: string): string {
-    switch (status) {
-      case 'AGUARDANDO': return 'Na fila';
-      case 'PROCESSANDO': return 'Processando';
-      case 'PROCESSADO': return 'Processado';
-      case 'ERRO': return 'Erro';
-      default: return status;
-    }
+    const tipos: Record<string, string> = {
+      xlsx: 'Planilha Excel',
+      csv: 'CSV',
+      pdf: 'PDF',
+      docx: 'Word'
+    };
+    return tipos[ext || ''] || 'Documento';
   }
 
   private mostrarMensagem(texto: string, isErro: boolean): void {
     this.mensagem = texto;
     this.erro = isErro;
-
-    if (this.timeoutMensagem) {
-      clearTimeout(this.timeoutMensagem);
-    }
-
-    this.timeoutMensagem = setTimeout(() => {
-      this.fecharMensagem();
-    }, 5000);
+    if (this.timeoutMensagem) clearTimeout(this.timeoutMensagem);
+    this.timeoutMensagem = setTimeout(() => this.fecharMensagem(), 5000);
   }
 
   fecharMensagem(): void {
     this.mensagem = '';
     this.erro = false;
-    if (this.timeoutMensagem) {
-      clearTimeout(this.timeoutMensagem);
-    }
   }
 }
