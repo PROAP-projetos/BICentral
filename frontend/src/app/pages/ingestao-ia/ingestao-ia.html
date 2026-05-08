@@ -42,7 +42,7 @@
             </span>
             <button class="remover-btn" (click)="removerArquivo(i)">✕</button>
           </div>
-          <div class="progress-bar" *ngIf="item.status === 'PROCESSANDO'">
+          <div class="progress-bar">
             <div class="progress-fill" [style.width.%]="item.progresso"></div>
           </div>
         </div>
@@ -61,16 +61,6 @@
           <div class="select-wrapper">
             <select [(ngModel)]="equipeSelecionada">
               <option *ngFor="let equipe of equipes" [value]="equipe">{{ equipe }}</option>
-            </select>
-            <span class="select-arrow">▼</span>
-          </div>
-        </div>
-
-        <div class="metadata-field">
-          <label>Painel relacionado</label>
-          <div class="select-wrapper">
-            <select [(ngModel)]="painelRelacionado">
-              <option *ngFor="let painel of paineis" [value]="painel">{{ painel }}</option>
             </select>
             <span class="select-arrow">▼</span>
           </div>

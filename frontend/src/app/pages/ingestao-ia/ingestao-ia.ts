@@ -1,5 +1,5 @@
 // ingestao-ia.ts
-import { Component } from '@angular/core';
+import { Component, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -14,7 +14,8 @@ interface ArquivoUpload {
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './ingestao-ia.html',
-  styleUrls: ['./ingestao-ia.css']
+  styleUrls: ['./ingestao-ia.css'],
+  encapsulation: ViewEncapsulation.None
 })
 export class IngestaoIaComponent {
   arquivos: ArquivoUpload[] = [];
