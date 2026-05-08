@@ -248,8 +248,6 @@ A tela nao precisa conhecer embeddings, Supabase Vector ou funcoes SQL.
 ## Observacoes importantes
 
 - Os endpoints `/ai/test/**` sao temporarios e servem para validacao tecnica.
-- O endpoint oficial de ingestao continua sendo responsabilidade do Lean.
-- A tela de ingestao continua sendo responsabilidade da Neci.
 - A regra de visibilidade precisa ser mantida: documento `PUBLICO` pode ser consultado futuramente por usuarios autenticados; documento `PRIVADO` deve ficar restrito a equipe correta.
 - O campo `content` no retorno da busca semantica nao deve ser removido sem ajustar o `ConsultaService`.
 
