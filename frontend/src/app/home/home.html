@@ -49,16 +49,29 @@
   </nav>
 </header>
 
-<!-- ✅ BOTÃO ADICIONAR (ABRE O SEU COMPONENTE COMO POPUP) -->
 <nav class="sub-nav-button-container">
-  <button
-    type="button"
-    class="sub-nav-button"
-    *ngIf="isLoggedIn && canEdit"
-    (click)="abrirAdicionar()">
-    Adicionar Painel
-  </button>
+  <div class="sub-nav-actions">
+    <a class="sub-nav-agent-link" routerLink="/ingestao-ia">
+      <span>IA</span>
+      Ingestão
+    </a>
+
+    <button
+      type="button"
+      class="sub-nav-button"
+      *ngIf="isLoggedIn && canEdit"
+      (click)="abrirAdicionar()">
+      Adicionar Painel
+    </button>
+  </div>
 </nav>
+
+<div class="agent-float">
+  <button type="button" class="agent-btn" (click)="mostrarBalaoAgente()">
+    <span></span>Pergunte ao agente
+  </button>
+  <div class="agent-bubble" *ngIf="agentBubbleVisible">calma, to quase nascendo</div>
+</div>
 
 <div class="home-body" [class.welcome-mode]="showWelcomeOverlay">
   <main class="content-area">

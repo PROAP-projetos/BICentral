@@ -20,6 +20,16 @@
   --color-warning: #ffc107;
   --color-error: #f44336;
   --color-info: #3e6d9a;
+
+  /*pra tela de ingestao*/
+    --primary: #004a80;
+    --secondary: #008577;
+    --success: #00b875;
+    --border: #e5e9f0;
+    --bg: #f5f7fb;
+    --card-bg: #ffffff;
+    --text: #1a2a3a;
+    --text-muted: #7a8b9f;
 }
 
 body {

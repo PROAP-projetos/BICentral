@@ -67,6 +67,8 @@ isWelcomeClosing = false;
 welcomeOutroTitle = 'Que bom ter voce aqui.';
 welcomeOutroSubtitle = 'Preparando seu espaco para organizar paineis...';
 private welcomeTimers: number[] = [];
+agentBubbleVisible = false;
+private agentBubbleTimer?: number;
 
 readonly welcomeSlides = [
   {
@@ -155,6 +157,9 @@ constructor(
   ngOnDestroy(): void {
     this.pararPolling();
     this.clearWelcomeTimers();
+    if (this.agentBubbleTimer) {
+      window.clearTimeout(this.agentBubbleTimer);
+    }
   }
 
   trackById(index: number, item: PainelDTO) {
@@ -168,6 +173,16 @@ constructor(
   // -------------------------
   get equipeMenuLabel(): string {
     return this.equipeSelecionada?.nome || 'Minha Equipe';
+  }
+
+  mostrarBalaoAgente(): void {
+    this.agentBubbleVisible = true;
+    if (this.agentBubbleTimer) {
+      window.clearTimeout(this.agentBubbleTimer);
+    }
+    this.agentBubbleTimer = window.setTimeout(() => {
+      this.agentBubbleVisible = false;
+    }, 2600);
   }
 
   private toEquipeMenuItem(equipe: Equipe): EquipeMenuItem | null {
