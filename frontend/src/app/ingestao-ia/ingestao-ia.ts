@@ -1,7 +1,8 @@
 // ingestao-ia.ts
-import { Component, ViewEncapsulation } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 
 interface ArquivoUpload {
   arquivo: File;
@@ -12,23 +13,35 @@ interface ArquivoUpload {
 @Component({
   selector: 'app-ingestao-ia',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive],
   templateUrl: './ingestao-ia.html',
-  styleUrls: ['./ingestao-ia.css'],
-  encapsulation: ViewEncapsulation.None
+  styleUrls: ['./ingestao-ia.css']
 })
 export class IngestaoIaComponent {
   arquivos: ArquivoUpload[] = [];
   equipeSelecionada = 'COPLAN';
-  painelRelacionado = 'Painel do PAT';
   visibilidade = 'PRIVADO';
+  usuarioLogado = 'dallyla.moraes';
   carregando = false;
   mensagem = '';
   erro = false;
   timeoutMensagem: any = null;
+  agentBubbleVisible = false;
+  private agentBubbleTimer?: number;
 
   equipes = ['COPLAN', 'Orçamento', 'Desenvolvimento', 'Comunicação'];
-  paineis = ['Painel do PAT', 'Painel Estratégico', 'Painel de Riscos'];
+
+  constructor() {
+    const userRaw = localStorage.getItem('user');
+    if (!userRaw) return;
+
+    try {
+      const user = JSON.parse(userRaw);
+      this.usuarioLogado = user.username || user.email || this.usuarioLogado;
+    } catch {
+      this.usuarioLogado = 'dallyla.moraes';
+    }
+  }
 
   onArquivosSelecionados(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -64,6 +77,16 @@ export class IngestaoIaComponent {
 
   removerArquivo(index: number): void {
     this.arquivos.splice(index, 1);
+  }
+
+  mostrarBalaoAgente(): void {
+    this.agentBubbleVisible = true;
+    if (this.agentBubbleTimer) {
+      window.clearTimeout(this.agentBubbleTimer);
+    }
+    this.agentBubbleTimer = window.setTimeout(() => {
+      this.agentBubbleVisible = false;
+    }, 2600);
   }
 
   confirmarIngestao(): void {
@@ -124,6 +147,19 @@ export class IngestaoIaComponent {
       docx: 'Word'
     };
     return tipos[ext || ''] || 'Documento';
+  }
+
+  getTipoClasse(nome: string): string {
+    const ext = nome.split('.').pop()?.toLowerCase();
+    if (ext === 'xlsx' || ext === 'csv') return 'sheet';
+    if (ext === 'pdf') return 'pdf';
+    if (ext === 'docx') return 'doc';
+    return 'default';
+  }
+
+  getTipoAbreviado(nome: string): string {
+    const ext = nome.split('.').pop()?.toUpperCase();
+    return ext || 'DOC';
   }
 
   private mostrarMensagem(texto: string, isErro: boolean): void {

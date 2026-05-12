@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { IngestaoIa } from './ingestao-ia';
+import { IngestaoIaComponent } from './ingestao-ia';
 
-describe('IngestaoIa', () => {
-  let component: IngestaoIa;
-  let fixture: ComponentFixture<IngestaoIa>;
+describe('IngestaoIaComponent', () => {
+  let component: IngestaoIaComponent;
+  let fixture: ComponentFixture<IngestaoIaComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [IngestaoIa]
+      imports: [IngestaoIaComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(IngestaoIa);
+    fixture = TestBed.createComponent(IngestaoIaComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });
