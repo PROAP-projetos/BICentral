@@ -89,11 +89,8 @@ public class IaController {
             List<String> chunks = ingestaoService.fatiarTexto(textoLimpo);
 
             // 5. Integração com o Pipeline de IA
-            List<ChunkDTO> listaChunks = ingestaoService.montarChunksComMetadados(chunks, equipe.getNome(), visibilidade, originalFilename);
-            embeddingService.salvarChunks(listaChunks, equipe.getId());
-
-            // Mock de auditoria para persistência em JSON
-            ingestaoService.mockSalvarNoBanco(chunks, equipe.getNome(), visibilidade, originalFilename);
+            // O IngestaoService agora orquestra a criação de metadados e o salvamento real via EmbeddingService
+            ingestaoService.salvarNoBanco(chunks, equipe.getNome(), visibilidade, originalFilename, equipe.getId());
 
             return ResponseEntity.ok(Map.of(
                     "mensagem", "Documento enviado para ingestão e processado com sucesso.",
