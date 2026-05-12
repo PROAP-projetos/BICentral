@@ -1,9 +1,11 @@
 package com.bicentral.bicentral_backend.controller;
 
+import com.bicentral.bicentral_backend.dto.ChunkDTO;
 import com.bicentral.bicentral_backend.model.Equipe;
 import com.bicentral.bicentral_backend.model.Usuario;
 import com.bicentral.bicentral_backend.repository.EquipeRepository;
 import com.bicentral.bicentral_backend.repository.MembroEquipeRepository;
+import com.bicentral.bicentral_backend.service.EmbeddingService;
 import com.bicentral.bicentral_backend.service.IngestaoService;
 import com.bicentral.bicentral_backend.service.UsuarioService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +36,9 @@ public class IaController {
 
     @Autowired
     private UsuarioService usuarioService;
+
+    @Autowired
+    private EmbeddingService embeddingService;
 
     @PostMapping("/ingestao")
     public ResponseEntity<?> realizarIngestao(
@@ -83,8 +88,11 @@ public class IaController {
             String textoLimpo = ingestaoService.limparTexto(textoBruto);
             List<String> chunks = ingestaoService.fatiarTexto(textoLimpo);
 
-            // 5. Mock de salvamento (Pronto para integrar com Dallyla futuramente)
-            // Aqui estamos usando o mockSalvarNoBanco que gera o JSON para preview
+            // 5. Integração com o Pipeline de IA
+            List<ChunkDTO> listaChunks = ingestaoService.montarChunksComMetadados(chunks, equipe.getNome(), visibilidade, originalFilename);
+            embeddingService.salvarChunks(listaChunks, equipe.getId());
+
+            // Mock de auditoria para persistência em JSON
             ingestaoService.mockSalvarNoBanco(chunks, equipe.getNome(), visibilidade, originalFilename);
 
             return ResponseEntity.ok(Map.of(
