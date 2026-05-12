@@ -1,0 +1,82 @@
+<div class="agent-shell">
+  <header class="ingestao-topbar">
+    <a class="logo" routerLink="/">BICentral</a>
+
+    <nav class="top-nav" aria-label="Navegação principal">
+      <ul>
+        <li><a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Painéis</a></li>
+        <li><a routerLink="/ingestao-ia" routerLinkActive="active">Ingestão</a></li>
+        <li><a routerLink="/agente" routerLinkActive="active">Agente IA</a></li>
+      </ul>
+    </nav>
+
+    <div class="topbar-user">
+      <span>{{ usuarioLogado }} · {{ equipeSelecionada }}</span>
+      <div class="agent-menu">
+        <a class="agent-btn" routerLink="/agente">
+          <span></span>Pergunte ao agente
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="agent-page">
+    <aside class="context-panel" aria-label="Contexto do agente">
+      <section class="context-section">
+        <h2>Fontes Disponíveis</h2>
+
+        <div class="source-list">
+          <p class="source-state" *ngIf="carregandoFontes">Carregando fontes...</p>
+          <p class="source-state" *ngIf="!carregandoFontes && fontesDisponiveis.length === 0">
+            Nenhuma fonte disponível para a equipe selecionada.
+          </p>
+
+          <article class="source-item" *ngFor="let fonte of fontesDisponiveis" [ngClass]="fonte.tipo">
+            <span class="source-dot"></span>
+            <div class="source-content">
+              <strong>{{ fonte.nome }}</strong>
+              <span [class.private]="fonte.acesso === 'privado'">{{ fonte.acesso }}</span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="context-section">
+        <h2>Modelo Ativo</h2>
+        <div class="model-card">
+          <strong>{{ modeloAtivo.nome }}</strong>
+          <span>{{ modeloAtivo.detalhes }}</span>
+        </div>
+      </section>
+    </aside>
+
+    <section class="chat-panel" aria-label="Conversa com o agente">
+      <div class="messages" #messagesContainer>
+        <div *ngFor="let m of messages" class="msg" [ngClass]="m.from">
+          <div class="avatar" *ngIf="m.from === 'bot'">BI</div>
+          <div class="bubble">{{ m.text }}</div>
+        </div>
+      </div>
+
+      <div class="composer">
+        <div class="agent-suggestions">
+          <button *ngFor="let s of suggestions" class="chip" type="button" [disabled]="carregando" (click)="useSuggestion(s)">{{ s }}</button>
+        </div>
+
+        <p class="agent-error" *ngIf="erro">{{ erro }}</p>
+
+        <div class="agent-input">
+          <input
+            [(ngModel)]="input"
+            placeholder="Pergunte sobre os dados da PROAP..."
+            (keyup.enter)="send()"
+            [disabled]="carregando"
+          />
+          <button class="send" type="button" aria-label="Enviar pergunta" [disabled]="carregando" (click)="send()">
+            {{ carregando ? '...' : '>' }}
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>

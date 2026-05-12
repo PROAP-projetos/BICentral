@@ -6,14 +6,15 @@
       <ul>
         <li><a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Painéis</a></li>
         <li><a routerLink="/ingestao-ia" routerLinkActive="active">Ingestão</a></li>
+        <li><a routerLink="/agente" routerLinkActive="active">Agente IA</a></li>
       </ul>
     </nav>
     <div class="topbar-user">
       <span>{{ usuarioLogado }} · {{ equipeSelecionada }}</span>
       <div class="agent-menu">
-        <button type="button" class="agent-btn" (click)="mostrarBalaoAgente()">
+        <a class="agent-btn" routerLink="/agente">
           <span></span>Pergunte ao agente
-        </button>
+        </a>
         <div class="agent-bubble" *ngIf="agentBubbleVisible">calma, to quase nascendo</div>
       </div>
     </div>
@@ -30,14 +31,13 @@
         <section class="left-column">
           <div class="upload-card">
             <div class="upload-area" (click)="fileInput.click()" (dragover)="onDragOver($event)" (drop)="onDrop($event)">
-              <input type="file" multiple #fileInput (change)="onArquivosSelecionados($event)" hidden accept=".xlsx,.csv,.docx,.pdf">
+              <input type="file" multiple #fileInput (change)="onArquivosSelecionados($event)" hidden accept=".xlsx,.pdf">
 
               <div class="upload-icon">↥</div>
               <h2>Arraste ou clique para adicionar arquivos</h2>
               <p class="upload-limite">Máximo 50 MB por arquivo</p>
               <div class="formatos">
-                <span class="formato-badge sheet">XLSX / CSV</span>
-                <span class="formato-badge doc">DOCX</span>
+                <span class="formato-badge sheet">XLSX</span>
                 <span class="formato-badge pdf">PDF</span>
               </div>
             </div>
@@ -56,8 +56,8 @@
                     <p class="arquivo-meta">{{ getTamanhoFormatado(item.arquivo.size) }} · {{ getTipoArquivo(item.arquivo.name) }}</p>
                   </div>
                   <div class="arquivo-actions">
-                    <span class="status-badge" [class.processado]="item.status === 'PROCESSADO'" [class.fila]="item.status !== 'PROCESSADO'">
-                      {{ item.status === 'PROCESSADO' ? 'Processado' : 'Na fila' }}
+                    <span class="status-badge" [ngClass]="getStatusClasse(item.status)">
+                      {{ getStatusArquivo(item.status) }}
                     </span>
                     <button class="remover-btn" type="button" aria-label="Remover arquivo" (click)="removerArquivo(i)">×</button>
                   </div>

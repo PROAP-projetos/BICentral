@@ -3,6 +3,8 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { finalize } from 'rxjs';
+import { IngestaoIaService } from '../services/ingestao-ia';
 
 interface ArquivoUpload {
   arquivo: File;
@@ -31,7 +33,7 @@ export class IngestaoIaComponent {
 
   equipes = ['COPLAN', 'Orçamento', 'Desenvolvimento', 'Comunicação'];
 
-  constructor() {
+  constructor(private ingestaoIaService: IngestaoIaService) {
     const userRaw = localStorage.getItem('user');
     if (!userRaw) return;
 
@@ -67,6 +69,11 @@ export class IngestaoIaComponent {
   private adicionarArquivos(files: FileList): void {
     for (let i = 0; i < files.length; i++) {
       const arquivo = files[i];
+      if (!this.arquivoPermitido(arquivo.name)) {
+        this.mostrarMensagem('Envie apenas arquivos PDF ou XLSX.', true);
+        continue;
+      }
+
       this.arquivos.push({
         arquivo,
         status: 'AGUARDANDO',
@@ -96,36 +103,68 @@ export class IngestaoIaComponent {
     }
 
     this.carregando = true;
-    let concluidos = 0;
+    let finalizados = 0;
 
-    this.arquivos.forEach((item, index) => {
+    this.arquivos.forEach((item) => {
       if (item.status === 'PROCESSADO') {
-        concluidos++;
-        if (concluidos === this.arquivos.length) {
+        finalizados++;
+        if (finalizados === this.arquivos.length) {
           this.carregando = false;
         }
         return;
       }
 
       item.status = 'PROCESSANDO';
-      let progresso = 0;
+      item.progresso = 35;
 
-      const intervalo = setInterval(() => {
-        progresso += 15 + Math.random() * 10;
-        item.progresso = Math.min(progresso, 100);
-
-        if (progresso >= 100) {
-          clearInterval(intervalo);
-          item.status = 'PROCESSADO';
-          concluidos++;
-
-          if (concluidos === this.arquivos.length) {
+      this.ingestaoIaService.enviarArquivo(
+        item.arquivo,
+        this.equipeSelecionada,
+        this.visibilidade as 'PUBLICO' | 'PRIVADO'
+      )
+        .pipe(finalize(() => {
+          finalizados++;
+          if (finalizados === this.arquivos.length) {
             this.carregando = false;
-            this.mostrarMensagem(`${this.arquivos.length} documento(s) enviado(s) para ingestão.`, false);
           }
-        }
-      }, 200 + index * 80);
+        }))
+        .subscribe({
+          next: () => {
+            item.status = 'PROCESSADO';
+            item.progresso = 100;
+            this.mostrarMensagem('Documento enviado para ingestão.', false);
+          },
+          error: (err) => {
+            item.status = 'ERRO';
+            item.progresso = 100;
+            const mensagem = typeof err?.error === 'string'
+              ? err.error
+              : 'Erro ao enviar documento para ingestão.';
+            this.mostrarMensagem(mensagem, true);
+          }
+        });
     });
+  }
+
+  private arquivoPermitido(nome: string): boolean {
+    const ext = nome.split('.').pop()?.toLowerCase();
+    return ext === 'pdf' || ext === 'xlsx';
+  }
+
+  getStatusArquivo(status: ArquivoUpload['status']): string {
+    const labels: Record<ArquivoUpload['status'], string> = {
+      AGUARDANDO: 'Na fila',
+      PROCESSANDO: 'Processando',
+      PROCESSADO: 'Processado',
+      ERRO: 'Erro'
+    };
+    return labels[status];
+  }
+
+  getStatusClasse(status: ArquivoUpload['status']): string {
+    if (status === 'PROCESSADO') return 'processado';
+    if (status === 'ERRO') return 'erro';
+    return 'fila';
   }
 
   getQuantidadeArquivos(): number {
@@ -142,18 +181,15 @@ export class IngestaoIaComponent {
     const ext = nome.split('.').pop()?.toLowerCase();
     const tipos: Record<string, string> = {
       xlsx: 'Planilha Excel',
-      csv: 'CSV',
-      pdf: 'PDF',
-      docx: 'Word'
+      pdf: 'PDF'
     };
     return tipos[ext || ''] || 'Documento';
   }
 
   getTipoClasse(nome: string): string {
     const ext = nome.split('.').pop()?.toLowerCase();
-    if (ext === 'xlsx' || ext === 'csv') return 'sheet';
+    if (ext === 'xlsx') return 'sheet';
     if (ext === 'pdf') return 'pdf';
-    if (ext === 'docx') return 'doc';
     return 'default';
   }
 

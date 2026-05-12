@@ -67,10 +67,9 @@
 </nav>
 
 <div class="agent-float">
-  <button type="button" class="agent-btn" (click)="mostrarBalaoAgente()">
+  <a class="agent-btn" routerLink="/agente">
     <span></span>Pergunte ao agente
-  </button>
-  <div class="agent-bubble" *ngIf="agentBubbleVisible">calma, to quase nascendo</div>
+  </a>
 </div>
 
 <div class="home-body" [class.welcome-mode]="showWelcomeOverlay">
