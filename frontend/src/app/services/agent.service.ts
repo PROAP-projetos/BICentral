@@ -34,8 +34,18 @@ export class AgentService {
 
   constructor(private http: HttpClient) {}
 
-  consultar(pergunta: string, equipeId: number): Observable<ConsultaAgenteResponse> {
-    return this.http.post<ConsultaAgenteResponse>(`${this.apiUrl}/consulta`, { pergunta, equipeId });
+  consultar(texto: string, equipeId: number, modelo: string): Observable<any> {
+    const urlNova = 'http://localhost:8080/api/proiap/perguntar';
+    
+    const body = {
+      texto: texto,
+      equipeId: equipeId,
+      modelo: modelo
+    };
+    
+    return this.http.post(urlNova, body, { 
+        withCredentials: true 
+    });
   }
 
   listarFontes(equipeId: number): Observable<FontesAgenteResponse> {

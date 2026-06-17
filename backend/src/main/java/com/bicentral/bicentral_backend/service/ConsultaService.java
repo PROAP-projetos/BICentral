@@ -29,7 +29,7 @@ public class ConsultaService {
     @Value("${supabase.key}")
     private String supabaseKey;
 
-    private final EmbeddingModel geminiEmbeddingModel;
+    private final EmbeddingModel embeddingModel; 
     private final EmbeddingModel ollamaEmbeddingModel;
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -38,23 +38,23 @@ public class ConsultaService {
             .build();
 
     public ConsultaService(
-            @Qualifier("geminiEmbeddingModel") EmbeddingModel geminiEmbeddingModel,
+            EmbeddingModel embeddingModel, 
             @Qualifier("ollamaEmbeddingModel") EmbeddingModel ollamaEmbeddingModel) {
-        this.geminiEmbeddingModel = geminiEmbeddingModel;
+        this.embeddingModel = embeddingModel;
         this.ollamaEmbeddingModel = ollamaEmbeddingModel;
     }
 
     public List<String> buscar(String pergunta, Long equipeId) {
         try {
-            List<Float> vetor = geminiEmbeddingModel
+            List<Float> vetor = embeddingModel
                     .embed(TextSegment.from(pergunta))
                     .content()
                     .vectorAsList();
 
-            return chamarFuncaoSupabase("buscar_por_gemini", vetor, equipeId);
+            return chamarFuncaoSupabase("buscar_por_local", vetor, equipeId);
 
         } catch (Exception e) {
-            System.err.println("Gemini indisponível, usando Ollama: " + e.getMessage());
+            System.err.println("Modelo de embedding principal indisponível, usando Ollama: " + e.getMessage());
 
             try {
                 List<Float> vetor = ollamaEmbeddingModel
@@ -65,7 +65,7 @@ public class ConsultaService {
                 return chamarFuncaoSupabase("buscar_por_ollama", vetor, equipeId);
 
             } catch (Exception ex) {
-                throw new RuntimeException("Ambos os provedores falharam: " + ex.getMessage());
+                throw new RuntimeException("Ambos os provedores de embedding falharam: " + ex.getMessage());
             }
         }
     }

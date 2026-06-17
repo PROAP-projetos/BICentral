@@ -69,6 +69,8 @@ welcomeOutroSubtitle = 'Preparando seu espaco para organizar paineis...';
 private welcomeTimers: number[] = [];
 agentBubbleVisible = false;
 private agentBubbleTimer?: number;
+showFooterSignature = false;
+private footerSignatureTimer?: number;
 
 readonly welcomeSlides = [
   {
@@ -160,6 +162,9 @@ constructor(
     if (this.agentBubbleTimer) {
       window.clearTimeout(this.agentBubbleTimer);
     }
+    if (this.footerSignatureTimer) {
+      window.clearTimeout(this.footerSignatureTimer);
+    }
   }
 
   trackById(index: number, item: PainelDTO) {
@@ -183,6 +188,16 @@ constructor(
     this.agentBubbleTimer = window.setTimeout(() => {
       this.agentBubbleVisible = false;
     }, 2600);
+  }
+
+  revelarAssinaturaFooter(): void {
+    this.showFooterSignature = true;
+    if (this.footerSignatureTimer) {
+      window.clearTimeout(this.footerSignatureTimer);
+    }
+    this.footerSignatureTimer = window.setTimeout(() => {
+      this.showFooterSignature = false;
+    }, 7000);
   }
 
   private toEquipeMenuItem(equipe: Equipe): EquipeMenuItem | null {

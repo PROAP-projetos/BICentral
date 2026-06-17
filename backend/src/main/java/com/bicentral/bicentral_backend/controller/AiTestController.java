@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.bicentral.bicentral_backend.service.ConsultaService;
-import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 
@@ -20,10 +19,9 @@ import java.util.List;
 @RequestMapping("/ai/test")
 public class AiTestController {
 
-    @Qualifier("geminiModel")
     @Autowired
-    private ChatLanguageModel geminiModel;
-
+    private ChatLanguageModel groqModel; 
+    
     @Qualifier("ollamaModel")
     @Autowired
     private ChatLanguageModel ollamaModel;
@@ -31,9 +29,12 @@ public class AiTestController {
     @Autowired
     private IngestaoService ingestaoService;
 
-    @GetMapping("/gemini")
-    public String testGemini(@RequestParam(defaultValue = "Olá!") String msg) {
-        return geminiModel.chat(msg);
+    @Autowired
+    private ConsultaService consultaService;
+
+    @GetMapping("/groq")
+    public String testGroq(@RequestParam(defaultValue = "Olá!") String msg) {
+        return groqModel.chat(msg);
     }
 
     @GetMapping("/ollama")
@@ -49,32 +50,13 @@ public class AiTestController {
             @RequestParam(required = false) String nomeArquivo,
             @RequestParam Long equipeId
     ) throws Exception {
-        String textoBruto;
-        String caminhoLower = caminhoArquivo.toLowerCase();
-
-        if (caminhoLower.endsWith(".xlsx")) {
-            textoBruto = ingestaoService.extrairTextoExcel(caminhoArquivo);
-        } else {
-            textoBruto = ingestaoService.extrairTextoPDF(caminhoArquivo);
-        }
-
-        String textoLimpo = ingestaoService.limparTexto(textoBruto);
-        List<String> chunks = ingestaoService.fatiarTexto(textoLimpo);
-
         String nomeFinalArquivo = (nomeArquivo == null || nomeArquivo.isBlank())
                 ? new java.io.File(caminhoArquivo).getName()
                 : nomeArquivo;
 
-        // gera embeddings e salva no Supabase
-        ingestaoService.salvarNoBanco(chunks, equipe, acesso, nomeFinalArquivo, equipeId);
-
-        // retorna os chunks para visualização
-        List<ChunkDTO> json = ingestaoService.montarChunksComMetadados(chunks, equipe, acesso, nomeFinalArquivo);
-        return ResponseEntity.ok(json);
+        List<ChunkDTO> chunks = ingestaoService.executarIngestao(caminhoArquivo, nomeFinalArquivo, equipe, acesso, equipeId);
+        return ResponseEntity.ok(chunks);
     }
-
-    @Autowired
-    private ConsultaService consultaService;
 
     @GetMapping("/consulta")
     public ResponseEntity<List<String>> consultar(

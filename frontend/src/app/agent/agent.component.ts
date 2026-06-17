@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewChecked, AfterViewInit, Component, ElementRef, ViewChild } from '@angular/core';
+import { AfterViewChecked, AfterViewInit, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
+import { GraficoIaComponent } from '../grafico-ia/grafico-ia';
 import { AgentService } from '../services/agent.service';
 
 interface FonteDisponivel {
@@ -11,75 +12,131 @@ interface FonteDisponivel {
   tipo: 'planilha' | 'pdf' | 'relatorio' | 'documento';
 }
 
-interface EquipeSelecionada {
+interface ChatSession {
   id: number;
-  nome: string;
-  role?: string;
+  titulo: string;
+  // Adicionado o array de fontes aqui!
+  messages: { from: 'bot' | 'user'; text?: string; spec?: any; fontes?: string[] }[];
 }
 
 @Component({
   selector: 'app-agent',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive],
+  imports: [CommonModule, FormsModule, RouterLink, GraficoIaComponent],
   templateUrl: './agent.html',
   styleUrls: ['./agent.css']
 })
-export class AgentComponent implements AfterViewInit, AfterViewChecked {
+export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked {
   private static readonly SELECTED_EQUIPE_KEY = 'bicentral_selected_equipe';
-
   @ViewChild('messagesContainer') private messagesContainer?: ElementRef<HTMLDivElement>;
+  
+  isDarkMode = false;
   private scrollPendente = true;
-
   usuarioLogado = 'dallyla.moraes';
-  equipeSelecionada = 'COPLAN';
+  equipeSelecionada = 'Orçamento';
   equipeId?: number;
-
   fontesDisponiveis: FonteDisponivel[] = [];
+  
+  modelos = ['Llama 3 (Groq)', 'Gemini 2.5 Flash', 'Ollama Local'];
+  modeloAtivoIndex = 0;
 
-  modeloAtivo = {
-    nome: 'Gemini 2.5 Flash',
-    detalhes: 'via API · gemini-embedding-001'
-  };
-
-  messages: { from: 'bot' | 'user'; text: string }[] = [
-    { from: 'bot', text: 'Olá, Dallyla! Sou o agente de IA do BICentral, alimentado pelos documentos da PROAP.\n\nPosso consultar planilhas do PAT, o PDI, indicadores do TCU e outros documentos ingeridos. Acesso apenas o que sua equipe tem permissão de visualizar.\n\nComo posso ajudar?' }
+  sessoes: ChatSession[] = [
+    { id: 1, titulo: 'Nova Conversa', messages: [] }
   ];
-
-  suggestions = [
-    'Quantas tarefas do PAT estão em atraso?',
-    'Qual é a meta 3.2 do PDI?',
-    'Resumo dos indicadores do TCU'
-  ];
+  sessaoAtual: ChatSession = this.sessoes[0];
 
   input = '';
   carregando = false;
   carregandoFontes = false;
   erro = '';
+  
+  mensagemBoasVindas = '';
 
   constructor(private agentService: AgentService) {
-    const userRaw = localStorage.getItem('user');
-    if (userRaw) {
-      try {
-        const user = JSON.parse(userRaw);
-        this.usuarioLogado = user.username || user.email || this.usuarioLogado;
-      } catch {
-        this.usuarioLogado = 'dallyla.moraes';
-      }
-    }
-
+    this.carregarUsuario();
     this.carregarEquipeSelecionada();
     this.carregarFontes();
+    
+    if (localStorage.getItem('theme') === 'dark') {
+      this.isDarkMode = true;
+    }
   }
 
-  ngAfterViewInit(): void {
+  ngOnInit() {
+    this.gerarMensagemBoasVindas();
+  }
+
+  // ==========================================
+  // GETTERS DE INTERFACE
+  // ==========================================
+  get messages() {
+    return this.sessaoAtual.messages;
+  }
+
+  get modeloAtivo() {
+    return this.modelos[this.modeloAtivoIndex];
+  }
+
+  get nomeExibicao(): string {
+    if (!this.usuarioLogado) return 'Usuário';
+    const primeiroNome = this.usuarioLogado.split('.')[0];
+    return primeiroNome.charAt(0).toUpperCase() + primeiroNome.slice(1);
+  }
+
+  // ==========================================
+  // LÓGICA DE BOAS-VINDAS DINÂMICA
+  // ==========================================
+  private gerarMensagemBoasVindas() {
+    const hora = new Date().getHours();
+    let saudacaoTempo = 'Olá';
+    
+    if (hora >= 5 && hora < 12) saudacaoTempo = 'Bom dia';
+    else if (hora >= 12 && hora < 18) saudacaoTempo = 'Boa tarde';
+    else saudacaoTempo = 'Boa noite';
+
+    const nome = this.nomeExibicao;
+
+    const frases = [
+      `${saudacaoTempo}, ${nome}. O que vamos analisar hoje?`,
+      `${saudacaoTempo}, ${nome}! Quais as ideias criativas para hoje?`,
+      `Pronta para explorar os dados da PROAP, ${nome}?`,
+      `${saudacaoTempo}! Qual indicador vamos investigar agora, ${nome}?`,
+      `${nome}, que dados vamos transformar em conhecimento hoje?`,
+      `Como posso otimizar o seu planejamento hoje, ${nome}?`
+    ];
+
+    const randomIndex = Math.floor(Math.random() * frases.length);
+    this.mensagemBoasVindas = frases[randomIndex];
+  }
+
+  // ==========================================
+  // AÇÕES DO USUÁRIO
+  // ==========================================
+  toggleTheme() {
+    this.isDarkMode = !this.isDarkMode;
+    localStorage.setItem('theme', this.isDarkMode ? 'dark' : 'light');
+  }
+
+  mudarModelo() {
+    this.modeloAtivoIndex = (this.modeloAtivoIndex + 1) % this.modelos.length;
+  }
+
+  iniciarNovoChat() {
+    const novaSessao: ChatSession = {
+      id: Date.now(),
+      titulo: 'Nova Conversa',
+      messages: []
+    };
+    this.sessoes.unshift(novaSessao);
+    this.sessaoAtual = novaSessao;
+    this.erro = '';
+    this.gerarMensagemBoasVindas();
+  }
+
+  selecionarChat(sessao: ChatSession) {
+    this.sessaoAtual = sessao;
+    this.erro = '';
     this.agendarScrollParaFim();
-  }
-
-  ngAfterViewChecked(): void {
-    if (!this.scrollPendente) return;
-
-    this.scrollPendente = false;
-    this.scrollMessagesToBottom();
   }
 
   send() {
@@ -91,86 +148,112 @@ export class AgentComponent implements AfterViewInit, AfterViewChecked {
       return;
     }
 
-    this.messages.push({ from: 'user', text });
+    if (this.sessaoAtual.titulo === 'Nova Conversa') {
+      this.sessaoAtual.titulo = text.substring(0, 25) + (text.length > 25 ? '...' : '');
+    }
+
+    this.sessaoAtual.messages.push({ from: 'user', text });
     this.input = '';
     this.erro = '';
     this.carregando = true;
     this.agendarScrollParaFim();
 
-    this.agentService.consultar(text, this.equipeId)
+    this.agentService.consultar(text, this.equipeId, this.modeloAtivo)
       .pipe(finalize(() => this.carregando = false))
       .subscribe({
-        next: (resposta) => {
-          this.messages.push({ from: 'bot', text: resposta.resposta });
+        next: (resposta: any) => {
+          
+          // 1. Se a resposta for a configuração de um GRÁFICO
+          if (resposta.skill === 'grafico') {
+            this.sessaoAtual.messages.push({
+              from: 'bot',
+              text: resposta.mensagemContexto || 'Aqui está a visualização dos dados:',
+              spec: resposta,
+              fontes: resposta.fontes // Guarda as fontes lidas
+            });
+          } 
+          // 2. Se a resposta for um TEXTO NATURAL (RespostaTextual)
+          else if (resposta.texto) {
+            this.sessaoAtual.messages.push({ 
+              from: 'bot', 
+              text: resposta.texto,
+              fontes: resposta.fontes // Guarda as fontes lidas
+            });
+          } 
+          // 3. Fallback genérico caso o formato venha diferente
+          else {
+            this.sessaoAtual.messages.push({ from: 'bot', text: resposta });
+          }
+          
           this.agendarScrollParaFim();
         },
         error: (err) => {
           const mensagem = err?.error?.mensagem || 'Não foi possível consultar o agente agora.';
           this.erro = mensagem;
-          this.messages.push({ from: 'bot', text: mensagem });
+          this.sessaoAtual.messages.push({ from: 'bot', text: mensagem });
           this.agendarScrollParaFim();
         }
       });
   }
 
-  useSuggestion(s: string) {
-    this.input = s;
-    this.send();
+  // ==========================================
+  // CICLO DE VIDA E CARREGAMENTOS
+  // ==========================================
+  ngAfterViewInit(): void { this.agendarScrollParaFim(); }
+  
+  ngAfterViewChecked(): void {
+    if (!this.scrollPendente) return;
+    this.scrollPendente = false;
+    this.scrollMessagesToBottom();
+  }
+
+  private carregarUsuario() {
+    try {
+      const userRaw = localStorage.getItem('user');
+      if (userRaw) this.usuarioLogado = JSON.parse(userRaw).username || 'dallyla.moraes';
+    } catch { }
   }
 
   private carregarEquipeSelecionada(): void {
-    const raw = localStorage.getItem(AgentComponent.SELECTED_EQUIPE_KEY);
-    if (!raw) return;
-
     try {
-      const equipe = JSON.parse(raw) as Partial<EquipeSelecionada>;
-      if (!equipe.id || !equipe.nome) return;
-
-      this.equipeId = equipe.id;
-      this.equipeSelecionada = equipe.nome;
-    } catch {
-      this.equipeId = undefined;
-    }
+      const raw = localStorage.getItem(AgentComponent.SELECTED_EQUIPE_KEY);
+      if (raw) {
+        const equipe = JSON.parse(raw);
+        this.equipeId = equipe.id;
+        this.equipeSelecionada = equipe.nome;
+      }
+    } catch { }
   }
 
   private carregarFontes(): void {
     if (!this.equipeId) return;
-
     this.carregandoFontes = true;
     this.agentService.listarFontes(this.equipeId)
       .pipe(finalize(() => this.carregandoFontes = false))
       .subscribe({
         next: (response) => {
-          this.equipeSelecionada = response.equipe || this.equipeSelecionada;
-          this.modeloAtivo = response.modelo || this.modeloAtivo;
           this.fontesDisponiveis = (response.fontes || []).map((fonte) => ({
             ...fonte,
             tipo: this.getTipoFonte(fonte.nome)
           }));
         },
-        error: () => {
-          this.fontesDisponiveis = [];
-        }
+        error: () => this.fontesDisponiveis = []
       });
   }
 
   private getTipoFonte(nome: string): FonteDisponivel['tipo'] {
-    const extensao = nome.split('.').pop()?.toLowerCase();
-    if (extensao === 'xlsx') return 'planilha';
-    if (extensao === 'pdf') return 'pdf';
+    const ext = nome.split('.').pop()?.toLowerCase();
+    if (ext === 'xlsx') return 'planilha';
+    if (ext === 'pdf') return 'pdf';
     if (nome.toLowerCase().includes('relatorio')) return 'relatorio';
     return 'documento';
   }
 
-  private agendarScrollParaFim(): void {
-    this.scrollPendente = true;
-  }
-
+  private agendarScrollParaFim(): void { this.scrollPendente = true; }
   private scrollMessagesToBottom(): void {
     window.requestAnimationFrame(() => {
       const container = this.messagesContainer?.nativeElement;
-      if (!container) return;
-      container.scrollTop = container.scrollHeight;
+      if (container) container.scrollTop = container.scrollHeight;
     });
   }
 }

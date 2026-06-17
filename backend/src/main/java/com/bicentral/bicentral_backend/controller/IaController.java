@@ -1,5 +1,6 @@
 package com.bicentral.bicentral_backend.controller;
 
+import com.bicentral.bicentral_backend.dto.ChunkDTO;
 import com.bicentral.bicentral_backend.model.Equipe;
 import com.bicentral.bicentral_backend.model.Usuario;
 import com.bicentral.bicentral_backend.repository.EquipeRepository;
@@ -8,7 +9,6 @@ import com.bicentral.bicentral_backend.service.ConsultaService;
 import com.bicentral.bicentral_backend.service.IngestaoService;
 import com.bicentral.bicentral_backend.service.UsuarioService;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -36,7 +36,7 @@ public class IaController {
     private final MembroEquipeRepository membroEquipeRepository;
     private final UsuarioService usuarioService;
     private final ConsultaService consultaService;
-    private final ChatLanguageModel geminiModel;
+    private final ChatLanguageModel chatModel;
 
     public IaController(
             IngestaoService ingestaoService,
@@ -44,13 +44,13 @@ public class IaController {
             MembroEquipeRepository membroEquipeRepository,
             UsuarioService usuarioService,
             ConsultaService consultaService,
-            @Qualifier("geminiModel") ChatLanguageModel geminiModel) {
+            ChatLanguageModel chatModel) { 
         this.ingestaoService = ingestaoService;
         this.equipeRepository = equipeRepository;
         this.membroEquipeRepository = membroEquipeRepository;
         this.usuarioService = usuarioService;
         this.consultaService = consultaService;
-        this.geminiModel = geminiModel;
+        this.chatModel = chatModel;
     }
 
     @PostMapping("/ingestao")
@@ -70,8 +70,8 @@ public class IaController {
             String nomeArquivo = arquivo.getOriginalFilename();
             String extensao = obterExtensao(nomeArquivo);
 
-            if (!extensao.equals(".pdf") && !extensao.equals(".xlsx")) {
-                return ResponseEntity.badRequest().body("Formato não suportado. Envie PDF ou XLSX.");
+            if (!extensao.equals(".pdf") && !extensao.equals(".txt") && !extensao.equals(".xlsx") && !extensao.equals(".xls")) {
+                return ResponseEntity.badRequest().body("Formato não suportado. Envie PDF, TXT, XLSX ou XLS.");
             }
 
             String emailUsuarioLogado = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -96,29 +96,22 @@ public class IaController {
             arquivo.transferTo(tempFile.toFile());
 
             String caminhoArquivo = tempFile.toAbsolutePath().toString();
-            String textoBruto = extensao.equals(".xlsx")
-                    ? ingestaoService.extrairTextoExcel(caminhoArquivo)
-                    : ingestaoService.extrairTextoPDF(caminhoArquivo);
-
-            String textoLimpo = ingestaoService.limparTexto(textoBruto);
-            List<String> chunks = ingestaoService.fatiarTexto(textoLimpo);
-
-            if (chunks.isEmpty() || chunks.stream().allMatch(String::isBlank)) {
-                return ResponseEntity.badRequest().body("Não foi possível extrair texto útil do documento.");
-            }
-
-            ingestaoService.salvarNoBanco(
-                    chunks,
+            List<ChunkDTO> chunksProntos = ingestaoService.executarIngestao(
+                    caminhoArquivo,
+                    nomeArquivo,
                     equipe.getNome(),
                     visibilidadeNormalizada,
-                    nomeArquivo,
                     equipe.getId()
             );
+
+            if (chunksProntos.isEmpty() || chunksProntos.stream().allMatch(chunk -> chunk.getConteudo().isBlank())) {
+                return ResponseEntity.badRequest().body("Não foi possível extrair texto útil do documento.");
+            }
 
             return ResponseEntity.ok(Map.of(
                     "mensagem", "Documento enviado para ingestão.",
                     "status", "PROCESSANDO",
-                    "totalChunks", chunks.size(),
+                    "totalChunks", chunksProntos.size(),
                     "arquivo", nomeArquivo,
                     "equipe", equipe.getNome(),
                     "visibilidade", visibilidadeNormalizada
@@ -140,22 +133,22 @@ public class IaController {
     @PostMapping("/consulta")
     public ResponseEntity<?> consultar(@RequestBody Map<String, Object> body) {
         try {
-            String pergunta = String.valueOf(body.getOrDefault("pergunta", "")).trim();
+            String pregunta = String.valueOf(body.getOrDefault("pergunta", "")).trim();
             Long equipeId = obterLong(body.get("equipeId"));
 
-            if (pergunta.isBlank()) {
+            if (pregunta.isBlank()) {
                 return ResponseEntity.badRequest().body(Map.of("mensagem", "Informe a pergunta."));
             }
 
             Equipe equipe = validarAcessoEquipe(equipeId);
-            List<String> contextos = consultaService.buscar(pergunta, equipe.getId());
-            String resposta = gerarResposta(pergunta, contextos, equipe.getNome());
+            List<String> contextos = consultaService.buscar(pregunta, equipe.getId());
+            String resposta = gerarResposta(pregunta, contextos, equipe.getNome());
 
             return ResponseEntity.ok(Map.of(
-                    "pergunta", pergunta,
+                    "pergunta", pregunta,
                     "resposta", resposta,
                     "contextos", contextos,
-                    "modelo", "gemini-2.5-flash",
+                    "modelo", "Llama 3 (via Groq)", 
                     "equipe", equipe.getNome()
             ));
         } catch (ResponseStatusException e) {
@@ -172,8 +165,8 @@ public class IaController {
             return ResponseEntity.ok(Map.of(
                     "fontes", consultaService.listarFontes(equipe.getId()),
                     "modelo", Map.of(
-                            "nome", "Gemini 2.5 Flash",
-                            "detalhes", "via API · gemini-embedding-001"
+                            "nome", "Llama 3 (Groq)",
+                            "detalhes", "via API Groq · local-onnx-embedding"
                     ),
                     "equipe", equipe.getNome()
             ));
@@ -257,6 +250,6 @@ public class IaController {
                 %s
                 """.formatted(equipe, pergunta, contexto);
 
-        return geminiModel.chat(prompt);
+        return chatModel.chat(prompt); 
     }
 }

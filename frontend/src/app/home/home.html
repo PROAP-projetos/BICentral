@@ -188,7 +188,25 @@
   </main>
 
   <footer class="home-footer">
-    Desenvolvido pelos estagiários da PROAP • UFT • 2026
+    <div class="home-footer-content">
+      <span class="home-footer-brand">PROAP • UFT</span>
+      <span class="home-footer-divider" aria-hidden="true"></span>
+      <span>
+        Desenvolvido pelos
+        <span class="home-footer-interns" [class.is-shining]="showFooterSignature">estagiários</span>
+        em 2026
+      </span>
+      <button
+        class="home-footer-signature-trigger"
+        type="button"
+        aria-label="Revelar assinatura dos estagiários"
+        (click)="revelarAssinaturaFooter()">
+        LA NM DM
+      </button>
+      <div class="home-footer-signature-marquee" *ngIf="showFooterSignature" aria-live="polite">
+        <span>L. Albuquerque · N. Mendes · D. de Moraes</span>
+      </div>
+    </div>
   </footer>
 </div>
 

@@ -1,82 +1,115 @@
-<div class="agent-shell">
-  <header class="ingestao-topbar">
-    <a class="logo" routerLink="/">BICentral</a>
+<div class="agent-shell" [class.dark-theme]="isDarkMode">
 
-    <nav class="top-nav" aria-label="Navegação principal">
+  <!-- BARRA LATERAL (Sidebar) -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <a class="logo" routerLink="/">proIAp</a>
+      <button class="new-chat-btn" (click)="iniciarNovoChat()">
+        Novo Chat
+      </button>
+    </div>
+
+    <div class="chat-history">
+      <p class="section-title">Hoje</p>
       <ul>
-        <li><a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Painéis</a></li>
-        <li><a routerLink="/ingestao-ia" routerLinkActive="active">Ingestão</a></li>
-        <li><a routerLink="/agente" routerLinkActive="active">Agente IA</a></li>
+        <li *ngFor="let sessao of sessoes" [class.active]="sessao.id === sessaoAtual.id"
+          (click)="selecionarChat(sessao)">
+          {{ sessao.titulo }}
+        </li>
       </ul>
-    </nav>
+    </div>
 
-    <div class="topbar-user">
-      <span>{{ usuarioLogado }} · {{ equipeSelecionada }}</span>
-      <div class="agent-menu">
-        <a class="agent-btn" routerLink="/agente">
-          <span></span>Pergunte ao agente
-        </a>
+    <div class="sidebar-footer">
+      <div class="fontes-info">
+        <p class="section-title">Fontes ({{ equipeSelecionada }})</p>
+        <span *ngIf="carregandoFontes" class="fonte-item">Carregando...</span>
+        <span *ngIf="!carregandoFontes && fontesDisponiveis.length === 0" class="fonte-item">Nenhuma fonte.</span>
+        <div class="fonte-item" *ngFor="let fonte of fontesDisponiveis">
+          <span class="status-dot"></span> {{ fonte.nome }}
+        </div>
+      </div>
+
+      <div class="user-config">
+        <button class="theme-toggle" (click)="toggleTheme()">
+          {{ isDarkMode ? 'Modo Claro' : 'Modo Escuro' }}
+        </button>
+        <div class="user-info">{{ usuarioLogado }}</div>
       </div>
     </div>
-  </header>
+  </aside>
 
-  <main class="agent-page">
-    <aside class="context-panel" aria-label="Contexto do agente">
-      <section class="context-section">
-        <h2>Fontes Disponíveis</h2>
+  <!-- ÁREA PRINCIPAL DO CHAT -->
+  <main class="chat-area">
 
-        <div class="source-list">
-          <p class="source-state" *ngIf="carregandoFontes">Carregando fontes...</p>
-          <p class="source-state" *ngIf="!carregandoFontes && fontesDisponiveis.length === 0">
-            Nenhuma fonte disponível para a equipe selecionada.
-          </p>
+    <header class="chat-header">
+      <div class="model-selector" (click)="mudarModelo()">
+        <span class="model-name">{{ modeloAtivo }}</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </div>
+      <div class="top-nav-links">
+        <a routerLink="/ingestao-ia">Ingestão IA</a>
+      </div>
+    </header>
 
-          <article class="source-item" *ngFor="let fonte of fontesDisponiveis" [ngClass]="fonte.tipo">
-            <span class="source-dot"></span>
-            <div class="source-content">
-              <strong>{{ fonte.nome }}</strong>
-              <span [class.private]="fonte.acesso === 'privado'">{{ fonte.acesso }}</span>
-            </div>
-          </article>
-        </div>
-      </section>
+    <!-- O CORPO DA CONVERSA -->
+    <div class="chat-body" [class.is-empty]="messages.length === 0">
 
-      <section class="context-section">
-        <h2>Modelo Ativo</h2>
-        <div class="model-card">
-          <strong>{{ modeloAtivo.nome }}</strong>
-          <span>{{ modeloAtivo.detalhes }}</span>
-        </div>
-      </section>
-    </aside>
+      <!-- Título Dinâmico de Boas Vindas -->
+      <div class="empty-title" *ngIf="messages.length === 0">
+        <h2>{{ mensagemBoasVindas }}</h2>
+      </div>
 
-    <section class="chat-panel" aria-label="Conversa com o agente">
-      <div class="messages" #messagesContainer>
+      <!-- Histórico de Mensagens -->
+      <div class="messages" #messagesContainer *ngIf="messages.length > 0">
         <div *ngFor="let m of messages" class="msg" [ngClass]="m.from">
-          <div class="avatar" *ngIf="m.from === 'bot'">BI</div>
-          <div class="bubble">{{ m.text }}</div>
+
+          <div class="avatar bot-avatar" *ngIf="m.from === 'bot'" title="proIAp">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path
+                d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z">
+              </path>
+            </svg>
+          </div>
+
+          <div class="bubble" [class.has-chart]="m.spec">
+            <span *ngIf="m.text">{{ m.text }}</span>
+
+            <div *ngIf="m.spec" class="chart-message">
+              <app-grafico-ia [spec]="m.spec"></app-grafico-ia>
+            </div>
+
+            <div *ngIf="m.fontes && m.fontes.length > 0" class="bubble-fontes">
+              <span class="fontes-label">📖 Baseado em:</span>
+              <div class="fontes-list">
+                <span class="fonte-badge" *ngFor="let f of m.fontes">{{ f }}</span>
+              </div>
+            </div>
+
+          </div>
         </div>
       </div>
 
+      <!-- Área do Input de Texto -->
       <div class="composer">
-        <div class="agent-suggestions">
-          <button *ngFor="let s of suggestions" class="chip" type="button" [disabled]="carregando" (click)="useSuggestion(s)">{{ s }}</button>
-        </div>
-
         <p class="agent-error" *ngIf="erro">{{ erro }}</p>
 
-        <div class="agent-input">
-          <input
-            [(ngModel)]="input"
-            placeholder="Pergunte sobre os dados da PROAP..."
-            (keyup.enter)="send()"
-            [disabled]="carregando"
-          />
-          <button class="send" type="button" aria-label="Enviar pergunta" [disabled]="carregando" (click)="send()">
-            {{ carregando ? '...' : '>' }}
+        <div class="agent-input-container">
+          <input [(ngModel)]="input" placeholder="Pergunte ao proIAp sobre os dados da PROAP..." (keyup.enter)="send()"
+            [disabled]="carregando" autofocus />
+          <button class="send" [disabled]="carregando || input.length === 0" (click)="send()">
+            <svg *ngIf="!carregando" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 4l-8 8h6v8h4v-8h6z" />
+            </svg>
+            <span *ngIf="carregando" class="loading-dot">...</span>
           </button>
         </div>
+        <p class="disclaimer">O proIAp pode cometer erros. Verifique as informações importantes no sistema.</p>
       </div>
-    </section>
+
+    </div>
   </main>
 </div>

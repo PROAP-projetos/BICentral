@@ -1,0 +1,32 @@
+<div class="card-grafico">
+  <div class="chart-actions" aria-label="Ações do gráfico">
+    <button type="button" (click)="baixarPng()">Baixar PNG</button>
+    <button type="button" (click)="copiarImagem()">Copiar imagem</button>
+    <button type="button" (click)="baixarCsv()">Baixar CSV</button>
+    <button type="button" (click)="copiarTabela()">Copiar tabela</button>
+    <button type="button" (click)="alternarTabela()">
+      {{ mostrarTabela ? 'Ocultar tabela' : 'Ver tabela' }}
+    </button>
+  </div>
+
+  <p class="chart-action-message" *ngIf="mensagemAcao">{{ mensagemAcao }}</p>
+
+  <div echarts [options]="chartOptions" (chartInit)="onChartInit($event)" class="chart-display"></div>
+
+  <div class="chart-table-wrap" *ngIf="mostrarTabela">
+    <table class="chart-table">
+      <thead>
+        <tr>
+          <th>Categoria</th>
+          <th *ngFor="let nome of nomesSeries">{{ nome }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let linha of linhasTabela">
+          <td>{{ linha.categoria }}</td>
+          <td *ngFor="let valor of linha.valores">{{ valor }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

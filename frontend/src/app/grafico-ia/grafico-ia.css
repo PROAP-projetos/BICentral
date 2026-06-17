@@ -1,0 +1,82 @@
+.card-grafico {
+  background: #ffffff;
+  border-radius: 6px;
+  padding: 10px 6px 4px;
+  margin: 10px 0 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.chart-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 4px 8px;
+}
+
+.chart-actions button {
+  min-height: 28px;
+  padding: 5px 9px;
+  border: 1px solid #d8dee6;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #173d64;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.chart-actions button:hover {
+  background: #edf4fb;
+  border-color: #b6c7d9;
+}
+
+.chart-action-message {
+  margin: 0 4px 6px;
+  color: #256d3d;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.chart-display {
+  height: 320px;
+  width: 100%;
+  min-width: 0;
+}
+
+.chart-table-wrap {
+  max-height: 220px;
+  margin: 10px 4px 4px;
+  overflow: auto;
+  border: 1px solid #e3e8ef;
+  border-radius: 6px;
+}
+
+.chart-table {
+  width: 100%;
+  min-width: 420px;
+  border-collapse: collapse;
+  background: #ffffff;
+  color: #1f2937;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.chart-table th,
+.chart-table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid #edf1f5;
+  text-align: left;
+}
+
+.chart-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f3f6fa;
+  color: #374151;
+  font-weight: 700;
+}

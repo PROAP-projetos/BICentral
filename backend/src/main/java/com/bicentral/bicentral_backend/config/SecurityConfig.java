@@ -28,14 +28,15 @@ import java.util.List;
     public class SecurityConfig {
 
         private static final String[] PUBLIC_ENDPOINTS = {
-            "/api/usuarios/cadastro",
-            "/api/usuarios/login",
-            "/api/usuarios/verify",
-            "/api/convites/aceitar", 
-            "/auth/**",
-            "/error",
-            "/ai/test/**",
-            "/favicon.ico"           // Mantido apenas para evitar aquele erro 500 chato no navegador ao testar rotas no 8080
+        "/api/usuarios/cadastro",
+        "/api/usuarios/login",
+        "/api/usuarios/verify",
+        "/api/convites/aceitar", 
+        "/auth/**",
+        "/error",
+        "/ai/test/**",
+        "/api/proiap/**",        
+        "/favicon.ico"           
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -49,7 +50,7 @@ import java.util.List;
         return http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
                     // Esse é o log que você vê quando dá 401
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

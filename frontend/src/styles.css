@@ -306,18 +306,185 @@ footer {
 }
 
 .home-footer {
+  position: relative;
   margin: auto 0 0 0 !important;
-  text-align: center;
-  color: #eef6ff;
-  font-size: 0.84rem;
-  font-weight: 400;
-  line-height: 1.2;
-  letter-spacing: 0.2px;
-  padding: 9px 12px;
-  background: linear-gradient(180deg, #3a78a5 0%, #2f6b96 100%);
-  border-top: 1px solid rgba(255, 255, 255, 0.22);
+  color: #eef7ff;
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: 0;
+  padding: 22px 20px 40px;
+  background:
+    linear-gradient(90deg, rgba(0, 184, 117, 0.18) 0%, rgba(0, 184, 117, 0) 28%),
+    linear-gradient(180deg, #0c5f91 0%, #004a80 100%);
+  border-top: 4px solid rgba(0, 184, 117, 0.85);
+  box-shadow: 0 -10px 26px rgba(0, 45, 82, 0.12);
   width: 100%;
   box-sizing: border-box;
+}
+
+.home-footer-content {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+  flex-wrap: wrap;
+}
+
+.home-footer-brand {
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.home-footer-divider {
+  width: 1px;
+  height: 22px;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.home-footer-interns {
+  position: relative;
+  display: inline-block;
+  border-radius: 6px;
+  z-index: 2;
+  transition: color 0.2s ease, text-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.home-footer-interns.is-shining {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+  text-shadow:
+    0 0 7px rgba(255, 255, 255, 0.95),
+    0 0 16px rgba(0, 184, 117, 0.82),
+    0 0 24px rgba(0, 184, 117, 0.45);
+  animation: footerInternsGlow 1s ease-in-out infinite;
+}
+
+.home-footer-interns.is-shining::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 8px);
+  width: clamp(120px, 22vw, 260px);
+  height: 2px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.1), #ffffff 36%, #00e095 100%);
+  border-radius: 999px;
+  box-shadow: 0 0 12px rgba(0, 224, 149, 0.65);
+  transform: translateY(-50%) rotate(0deg);
+  transform-origin: right center;
+  animation: footerSignatureArrow 1.35s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.home-footer-interns.is-shining::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: -13px;
+  width: 9px;
+  height: 9px;
+  border-top: 2px solid #00e095;
+  border-right: 2px solid #00e095;
+  transform: translateY(-50%) rotate(45deg);
+  filter: drop-shadow(0 0 6px rgba(0, 224, 149, 0.75));
+  animation: footerSignatureArrowHead 1.35s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.home-footer-signature-trigger {
+  position: absolute;
+  left: 8px;
+  bottom: 4px;
+  border: 0;
+  padding: 3px 4px;
+  background: transparent;
+  font-size: 6px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.12);
+  letter-spacing: 1px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.home-footer-signature-trigger:hover,
+.home-footer-signature-trigger:focus-visible {
+  color: rgba(255, 255, 255, 0.34);
+  outline: none;
+}
+
+.home-footer-signature-marquee {
+  position: absolute;
+  left: 40px;
+  bottom: 8px;
+  width: min(320px, calc(100% - 88px));
+  height: 26px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 999px;
+  background: rgba(0, 45, 82, 0.62);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  box-shadow: 0 8px 18px rgba(0, 23, 42, 0.2);
+  pointer-events: none;
+}
+
+.home-footer-signature-marquee span {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  white-space: nowrap;
+  transform: translate(-105%, -50%);
+  animation: footerSignatureMarquee 6.6s linear forwards;
+}
+
+@keyframes footerSignatureMarquee {
+  from {
+    left: 0;
+    transform: translate(-105%, -50%);
+  }
+  to {
+    left: 100%;
+    transform: translate(0, -50%);
+  }
+}
+
+@keyframes footerSignatureArrow {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translate(-8px, -50%) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(0, -50%) rotate(0deg);
+  }
+}
+
+@keyframes footerSignatureArrowHead {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: translate(-8px, -50%) rotate(45deg);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(0, -50%) rotate(45deg);
+  }
+}
+
+@keyframes footerInternsGlow {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.35);
+  }
 }
 
 @media (max-width: 900px) {
@@ -346,6 +513,23 @@ footer {
 }
 
 @media (max-width: 640px) {
+  .home-footer {
+    padding: 20px 16px 40px;
+  }
+
+  .home-footer-content {
+    gap: 8px;
+  }
+
+  .home-footer-divider {
+    display: none;
+  }
+
+  .home-footer-interns.is-shining::before,
+  .home-footer-interns.is-shining::after {
+    display: none;
+  }
+
   .welcome-card {
     border-radius: 14px;
   }

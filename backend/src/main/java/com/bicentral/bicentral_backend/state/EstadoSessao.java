@@ -1,0 +1,76 @@
+package com.bicentral.bicentral_backend.state;
+
+import org.springframework.stereotype.Component;
+import org.springframework.web.context.annotation.SessionScope;
+
+import com.bicentral.bicentral_backend.dto.GraficoSpec;
+
+import lombok.Getter;
+import lombok.Setter;
+
+/**
+ * Esta classe atua como a memória estruturada de cada usuário logado.
+ * O Spring cria uma instância separada dessa classe para cada sessão ativa.
+ */
+@Component
+@SessionScope
+@Getter
+@Setter
+public class EstadoSessao {
+
+    // Valores padrão ao iniciar o chat
+    private String tipoGrafico = "bar";
+    private Integer ano = 2024;
+    private String curso = "Todos";
+    private String indicador = "Matrículas";
+
+    // O modelo selecionado pelo usuário no Angular
+    private String modelo;
+
+    // Equipe selecionada
+    private Long equipeId;
+
+    private boolean aguardandoConfirmacaoGrafico = false;
+    private GraficoSpec graficoPendente = null;
+
+    // =====================================================
+    // SETTERS COM LOG DE DEPURAÇÃO
+    // =====================================================
+
+    public void setAguardandoConfirmacaoGrafico(boolean valor) {
+        System.out.println(
+            "\n[DEBUG ESTADO] setAguardandoConfirmacaoGrafico(" + valor + ")"
+        );
+
+        Thread.dumpStack();
+
+        this.aguardandoConfirmacaoGrafico = valor;
+    }
+
+    public void setGraficoPendente(GraficoSpec grafico) {
+        System.out.println(
+            "\n[DEBUG ESTADO] setGraficoPendente(" +
+            (grafico != null ? "OBJETO" : "NULL") +
+            ")"
+        );
+
+        Thread.dumpStack();
+
+        this.graficoPendente = grafico;
+    }
+
+    // Depuração
+    @Override
+    public String toString() {
+        return "EstadoSessao{" +
+                "indicador='" + indicador + '\'' +
+                ", ano=" + ano +
+                ", curso='" + curso + '\'' +
+                ", tipoGrafico='" + tipoGrafico + '\'' +
+                ", modelo='" + modelo + '\'' +
+                ", equipeId=" + equipeId +
+                ", aguardandoConfirmacaoGrafico=" + aguardandoConfirmacaoGrafico +
+                ", graficoPendente=" + (graficoPendente != null ? "OBJETO" : "NULL") +
+                '}';
+    }
+}
