@@ -30,6 +30,16 @@ public class IngestaoService {
 
     private final EmbeddingService embeddingService;
 
+    @org.springframework.beans.factory.annotation.Value("${supabase.url}")
+    private String supabaseUrl;
+
+    @org.springframework.beans.factory.annotation.Value("${supabase.key}")
+    private String supabaseKey;
+
+    private static final java.net.http.HttpClient HTTP = java.net.http.HttpClient.newBuilder()
+            .connectTimeout(java.time.Duration.ofSeconds(10))
+            .build();
+
     public IngestaoService(EmbeddingService embeddingService) {
         this.embeddingService = embeddingService;
     }
@@ -48,17 +58,19 @@ public class IngestaoService {
         StringBuilder sb = new StringBuilder();
 
         try (InputStream is = new FileInputStream(new File(caminhoArquivo));
-             Workbook workbook = WorkbookFactory.create(is)) {
+                Workbook workbook = WorkbookFactory.create(is)) {
 
             Sheet sheet = workbook.getSheetAt(0);
             Row headerRow = sheet.getRow(0);
             DataFormatter formatter = new DataFormatter();
 
-            if (headerRow == null) return "";
+            if (headerRow == null)
+                return "";
 
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                 Row currentRow = sheet.getRow(i);
-                if (currentRow == null) continue;
+                if (currentRow == null)
+                    continue;
 
                 StringBuilder linhaNarrativa = new StringBuilder();
 
@@ -88,19 +100,21 @@ public class IngestaoService {
     }
 
     // Processa Excel em lotes com texto e metadata
-    public List<ChunkDTO> processarPlanilhaExcelPorLotes(String caminhoArquivo, String equipe, String acesso, String nomeArquivo) throws IOException {
+    public List<ChunkDTO> processarPlanilhaExcelPorLotes(String caminhoArquivo, String equipe, String acesso,
+            String nomeArquivo) throws IOException {
         List<ChunkDTO> chunksGerados = new ArrayList<>();
         String grupoId = java.util.UUID.randomUUID().toString();
-        int tamanhoLote = 50;
+        int tamanhoLote = 1; // antes tava 50 e agr 1 eita diacho
 
         try (InputStream is = new FileInputStream(new File(caminhoArquivo));
-             Workbook workbook = WorkbookFactory.create(is)) {
+                Workbook workbook = WorkbookFactory.create(is)) {
 
             Sheet sheet = workbook.getSheetAt(0);
             Row headerRow = sheet.getRow(0);
             DataFormatter formatter = new DataFormatter();
 
-            if (headerRow == null) return chunksGerados;
+            if (headerRow == null)
+                return chunksGerados;
 
             StringBuilder loteTextoSemantico = new StringBuilder();
             List<Map<String, Object>> loteDadosEstruturados = new ArrayList<>();
@@ -109,7 +123,8 @@ public class IngestaoService {
 
             for (int i = 1; i <= totalLinhas; i++) {
                 Row currentRow = sheet.getRow(i);
-                if (currentRow == null) continue;
+                if (currentRow == null)
+                    continue;
 
                 StringBuilder linhaNarrativa = new StringBuilder();
                 Map<String, Object> linhaChaveValor = new HashMap<>();
@@ -118,7 +133,8 @@ public class IngestaoService {
                     String cabecalho = formatter.formatCellValue(headerRow.getCell(j));
                     Cell cell = currentRow.getCell(j);
 
-                    if (cell == null || cabecalho.trim().isEmpty()) continue;
+                    if (cell == null || cabecalho.trim().isEmpty())
+                        continue;
 
                     if (cell.getCellType() == CellType.NUMERIC) {
                         linhaChaveValor.put(cabecalho, cell.getNumericCellValue());
@@ -130,28 +146,36 @@ public class IngestaoService {
 
                     String valorTexto = formatter.formatCellValue(cell);
                     if (!valorTexto.trim().isEmpty()) {
-                        linhaNarrativa.append("[")
-                                .append(cabecalho)
+                        linhaNarrativa.append(cabecalho)
                                 .append(": ")
                                 .append(valorTexto)
-                                .append("] ");
+                                .append(", ");
                     }
                 }
 
                 if (!linhaChaveValor.isEmpty()) {
-                    loteTextoSemantico.append(linhaNarrativa).append("\n");
+                    // Remove a última vírgula e o espaço
+                    if (linhaNarrativa.length() > 2) {
+                        linhaNarrativa.setLength(linhaNarrativa.length() - 2);
+                    }
+
+                    // Cria uma frase com semântica forte para o RAG
+                    loteTextoSemantico.append("Dados da linha: ").append(linhaNarrativa).append(".\n");
+
                     loteDadosEstruturados.add(linhaChaveValor);
                     contadorLinhasNoLote++;
                 }
 
                 if (contadorLinhasNoLote == tamanhoLote) {
-                    adicionarChunkPlanilha(chunksGerados, loteTextoSemantico, loteDadosEstruturados, equipe, acesso, grupoId, nomeArquivo);
+                    adicionarChunkPlanilha(chunksGerados, loteTextoSemantico, loteDadosEstruturados, equipe, acesso,
+                            grupoId, nomeArquivo);
                     contadorLinhasNoLote = 0;
                 }
             }
 
             if (!loteDadosEstruturados.isEmpty()) {
-                adicionarChunkPlanilha(chunksGerados, loteTextoSemantico, loteDadosEstruturados, equipe, acesso, grupoId, nomeArquivo);
+                adicionarChunkPlanilha(chunksGerados, loteTextoSemantico, loteDadosEstruturados, equipe, acesso,
+                        grupoId, nomeArquivo);
             }
         }
 
@@ -165,8 +189,7 @@ public class IngestaoService {
             String equipe,
             String acesso,
             String grupoId,
-            String nomeArquivo
-    ) {
+            String nomeArquivo) {
         Map<String, Object> metadataMap = new HashMap<>();
         metadataMap.put("tipo", "tabular");
         metadataMap.put("nome_arquivo", nomeArquivo);
@@ -180,16 +203,17 @@ public class IngestaoService {
                 acesso,
                 grupoId,
                 nomeArquivo,
-                metadataMap
-        ));
+                metadataMap));
 
         loteTextoSemantico.setLength(0);
         loteDadosEstruturados.clear();
     }
 
-    // Limpa o texto removendo ruídos como números de página, quebras de linha e espaços excessivos
+    // Limpa o texto removendo ruídos como números de página, quebras de linha e
+    // espaços excessivos
     public String limparTexto(String textoBruto) {
-        if (textoBruto == null || textoBruto.isEmpty()) return "";
+        if (textoBruto == null || textoBruto.isEmpty())
+            return "";
 
         return textoBruto
                 .replaceAll("(?m)^\\s*\\d+\\s*$", "")
@@ -200,7 +224,8 @@ public class IngestaoService {
                 .trim();
     }
 
-    // Divide o texto em pedaços menores (chunks) com sobreposição para preservar contexto
+    // Divide o texto em pedaços menores (chunks) com sobreposição para preservar
+    // contexto
     public List<String> fatiarTexto(String textoLimpo) {
         int tamanhoChunk = 512;
         int overlap = 64;
@@ -222,14 +247,16 @@ public class IngestaoService {
 
             chunks.add(chunkAtual.toString().trim());
 
-            if (i + tamanhoChunk >= palavras.length) break;
+            if (i + tamanhoChunk >= palavras.length)
+                break;
         }
 
         return chunks;
     }
 
     // Cria objetos ChunkDTO adicionando metadados (equipe, acesso, grupo e arquivo)
-    public List<ChunkDTO> montarChunksComMetadados(List<String> chunks, String equipe, String acesso, String nomeArquivo) {
+    public List<ChunkDTO> montarChunksComMetadados(List<String> chunks, String equipe, String acesso,
+            String nomeArquivo) {
         List<ChunkDTO> listaParaSalvar = new ArrayList<>();
         String grupoId = java.util.UUID.randomUUID().toString();
 
@@ -240,8 +267,7 @@ public class IngestaoService {
                     acesso,
                     grupoId,
                     nomeArquivo,
-                    null
-            ));
+                    null));
         }
 
         return listaParaSalvar;
@@ -253,8 +279,56 @@ public class IngestaoService {
         embeddingService.salvarChunks(listaParaSalvar, equipeId);
     }
 
-    // Executa a ingestão conforme o tipo do arquivo
-    public List<ChunkDTO> executarIngestao(String caminhoArquivo, String nomeArquivo, String equipe, String acesso, Long equipeId) throws IOException {
+    // Faz o upload do arquivo físico para o Bucket do Supabase Storage
+    private String fazerUploadParaBucket(String caminhoArquivo, String nomeArquivo) throws Exception {
+        // 1. Limpa o nome do arquivo para evitar erros de URL
+        String nomeSeguro = nomeArquivo.replaceAll("\\s+", "_");
+
+        // 2. Monta a URL do bucket (certifique-se de que o bucket chama
+        // 'proiap-documentos')
+        String urlUpload = supabaseUrl + "/storage/v1/object/proiap-documentos/" + nomeSeguro;
+
+        // 3. Lê os bytes do arquivo local
+        byte[] fileBytes = Files.readAllBytes(Path.of(caminhoArquivo));
+
+        // 4. Define o tipo do arquivo básico
+        String contentType = "application/octet-stream";
+        if (nomeSeguro.toLowerCase().endsWith(".pdf"))
+            contentType = "application/pdf";
+        else if (nomeSeguro.toLowerCase().endsWith(".xlsx"))
+            contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+        // 5. Dispara para o Supabase
+        java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                .uri(java.net.URI.create(urlUpload))
+                .timeout(java.time.Duration.ofSeconds(30))
+                .header("Authorization", "Bearer " + supabaseKey)
+                .header("apikey", supabaseKey)
+                .header("Content-Type", contentType)
+                .POST(java.net.http.HttpRequest.BodyPublishers.ofByteArray(fileBytes))
+                .build();
+
+        java.net.http.HttpResponse<String> response = HTTP.send(request,
+                java.net.http.HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() >= 200 && response.statusCode() < 300) {
+            System.out.println("✅ Arquivo salvo no Supabase Storage: " + nomeSeguro);
+            return nomeSeguro;
+        } else {
+            System.err.println("❌ Erro ao salvar no bucket: " + response.body());
+            throw new RuntimeException("Falha ao salvar no bucket: " + response.body());
+        }
+    }
+
+    public List<ChunkDTO> executarIngestao(String caminhoArquivo, String nomeArquivo, String equipe, String acesso,
+            Long equipeId) throws Exception {
+
+        try {
+            fazerUploadParaBucket(caminhoArquivo, nomeArquivo);
+        } catch (Exception e) {
+            System.err.println("Aviso: O arquivo não foi salvo no bucket. Motivo: " + e.getMessage());
+        }
+
         String nomeArquivoNormalizado = nomeArquivo == null ? "" : nomeArquivo.toLowerCase(Locale.ROOT);
         List<ChunkDTO> chunksProntos;
 

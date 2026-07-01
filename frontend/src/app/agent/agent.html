@@ -64,7 +64,7 @@
 
       <!-- Histórico de Mensagens -->
       <div class="messages" #messagesContainer *ngIf="messages.length > 0">
-        <div *ngFor="let m of messages" class="msg" [ngClass]="m.from">
+        <div *ngFor="let m of messages; let i = index" class="msg" [ngClass]="m.from">
 
           <div class="avatar bot-avatar" *ngIf="m.from === 'bot'" title="proIAp">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -76,7 +76,41 @@
           </div>
 
           <div class="bubble" [class.has-chart]="m.spec">
-            <span *ngIf="m.text">{{ m.text }}</span>
+            <div class="message-actions" *ngIf="m.text">
+              <button
+                type="button"
+                class="message-action"
+                [class.copied]="mensagemCopiadaId === getMensagemId(i, m.text)"
+                (click)="copiarMensagem(m.text, i)"
+                [attr.aria-label]="m.from === 'user' ? 'Copiar prompt' : 'Copiar resposta'"
+                [attr.title]="mensagemCopiadaId === getMensagemId(i, m.text) ? 'Copiado' : (m.from === 'user' ? 'Copiar prompt' : 'Copiar resposta')">
+                <svg *ngIf="mensagemCopiadaId !== getMensagemId(i, m.text)" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
+                  <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                </svg>
+                <svg *ngIf="mensagemCopiadaId === getMensagemId(i, m.text)" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                  aria-hidden="true">
+                  <path d="M20 6 9 17l-5-5"></path>
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="message-action"
+                *ngIf="m.from === 'user'"
+                (click)="editarPrompt(m.text)"
+                aria-label="Editar prompt"
+                title="Editar prompt">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 20h9"></path>
+                  <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+                </svg>
+              </button>
+            </div>
+
+            <div *ngIf="m.text" class="message-text" [innerHTML]="formatarMensagem(m.text)"></div>
 
             <div *ngIf="m.spec" class="chart-message">
               <app-grafico-ia [spec]="m.spec"></app-grafico-ia>
@@ -85,7 +119,10 @@
             <div *ngIf="m.fontes && m.fontes.length > 0" class="bubble-fontes">
               <span class="fontes-label">📖 Baseado em:</span>
               <div class="fontes-list">
-                <span class="fonte-badge" *ngFor="let f of m.fontes">{{ f }}</span>
+                <span class="fonte-badge" *ngFor="let f of m.fontes" (click)="abrirDocumento(f)"
+                  style="cursor: pointer;">
+                  {{ f }}
+                </span>
               </div>
             </div>
 
@@ -98,8 +135,15 @@
         <p class="agent-error" *ngIf="erro">{{ erro }}</p>
 
         <div class="agent-input-container">
-          <input [(ngModel)]="input" placeholder="Pergunte ao proIAp sobre os dados da PROAP..." (keyup.enter)="send()"
-            [disabled]="carregando" autofocus />
+          <textarea
+            #promptInput
+            [(ngModel)]="input"
+            placeholder="Pergunte ao proIAp sobre os dados da PROAP..."
+            (input)="ajustarAlturaPrompt($event)"
+            (keydown)="aoPressionarPrompt($event)"
+            [disabled]="carregando"
+            rows="1"
+            autofocus></textarea>
           <button class="send" [disabled]="carregando || input.length === 0" (click)="send()">
             <svg *ngIf="!carregando" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 4l-8 8h6v8h4v-8h6z" />
@@ -110,6 +154,16 @@
         <p class="disclaimer">O proIAp pode cometer erros. Verifique as informações importantes no sistema.</p>
       </div>
 
+    </div>
+    <div class="pdf-viewer-overlay" *ngIf="arquivoAberto" (click)="fecharViewer()">
+      <div class="pdf-viewer-content" (click)="$event.stopPropagation()">
+        <div class="viewer-header">
+          <span>Visualizando: {{ arquivoAberto }}</span>
+          <button (click)="fecharViewer()">X</button>
+        </div>
+        <iframe [src]="'http://localhost:8080/api/documentos/view/' + encodeURIComponent(arquivoAberto) | safeUrl"
+          width="100%" height="90%"></iframe>
+      </div>
     </div>
   </main>
 </div>

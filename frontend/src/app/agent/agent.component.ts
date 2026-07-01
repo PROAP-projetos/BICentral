@@ -5,7 +5,7 @@ import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { GraficoIaComponent } from '../grafico-ia/grafico-ia';
 import { AgentService } from '../services/agent.service';
-
+import { SafeUrlPipe } from '../pipes/safe-url.pipe';
 interface FonteDisponivel {
   nome: string;
   acesso: 'publico' | 'privado';
@@ -15,28 +15,28 @@ interface FonteDisponivel {
 interface ChatSession {
   id: number;
   titulo: string;
-  // Adicionado o array de fontes aqui!
   messages: { from: 'bot' | 'user'; text?: string; spec?: any; fontes?: string[] }[];
 }
 
 @Component({
   selector: 'app-agent',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, GraficoIaComponent],
+  imports: [CommonModule, FormsModule, RouterLink, GraficoIaComponent, SafeUrlPipe],
   templateUrl: './agent.html',
   styleUrls: ['./agent.css']
 })
 export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked {
   private static readonly SELECTED_EQUIPE_KEY = 'bicentral_selected_equipe';
   @ViewChild('messagesContainer') private messagesContainer?: ElementRef<HTMLDivElement>;
-  
+  @ViewChild('promptInput') private promptInput?: ElementRef<HTMLTextAreaElement>;
+
   isDarkMode = false;
   private scrollPendente = true;
   usuarioLogado = 'dallyla.moraes';
   equipeSelecionada = 'Orçamento';
   equipeId?: number;
   fontesDisponiveis: FonteDisponivel[] = [];
-  
+
   modelos = ['Llama 3 (Groq)', 'Gemini 2.5 Flash', 'Ollama Local'];
   modeloAtivoIndex = 0;
 
@@ -49,14 +49,16 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked {
   carregando = false;
   carregandoFontes = false;
   erro = '';
-  
+  mensagemCopiadaId = '';
+  private mensagemCopiadaTimer?: number;
+
   mensagemBoasVindas = '';
 
   constructor(private agentService: AgentService) {
     this.carregarUsuario();
     this.carregarEquipeSelecionada();
     this.carregarFontes();
-    
+
     if (localStorage.getItem('theme') === 'dark') {
       this.isDarkMode = true;
     }
@@ -89,7 +91,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked {
   private gerarMensagemBoasVindas() {
     const hora = new Date().getHours();
     let saudacaoTempo = 'Olá';
-    
+
     if (hora >= 5 && hora < 12) saudacaoTempo = 'Bom dia';
     else if (hora >= 12 && hora < 18) saudacaoTempo = 'Boa tarde';
     else saudacaoTempo = 'Boa noite';
@@ -133,6 +135,10 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked {
     this.gerarMensagemBoasVindas();
   }
 
+  encodeURIComponent(url: string | null): string {
+    return url ? encodeURIComponent(url) : '';
+  }
+
   selecionarChat(sessao: ChatSession) {
     this.sessaoAtual = sessao;
     this.erro = '';
@@ -154,6 +160,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked {
 
     this.sessaoAtual.messages.push({ from: 'user', text });
     this.input = '';
+    this.agendarAjusteAlturaPrompt();
     this.erro = '';
     this.carregando = true;
     this.agendarScrollParaFim();
@@ -162,7 +169,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked {
       .pipe(finalize(() => this.carregando = false))
       .subscribe({
         next: (resposta: any) => {
-          
+
           // 1. Se a resposta for a configuração de um GRÁFICO
           if (resposta.skill === 'grafico') {
             this.sessaoAtual.messages.push({
@@ -171,20 +178,20 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked {
               spec: resposta,
               fontes: resposta.fontes // Guarda as fontes lidas
             });
-          } 
+          }
           // 2. Se a resposta for um TEXTO NATURAL (RespostaTextual)
           else if (resposta.texto) {
-            this.sessaoAtual.messages.push({ 
-              from: 'bot', 
+            this.sessaoAtual.messages.push({
+              from: 'bot',
               text: resposta.texto,
               fontes: resposta.fontes // Guarda as fontes lidas
             });
-          } 
+          }
           // 3. Fallback genérico caso o formato venha diferente
           else {
             this.sessaoAtual.messages.push({ from: 'bot', text: resposta });
           }
-          
+
           this.agendarScrollParaFim();
         },
         error: (err) => {
@@ -200,7 +207,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked {
   // CICLO DE VIDA E CARREGAMENTOS
   // ==========================================
   ngAfterViewInit(): void { this.agendarScrollParaFim(); }
-  
+
   ngAfterViewChecked(): void {
     if (!this.scrollPendente) return;
     this.scrollPendente = false;
@@ -250,10 +257,144 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked {
   }
 
   private agendarScrollParaFim(): void { this.scrollPendente = true; }
+
+  formatarMensagem(texto: string | undefined): string {
+    if (!texto) return '';
+
+    const linhas = texto.split(/\r?\n/);
+    const html: string[] = [];
+    let listaAberta = false;
+
+    for (const linha of linhas) {
+      const itemLista = linha.match(/^\s*[-*]\s+(.+)$/);
+
+      if (itemLista) {
+        if (!listaAberta) {
+          html.push('<ul>');
+          listaAberta = true;
+        }
+        html.push(`<li>${this.formatarInline(itemLista[1])}</li>`);
+        continue;
+      }
+
+      if (listaAberta) {
+        html.push('</ul>');
+        listaAberta = false;
+      }
+
+      if (linha.trim() === '') {
+        html.push('<br>');
+      } else {
+        html.push(`<p>${this.formatarInline(linha)}</p>`);
+      }
+    }
+
+    if (listaAberta) html.push('</ul>');
+    return html.join('');
+  }
+
+  getMensagemId(index: number, texto: string | undefined): string {
+    return `${index}:${texto || ''}`;
+  }
+
+  copiarMensagem(texto: string | undefined, index: number): void {
+    if (!texto) return;
+
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard
+        .writeText(texto)
+        .then(() => this.marcarMensagemCopiada(index, texto))
+        .catch(() => {
+          this.copiarComFallback(texto);
+          this.marcarMensagemCopiada(index, texto);
+        });
+      return;
+    }
+
+    this.copiarComFallback(texto);
+    this.marcarMensagemCopiada(index, texto);
+  }
+
+  editarPrompt(texto: string | undefined): void {
+    if (!texto) return;
+    this.input = texto;
+    this.agendarAjusteAlturaPrompt(true);
+  }
+
+  ajustarAlturaPrompt(event?: Event): void {
+    const textarea = (event?.target as HTMLTextAreaElement | null) ?? this.promptInput?.nativeElement;
+    if (!textarea) return;
+
+    textarea.style.height = 'auto';
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 180)}px`;
+  }
+
+  aoPressionarPrompt(event: KeyboardEvent): void {
+    if (event.key !== 'Enter' || event.shiftKey) return;
+    event.preventDefault();
+    this.send();
+  }
+
+  private formatarInline(texto: string): string {
+    return this.escaparHtml(texto)
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/__(.+?)__/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>');
+  }
+
+  private escaparHtml(texto: string): string {
+    return texto
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  private copiarComFallback(texto: string): void {
+    const textarea = document.createElement('textarea');
+    textarea.value = texto;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+  }
+
+  private marcarMensagemCopiada(index: number, texto: string): void {
+    this.mensagemCopiadaId = this.getMensagemId(index, texto);
+
+    if (this.mensagemCopiadaTimer) {
+      window.clearTimeout(this.mensagemCopiadaTimer);
+    }
+
+    this.mensagemCopiadaTimer = window.setTimeout(() => {
+      this.mensagemCopiadaId = '';
+    }, 1800);
+  }
+
+  private agendarAjusteAlturaPrompt(focar = false): void {
+    window.requestAnimationFrame(() => {
+      this.ajustarAlturaPrompt();
+      if (focar) this.promptInput?.nativeElement.focus();
+    });
+  }
+
   private scrollMessagesToBottom(): void {
     window.requestAnimationFrame(() => {
       const container = this.messagesContainer?.nativeElement;
       if (container) container.scrollTop = container.scrollHeight;
     });
+  }
+  arquivoAberto: string | null = null;
+
+  abrirDocumento(nome: string) {
+    this.arquivoAberto = nome;
+  }
+
+  fecharViewer() {
+    this.arquivoAberto = null;
   }
 }

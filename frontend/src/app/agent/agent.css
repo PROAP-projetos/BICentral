@@ -6,7 +6,6 @@
   box-sizing: border-box;
 }
 
-/* VARIÁVEIS CSS (TEMA CLARO E ESCURO) */
 .agent-shell {
   --bg-sidebar: #f9f9f9;
   --bg-sidebar-hover: #ececec;
@@ -43,7 +42,6 @@
   --border-color: #333333;
 }
 
-/* ================== SIDEBAR ================== */
 .sidebar {
   background: var(--bg-sidebar);
   display: flex;
@@ -91,7 +89,6 @@
 .theme-toggle:hover { background: var(--bg-sidebar-hover); }
 .user-info { font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem; padding: 0 0.6rem; }
 
-/* ================== MAIN AREA ================== */
 .chat-area {
   display: flex; flex-direction: column; background: var(--bg-main); height: 100vh;
 }
@@ -109,7 +106,6 @@
 .top-nav-links a { color: var(--text-secondary); text-decoration: none; font-size: 0.9rem; }
 .top-nav-links a:hover { color: var(--text-primary); }
 
-/* A MÁGICA DA CENTRALIZAÇÃO */
 .chat-body {
   flex-grow: 1; display: flex; flex-direction: column;
   overflow: hidden; align-items: center; width: 100%;
@@ -117,13 +113,12 @@
 
 .chat-body.is-empty { justify-content: center; }
 
-/* TÍTULO AJUSTADO */
 .empty-title {
   margin-bottom: 2rem; 
   text-align: center;
 }
 .empty-title h2 {
-  font-size: 1.5rem; /* Fonte reduzida para ficar elegante */
+  font-size: 1.5rem; 
   font-weight: 600; 
   color: var(--text-primary); 
   margin: 0;
@@ -143,35 +138,111 @@
 }
 
 .bubble {
-  padding: 0.8rem 1.2rem; border-radius: 12px; font-size: 1rem; line-height: 1.6;
-  white-space: pre-wrap; color: var(--text-primary); max-width: 100%;
+  padding: 0.7rem 0.95rem; border-radius: 12px; font-size: 1rem; line-height: 1.45;
+  color: var(--text-primary); max-width: 100%; position: relative;
 }
 
 .msg.bot .bubble { background: var(--bg-bubble-bot); padding-left: 0; }
-.msg.user .bubble { background: var(--bg-bubble-user); }
+.msg.user .bubble {
+  background: var(--bg-bubble-user);
+  width: fit-content;
+  max-width: min(72%, 560px);
+}
 
-/* ================== INPUT ================== */
+.message-actions {
+  position: absolute;
+  top: -34px;
+  right: 0;
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+  opacity: 0;
+  transition: opacity 0.16s ease;
+  z-index: 2;
+}
+
+.bubble:hover .message-actions,
+.bubble:focus-within .message-actions {
+  opacity: 1;
+}
+
+.message-action {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-main);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+}
+
+.message-action:hover,
+.message-action:focus-visible {
+  background: var(--bg-sidebar-hover);
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+  outline: none;
+}
+
+.message-action.copied {
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.55);
+}
+
+.message-text {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.message-text p {
+  margin: 0 0 0.55rem;
+}
+
+.message-text p:last-child,
+.message-text ul:last-child {
+  margin-bottom: 0;
+}
+
+.message-text ul {
+  margin: 0.25rem 0 0.75rem;
+  padding-left: 1.25rem;
+}
+
+.message-text li {
+  margin: 0.25rem 0;
+}
+
+.message-text strong {
+  font-weight: 700;
+}
+
 .composer {
   width: 100%; max-width: 800px; padding: 1rem; margin-top: auto;
 }
 
 .agent-input-container {
-  display: flex; align-items: center; background: var(--bg-input);
+  display: flex; align-items: flex-end; background: var(--bg-input);
   border-radius: 24px; padding: 10px 14px;
 }
 
-.agent-input-container input {
+.agent-input-container textarea {
   flex-grow: 1; border: none; background: transparent; outline: none;
-  color: var(--text-primary); font-size: 1rem; padding: 4px 8px;
+  color: var(--text-primary); font-size: 1rem; padding: 6px 8px;
+  font-family: inherit; line-height: 1.45; resize: none; max-height: 180px;
+  overflow-y: auto;
 }
 
-.agent-input-container input::placeholder { color: var(--text-secondary); }
+.agent-input-container textarea::placeholder { color: var(--text-secondary); }
 .bot-avatar {
   background: transparent;
   color: var(--text-primary);
   border: 1px solid var(--border-color);
 }
-/* BOTÃO DE ENVIAR ESTILO GPT */
 .send {
   background: var(--text-primary); color: var(--bg-main);
   border: none; border-radius: 50%; width: 34px; height: 34px;
@@ -185,7 +256,6 @@
 .chart-message {
   margin-top: 16px;
 }
-/* Estilo para as fontes dentro do chat */
 .bubble-fontes {
   margin-top: 12px;
   padding-top: 10px;
@@ -198,7 +268,7 @@
 .fontes-label {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #666; /* Ajuste para uma cor visível no seu tema claro/escuro */
+  color: #666;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -219,7 +289,6 @@
   border: 1px solid rgba(0, 120, 215, 0.2);
 }
 
-/* Ajuste de cor da fonte no dark mode */
 .dark-theme .fontes-label {
   color: #aaa;
 }
@@ -227,4 +296,68 @@
   background-color: rgba(100, 180, 255, 0.15);
   color: #80c0ff;
   border-color: rgba(100, 180, 255, 0.2);
+}
+
+.pdf-viewer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  backdrop-filter: blur(3px);
+}
+
+.pdf-viewer-content {
+  background-color: #1e1e2d;
+  width: 85%;
+  height: 90%;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+  border: 1px solid #2a2a3c;
+}
+
+.viewer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  background-color: #151521;
+  color: #e0e0e0;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  border-bottom: 1px solid #2a2a3c;
+}
+
+.viewer-header button {
+  background-color: transparent;
+  color: #a0a0a0;
+  border: none;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 4px 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.viewer-header button:hover {
+  background-color: #ff4757;
+  color: white;
+}
+
+.pdf-viewer-content iframe {
+  flex-grow: 1;
+  border: none;
+  width: 100%;
+  height: 100%;
+  background-color: #e0e0e0;
 }

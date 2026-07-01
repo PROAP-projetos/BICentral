@@ -123,8 +123,8 @@ public class EmbeddingService {
             // 2. Monta o Payload para o Supabase
             Map<String, Object> body = Map.of(
                     "query_embedding", vetorPergunta,
-                    "match_threshold", 0.3, 
-                    "match_count", 3,       
+                    "match_threshold", 0.2, 
+                    "match_count", 10,       
                     "p_equipe_id", equipeId
             );
 

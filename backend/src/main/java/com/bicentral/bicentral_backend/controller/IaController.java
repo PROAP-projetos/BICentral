@@ -5,6 +5,7 @@ import com.bicentral.bicentral_backend.model.Equipe;
 import com.bicentral.bicentral_backend.model.Usuario;
 import com.bicentral.bicentral_backend.repository.EquipeRepository;
 import com.bicentral.bicentral_backend.repository.MembroEquipeRepository;
+import com.bicentral.bicentral_backend.service.AgenteProiap;
 import com.bicentral.bicentral_backend.service.ConsultaService;
 import com.bicentral.bicentral_backend.service.IngestaoService;
 import com.bicentral.bicentral_backend.service.UsuarioService;
@@ -37,6 +38,7 @@ public class IaController {
     private final UsuarioService usuarioService;
     private final ConsultaService consultaService;
     private final ChatLanguageModel chatModel;
+    private final AgenteProiap agenteProiap;
 
     public IaController(
             IngestaoService ingestaoService,
@@ -44,21 +46,22 @@ public class IaController {
             MembroEquipeRepository membroEquipeRepository,
             UsuarioService usuarioService,
             ConsultaService consultaService,
-            ChatLanguageModel chatModel) { 
+            ChatLanguageModel chatModel,
+            AgenteProiap agenteProiap) {
         this.ingestaoService = ingestaoService;
         this.equipeRepository = equipeRepository;
         this.membroEquipeRepository = membroEquipeRepository;
         this.usuarioService = usuarioService;
         this.consultaService = consultaService;
         this.chatModel = chatModel;
+        this.agenteProiap = agenteProiap;
     }
 
     @PostMapping("/ingestao")
     public ResponseEntity<?> realizarIngestao(
             @RequestParam("arquivo") MultipartFile arquivo,
             @RequestParam("equipe") String nomeEquipe,
-            @RequestParam("visibilidade") String visibilidade
-    ) {
+            @RequestParam("visibilidade") String visibilidade) {
         Path tempFile = null;
 
         try {
@@ -70,7 +73,8 @@ public class IaController {
             String nomeArquivo = arquivo.getOriginalFilename();
             String extensao = obterExtensao(nomeArquivo);
 
-            if (!extensao.equals(".pdf") && !extensao.equals(".txt") && !extensao.equals(".xlsx") && !extensao.equals(".xls")) {
+            if (!extensao.equals(".pdf") && !extensao.equals(".txt") && !extensao.equals(".xlsx")
+                    && !extensao.equals(".xls")) {
                 return ResponseEntity.badRequest().body("Formato não suportado. Envie PDF, TXT, XLSX ou XLS.");
             }
 
@@ -80,8 +84,7 @@ public class IaController {
             Equipe equipe = equipeRepository.findByNome(nomeEquipe)
                     .orElseThrow(() -> new ResponseStatusException(
                             HttpStatus.NOT_FOUND,
-                            "Equipe não encontrada: " + nomeEquipe
-                    ));
+                            "Equipe não encontrada: " + nomeEquipe));
 
             boolean usuarioPertenceEquipe = membroEquipeRepository
                     .findByUsuarioAndEquipe(usuarioLogado, equipe)
@@ -101,8 +104,7 @@ public class IaController {
                     nomeArquivo,
                     equipe.getNome(),
                     visibilidadeNormalizada,
-                    equipe.getId()
-            );
+                    equipe.getId());
 
             if (chunksProntos.isEmpty() || chunksProntos.stream().allMatch(chunk -> chunk.getConteudo().isBlank())) {
                 return ResponseEntity.badRequest().body("Não foi possível extrair texto útil do documento.");
@@ -114,8 +116,7 @@ public class IaController {
                     "totalChunks", chunksProntos.size(),
                     "arquivo", nomeArquivo,
                     "equipe", equipe.getNome(),
-                    "visibilidade", visibilidadeNormalizada
-            ));
+                    "visibilidade", visibilidadeNormalizada));
         } catch (ResponseStatusException e) {
             return ResponseEntity.status(e.getStatusCode()).body(e.getReason());
         } catch (Exception e) {
@@ -144,17 +145,36 @@ public class IaController {
             List<String> contextos = consultaService.buscar(pregunta, equipe.getId());
             String resposta = gerarResposta(pregunta, contextos, equipe.getNome());
 
+            // --- BLOCO DE FILTRO SIMPLIFICADO E ATUALIZADO ---
+            String textoPergunta = pregunta.toLowerCase();
+
+            // Verifica se a mensagem se parece com uma saudação comum de até 30 caracteres
+            boolean ehSaudacao = (textoPergunta.contains("oi") || textoPergunta.contains("olá") ||
+                    textoPergunta.contains("ola") || textoPergunta.contains("bom dia") ||
+                    textoPergunta.contains("boa tarde") || textoPergunta.contains("tudo bem"))
+                    && pregunta.length() < 30;
+
+            // Verifica se a resposta disparou a Regra de Ouro (Frase padrão de erro)
+            boolean ehRespostaPadrao = resposta.contains("Desculpe, não encontrei");
+
+            // Se for saudação OU se o documento não tinha a resposta, limpa as fontes da
+            // tela
+            if (ehSaudacao || ehRespostaPadrao) {
+                contextos.clear();
+            }
+            // -------------------------------------------------
+
             return ResponseEntity.ok(Map.of(
                     "pergunta", pregunta,
                     "resposta", resposta,
                     "contextos", contextos,
-                    "modelo", "Llama 3 (via Groq)", 
-                    "equipe", equipe.getNome()
-            ));
+                    "modelo", "Llama 3 (via Groq)",
+                    "equipe", equipe.getNome()));
         } catch (ResponseStatusException e) {
             return ResponseEntity.status(e.getStatusCode()).body(Map.of("mensagem", e.getReason()));
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(Map.of("mensagem", "Erro ao consultar agente: " + e.getMessage()));
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("mensagem", "Erro ao consultar agente: " + e.getMessage()));
         }
     }
 
@@ -166,14 +186,13 @@ public class IaController {
                     "fontes", consultaService.listarFontes(equipe.getId()),
                     "modelo", Map.of(
                             "nome", "Llama 3 (Groq)",
-                            "detalhes", "via API Groq · local-onnx-embedding"
-                    ),
-                    "equipe", equipe.getNome()
-            ));
+                            "detalhes", "via API Groq · local-onnx-embedding"),
+                    "equipe", equipe.getNome()));
         } catch (ResponseStatusException e) {
             return ResponseEntity.status(e.getStatusCode()).body(Map.of("mensagem", e.getReason()));
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(Map.of("mensagem", "Erro ao listar fontes: " + e.getMessage()));
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("mensagem", "Erro ao listar fontes: " + e.getMessage()));
         }
     }
 
@@ -234,22 +253,11 @@ public class IaController {
 
     private String gerarResposta(String pergunta, List<String> contextos, String equipe) {
         if (contextos == null || contextos.isEmpty()) {
-            return "Não encontrei informação suficiente nos documentos disponíveis da equipe " + equipe + " para responder essa pergunta.";
+            return "Desculpe, não encontrei essa informação nos documentos institucionais acessíveis no momento.";
         }
 
-        String contexto = String.join("\n\n---\n\n", contextos);
-        String prompt = """
-                Você é o agente de IA do BICentral.
-                Responda em português do Brasil, de forma objetiva, usando apenas o contexto abaixo.
-                Se o contexto não tiver informação suficiente, diga que não encontrou a informação nos documentos disponíveis.
+        String contextoUnido = String.join("\n\n---\n\n", contextos);
 
-                Equipe: %s
-                Pergunta: %s
-
-                Contexto:
-                %s
-                """.formatted(equipe, pergunta, contexto);
-
-        return chatModel.chat(prompt); 
+        return agenteProiap.responderDuvida(pergunta, contextoUnido);
     }
 }

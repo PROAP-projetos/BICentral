@@ -16,9 +16,12 @@ public class ProiapService {
     private final AgenteProiap agenteProiap;
     private final EstadoSessao estadoSessao;
     private final EmbeddingService embeddingService;
+    private final AgenteConsultaSql agenteConsultaSql;
 
-    public ProiapService(AgenteProiap agenteProiap, EstadoSessao estadoSessao, EmbeddingService embeddingService) {
+    public ProiapService(AgenteProiap agenteProiap, AgenteConsultaSql agenteConsultaSql, EstadoSessao estadoSessao,
+            EmbeddingService embeddingService) {
         this.agenteProiap = agenteProiap;
+        this.agenteConsultaSql = agenteConsultaSql;
         this.estadoSessao = estadoSessao;
         this.embeddingService = embeddingService;
     }
@@ -41,7 +44,8 @@ public class ProiapService {
             System.out.println(">>> ENTROU NO BLOCO DE CONFIRMAÇÃO");
 
             // Usa memória descartável (UUID)
-            String classificacao = agenteProiap.classificarConfirmacao(UUID.randomUUID().toString(), perguntaUsuario).trim().toUpperCase();
+            String classificacao = agenteProiap.classificarConfirmacao(UUID.randomUUID().toString(), perguntaUsuario)
+                    .trim().toUpperCase();
             System.out.println("IA Classificou a resposta como: " + classificacao);
 
             if (classificacao.contains("CONFIRMAR")) {
@@ -49,16 +53,15 @@ public class ProiapService {
                 System.out.println(">>> USUÁRIO CONFIRMOU (IA ENTENDEU)");
 
                 GraficoSpec pendente = estadoSessao.getGraficoPendente();
-                
+
                 GraficoSpec graficoPronto = new GraficoSpec(
-                    "Prontinho! Aqui está o gráfico. Se quiser mudar o formato (ex: pizza) ou o título, é só pedir.",
-                    pendente.skill(),
-                    pendente.titulo(),
-                    pendente.tipo(),
-                    pendente.eixoX(),
-                    pendente.series(),
-                    false
-                );
+                        "Prontinho! Aqui está o gráfico. Se quiser mudar o formato (ex: pizza) ou o título, é só pedir.",
+                        pendente.skill(),
+                        pendente.titulo(),
+                        pendente.tipo(),
+                        pendente.eixoX(),
+                        pendente.series(),
+                        false);
 
                 estadoSessao.setAguardandoConfirmacaoGrafico(false);
                 estadoSessao.setGraficoPendente(null);
@@ -73,7 +76,8 @@ public class ProiapService {
                 estadoSessao.setAguardandoConfirmacaoGrafico(false);
                 estadoSessao.setGraficoPendente(null);
 
-                // Como agora devolvemos objeto, envelopamos o texto de negação e deixamos a lista de fontes vazia
+                // Como agora devolvemos objeto, envelopamos o texto de negação e deixamos a
+                // lista de fontes vazia
                 return new RespostaTextual("Tudo bem! Me diz o que você quer ver e eu busco novamente.", null);
             }
 
@@ -127,22 +131,17 @@ public class ProiapService {
         // ROTEAMENTO
         // ================================================================
         if (analise.intencao() == Intencao.RESPOSTA) {
-
-            // A IA gera a resposta baseada APENAS no texto
-            String respostaTexto = agenteProiap.responderDuvida(perguntaUsuario, contextoRAG.textoContexto());
-
-            // Devolvemos o DTO contendo a resposta da IA + a lista de PDFs para a barra lateral
+            String respostaTexto = agenteConsultaSql.responderComFerramentas(perguntaUsuario,
+                    contextoRAG.textoContexto());
             return new RespostaTextual(respostaTexto, contextoRAG.fontes());
-
         } else if (analise.intencao() == Intencao.GRAFICO) {
 
             // A IA gera o gráfico baseada APENAS no texto
             GraficoSpec spec = agenteProiap.gerarGrafico(
-                perguntaUsuario,
-                contextoRAG.textoContexto(),
-                estadoSessao.getIndicador(),
-                estadoSessao.getTipoGrafico()
-            );
+                    perguntaUsuario,
+                    contextoRAG.textoContexto(),
+                    estadoSessao.getIndicador(),
+                    estadoSessao.getTipoGrafico());
 
             System.out.println(">>> NOVO GRÁFICO GERADO");
             System.out.println(">>> SALVANDO COMO PENDENTE");

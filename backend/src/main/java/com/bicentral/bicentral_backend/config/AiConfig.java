@@ -11,6 +11,7 @@ import dev.langchain4j.model.openai.OpenAiChatModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import java.time.Duration;
 import org.springframework.context.annotation.Primary;
 
 @Configuration
@@ -34,12 +35,11 @@ public class AiConfig {
     // --- CHAT MODELS (LLMs) ---
 
     @Bean("groqModel")
-    @Primary 
     public ChatLanguageModel groqModel() {
         return OpenAiChatModel.builder()
                 .apiKey(groqApiKey)
                 .baseUrl("https://api.groq.com/openai/v1")
-                .modelName("llama-3.3-70b-versatile")
+                .modelName("llama-3.3-70b-versatile") //llama-3.3-70b-versatile
                 .temperature(0.0)
                 .build();
     }
@@ -53,10 +53,12 @@ public class AiConfig {
     }
 
     @Bean("ollamaModel")
+    @Primary
     public ChatLanguageModel ollamaModel() {
         return OllamaChatModel.builder()
                 .baseUrl(ollamaBaseUrl)
                 .modelName(ollamaModelName)
+                .timeout(Duration.ofMinutes(5))
                 .build();
     }
 

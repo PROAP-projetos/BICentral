@@ -25,18 +25,18 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-    public class SecurityConfig {
+public class SecurityConfig {
 
-        private static final String[] PUBLIC_ENDPOINTS = {
-        "/api/usuarios/cadastro",
-        "/api/usuarios/login",
-        "/api/usuarios/verify",
-        "/api/convites/aceitar", 
-        "/auth/**",
-        "/error",
-        "/ai/test/**",
-        "/api/proiap/**",        
-        "/favicon.ico"           
+    private static final String[] PUBLIC_ENDPOINTS = {
+            "/api/usuarios/cadastro",
+            "/api/usuarios/login",
+            "/api/usuarios/verify",
+            "/api/convites/aceitar",
+            "/auth/**",
+            "/error",
+            "/ai/test/**",
+            "/api/proiap/**",
+            "/favicon.ico"
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -50,6 +50,9 @@ import java.util.List;
         return http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
+
+                .headers(headers -> headers
+                        .frameOptions(frameOptions -> frameOptions.disable()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
                     // Esse é o log que você vê quando dá 401
@@ -59,9 +62,8 @@ import java.util.List;
                     response.getWriter().write("{\"error\":\"UNAUTHORIZED\"}");
                 }))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(PUBLIC_ENDPOINTS).permitAll() 
-                        .anyRequest().authenticated()
-                )
+                        .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                        .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
@@ -78,8 +80,7 @@ import java.util.List;
         config.setAllowedOriginPatterns(List.of(
                 "http://localhost:*",
                 "http://127.0.0.1:*",
-                "http://*.localhost:*"
-        ));
+                "http://*.localhost:*"));
 
         config.setAllowedMethods(List.of(
                 HttpMethod.GET.name(),
@@ -87,8 +88,7 @@ import java.util.List;
                 HttpMethod.PUT.name(),
                 HttpMethod.DELETE.name(),
                 HttpMethod.PATCH.name(),
-                HttpMethod.OPTIONS.name()
-        ));
+                HttpMethod.OPTIONS.name()));
 
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of(HttpHeaders.AUTHORIZATION));
