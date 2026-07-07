@@ -1,0 +1,40 @@
+<section class="card">
+  <div class="card-header">
+    <h2>Administradores</h2>
+    <span class="count">{{ admins.length }} total</span>
+  </div>
+
+  <form class="form-compact" (ngSubmit)="adicionar()">
+    <select [(ngModel)]="usuarioId" name="adminUsuario" required>
+      <option [ngValue]="null">Selecione um usuario</option>
+      <option *ngFor="let usuario of usuariosDisponiveis" [ngValue]="usuario.id">
+        {{ usuario.nome }} - {{ usuario.email }}
+      </option>
+    </select>
+    <button class="btn btn-primary btn-sm" type="submit" [disabled]="!usuarioId || salvando">
+      Adicionar
+    </button>
+  </form>
+
+  <div class="table admin-table">
+    <div class="table-row table-head">
+      <div>Usuario</div>
+      <div style="text-align: right;">Acoes</div>
+    </div>
+
+    <div class="table-row" *ngFor="let admin of admins">
+      <div class="person-cell">
+        <span class="avatar">{{ (admin.nome || admin.usuarioId).toString().slice(0, 1) | uppercase }}</span>
+        <div>
+          <strong>{{ admin.nome || ('Usuario ' + admin.usuarioId) }}</strong>
+          <span>{{ admin.email || 'Sem e-mail encontrado' }}</span>
+        </div>
+      </div>
+      <div class="actions-col">
+        <button class="btn-icon btn-danger-icon" type="button" title="Remover" (click)="remover(admin)" [disabled]="salvando">
+          Remover
+        </button>
+      </div>
+    </div>
+  </div>
+</section>

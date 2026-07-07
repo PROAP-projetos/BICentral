@@ -1,0 +1,47 @@
+<header class="page-header">
+  <a class="logo" routerLink="/">BICentral</a>
+  <nav class="nav-links">
+    <a class="nav-link" routerLink="/">Home</a>
+    <a class="nav-link active" routerLink="/admin">Painel Admin</a>
+  </nav>
+</header>
+
+<main class="page">
+  <div *ngIf="mensagemFeedback" class="feedback-banner" [ngClass]="tipoFeedback">
+    {{ mensagemFeedback }}
+    <button class="btn-close" type="button" (click)="limparFeedback()">x</button>
+  </div>
+
+  <section class="hero">
+    <div class="hero-text">
+      <h1>Painel Admin</h1>
+      <p class="subtitle">
+        Gerencie acessos administrativos, gerentes por departamento e limites de notificacao.
+      </p>
+    </div>
+  </section>
+
+  <div *ngIf="carregando" class="loading-panel">
+    Carregando dados administrativos...
+  </div>
+
+  <div class="admin-layout" *ngIf="!carregando">
+    <div class="main-column">
+      <app-gestao-gerentes
+        [gerentes]="gerentes"
+        [usuarios]="usuarios"
+        (alterado)="onAlterado($event)">
+      </app-gestao-gerentes>
+    </div>
+
+    <div class="side-column">
+      <app-gestao-admins
+        [admins]="admins"
+        [usuarios]="usuarios"
+        (alterado)="onAlterado($event)">
+      </app-gestao-admins>
+
+      <app-configuracoes-notificacao (alterado)="onAlterado($event)"></app-configuracoes-notificacao>
+    </div>
+  </div>
+</main>

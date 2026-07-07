@@ -49,7 +49,87 @@
           <polyline points="6 9 12 15 18 9"></polyline>
         </svg>
       </div>
+
       <div class="top-nav-links">
+        <div class="notif-wrapper">
+          <button class="notif-bell" type="button" (click)="toggleRelatorio()" aria-label="Gerar relatório" title="Gerar relatório">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+          </button>
+
+          <div class="notif-panel relatorio-panel" *ngIf="mostrarPainelRelatorio">
+            <div class="notif-panel-header">Gerar relatório (.docx)</div>
+
+            <div class="notif-panel-body relatorio-body">
+              <label class="relatorio-label">
+                Departamento
+                <select [(ngModel)]="relatorioDepartamento" [disabled]="relatorioSolicitando || carregandoDepartamentos">
+                  <option value="" disabled selected>{{ carregandoDepartamentos ? 'Carregando...' : 'Selecione um departamento' }}</option>
+                  <option *ngFor="let dep of departamentosDisponiveis" [value]="dep">{{ dep }}</option>
+                </select>
+              </label>
+
+              <label class="relatorio-label">
+                Tipo de plano
+                <select [(ngModel)]="relatorioTipo" [disabled]="relatorioSolicitando">
+                  <option value="PAT">PAT (ano corrente)</option>
+                  <option value="PDI">PDI (acumulado 5 anos)</option>
+                  <option value="COMPARATIVO">Comparativo (PDI x PAT)</option>
+                </select>
+              </label>
+
+              <button class="notif-bell relatorio-gerar-btn" type="button" (click)="solicitarRelatorio()"
+                [disabled]="!relatorioDepartamento.trim() || relatorioSolicitando">
+                {{ relatorioSolicitando ? 'Gerando...' : 'Gerar relatório' }}
+              </button>
+
+              <p class="notif-empty" *ngIf="relatorioStatusAtual === 'PROCESSANDO'">
+                ⏳ Processando... isso pode levar até 30 segundos.
+              </p>
+
+              <p class="notif-empty relatorio-erro" *ngIf="relatorioStatusAtual === 'ERRO'">
+                ❌ {{ relatorioMensagemErro }}
+              </p>
+
+              <a class="notif-item relatorio-link" *ngIf="relatorioStatusAtual === 'PRONTO' && relatorioUrlArquivo"
+                [href]="relatorioUrlArquivo" target="_blank" rel="noopener">
+                ✅ Relatório pronto! Clique para baixar
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <div class="notif-wrapper">
+          <button class="notif-bell" type="button" (click)="toggleNotificacoes()" aria-label="Notificações">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
+              <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
+            </svg>
+            <span class="notif-badge" *ngIf="notificacoes.length > 0">{{ notificacoes.length }}</span>
+          </button>
+
+          <div class="notif-panel" *ngIf="mostrarPainelNotificacoes">
+            <div class="notif-panel-header">Notificações</div>
+
+            <div class="notif-panel-body">
+              <p class="notif-empty" *ngIf="!carregandoNotificacoes && notificacoes.length === 0">
+                Nenhuma notificação no momento.
+              </p>
+              <p class="notif-empty" *ngIf="carregandoNotificacoes">Carregando...</p>
+
+              <div class="notif-item" *ngFor="let n of notificacoes">
+                {{ n }}
+              </div>
+            </div>
+          </div>
+        </div>
+
         <a routerLink="/ingestao-ia">Ingestão IA</a>
       </div>
     </header>

@@ -1,5 +1,6 @@
 package com.bicentral.bicentral_backend.config;
 
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2.AllMiniLmL6V2EmbeddingModel;
@@ -23,6 +24,12 @@ public class AiConfig {
     @Value("${groq.api.key:}")
     private String groqApiKey;
 
+    @Value("${cerebras.api.key:}")
+    private String cerebrasApiKey;
+
+    @Value("${sambanova.api.key:}")
+    private String sambanovaApiKey;
+
     @Value("${ollama.base.url:http://localhost:11434}")
     private String ollamaBaseUrl;
 
@@ -39,8 +46,28 @@ public class AiConfig {
         return OpenAiChatModel.builder()
                 .apiKey(groqApiKey)
                 .baseUrl("https://api.groq.com/openai/v1")
-                .modelName("llama-3.3-70b-versatile") //llama-3.3-70b-versatile
+                .modelName("llama-3.3-70b-versatile")
                 .temperature(0.0)
+                .build();
+    }
+
+    @Bean("cerebrasModel")
+    public ChatLanguageModel cerebrasModel() {
+        return OpenAiChatModel.builder()
+                .apiKey(cerebrasApiKey)
+                .baseUrl("https://api.cerebras.ai/v1")
+                .modelName("zai-glm-4.7") // openai-gpt-oss-120b, gemma-4-31b-it
+                .temperature(0.0)
+                .build();
+    }
+
+    @Bean("sambanovaModel")
+    @Primary
+    public ChatLanguageModel sambanovaModel() {
+        return OpenAiChatModel.builder()
+                .apiKey(sambanovaApiKey)
+                .baseUrl("https://api.sambanova.ai/v1")
+                .modelName("DeepSeek-V3.1") // Meta-Llama-3.3-70B-Instruct, gpt-oss-120b
                 .build();
     }
 
@@ -53,7 +80,6 @@ public class AiConfig {
     }
 
     @Bean("ollamaModel")
-    @Primary
     public ChatLanguageModel ollamaModel() {
         return OllamaChatModel.builder()
                 .baseUrl(ollamaBaseUrl)
@@ -65,7 +91,7 @@ public class AiConfig {
     // --- EMBEDDING MODELS ---
 
     @Bean("localEmbeddingModel")
-    @Primary // Modelo ONNX local é o padrão do sistema
+    @Primary
     public EmbeddingModel localEmbeddingModel() {
         return new AllMiniLmL6V2EmbeddingModel();
     }

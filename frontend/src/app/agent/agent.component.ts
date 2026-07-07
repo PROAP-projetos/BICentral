@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewChecked, AfterViewInit, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { AfterViewChecked, AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
@@ -25,7 +25,7 @@ interface ChatSession {
   templateUrl: './agent.html',
   styleUrls: ['./agent.css']
 })
-export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked {
+export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, OnDestroy {
   private static readonly SELECTED_EQUIPE_KEY = 'bicentral_selected_equipe';
   @ViewChild('messagesContainer') private messagesContainer?: ElementRef<HTMLDivElement>;
   @ViewChild('promptInput') private promptInput?: ElementRef<HTMLTextAreaElement>;
@@ -54,10 +54,32 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked {
 
   mensagemBoasVindas = '';
 
+  // ==========================================
+  // NOTIFICAÇÕES
+  // ==========================================
+  notificacoes: string[] = [];
+  carregandoNotificacoes = false;
+  mostrarPainelNotificacoes = false;
+
+  // ==========================================
+  // RELATÓRIO (.docx assíncrono)
+  // ==========================================
+  mostrarPainelRelatorio = false;
+  departamentosDisponiveis: string[] = [];
+  carregandoDepartamentos = false;
+  relatorioDepartamento = '';
+  relatorioTipo: 'PAT' | 'PDI' | 'COMPARATIVO' = 'PAT';
+  relatorioSolicitando = false;
+  relatorioStatusAtual: 'PROCESSANDO' | 'PRONTO' | 'ERRO' | null = null;
+  relatorioUrlArquivo: string | null = null;
+  relatorioMensagemErro: string | null = null;
+  private relatorioPollingTimer?: number;
+
   constructor(private agentService: AgentService) {
     this.carregarUsuario();
     this.carregarEquipeSelecionada();
     this.carregarFontes();
+    this.carregarNotificacoes();
 
     if (localStorage.getItem('theme') === 'dark') {
       this.isDarkMode = true;
@@ -208,6 +230,10 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked {
   // ==========================================
   ngAfterViewInit(): void { this.agendarScrollParaFim(); }
 
+  ngOnDestroy(): void {
+    this.pararPollingRelatorio();
+  }
+
   ngAfterViewChecked(): void {
     if (!this.scrollPendente) return;
     this.scrollPendente = false;
@@ -256,6 +282,98 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked {
     return 'documento';
   }
 
+  // ==========================================
+  // NOTIFICAÇÕES
+  // ==========================================
+  private carregarNotificacoes(): void {
+    this.carregandoNotificacoes = true;
+    this.agentService.listarNotificacoes()
+      .pipe(finalize(() => this.carregandoNotificacoes = false))
+      .subscribe({
+        next: (lista) => this.notificacoes = lista || [],
+        error: () => this.notificacoes = []
+      });
+  }
+
+  toggleNotificacoes(): void {
+    this.mostrarPainelNotificacoes = !this.mostrarPainelNotificacoes;
+  }
+
+  // ==========================================
+  // RELATÓRIO (.docx assíncrono)
+  // ==========================================
+  toggleRelatorio(): void {
+    this.mostrarPainelRelatorio = !this.mostrarPainelRelatorio;
+    if (this.mostrarPainelNotificacoes) this.mostrarPainelNotificacoes = false;
+
+    if (this.mostrarPainelRelatorio && this.departamentosDisponiveis.length === 0) {
+      this.carregandoDepartamentos = true;
+      this.agentService.listarDepartamentosRelatorio().subscribe({
+        next: (lista) => {
+          this.departamentosDisponiveis = lista;
+          this.carregandoDepartamentos = false;
+        },
+        error: () => {
+          this.carregandoDepartamentos = false;
+        }
+      });
+    }
+  }
+
+  solicitarRelatorio(): void {
+    const departamento = this.relatorioDepartamento.trim();
+    if (!departamento || this.relatorioSolicitando) return;
+
+    this.relatorioSolicitando = true;
+    this.relatorioStatusAtual = null;
+    this.relatorioUrlArquivo = null;
+    this.relatorioMensagemErro = null;
+
+    this.agentService.gerarRelatorio(departamento, this.relatorioTipo).subscribe({
+      next: (resposta) => {
+        this.relatorioStatusAtual = 'PROCESSANDO';
+        this.iniciarPollingRelatorio(resposta.id);
+      },
+      error: () => {
+        this.relatorioSolicitando = false;
+        this.relatorioStatusAtual = 'ERRO';
+        this.relatorioMensagemErro = 'Não foi possível solicitar o relatório.';
+      }
+    });
+  }
+
+  private iniciarPollingRelatorio(id: number): void {
+    this.pararPollingRelatorio();
+    this.relatorioPollingTimer = window.setInterval(() => {
+      this.agentService.statusRelatorio(id).subscribe({
+        next: (status) => {
+          this.relatorioStatusAtual = status.status;
+          if (status.status === 'PRONTO') {
+            this.relatorioUrlArquivo = status.arquivo_url;
+            this.relatorioSolicitando = false;
+            this.pararPollingRelatorio();
+          } else if (status.status === 'ERRO') {
+            this.relatorioMensagemErro = status.mensagem_erro || 'Erro ao gerar relatório.';
+            this.relatorioSolicitando = false;
+            this.pararPollingRelatorio();
+          }
+        },
+        error: () => {
+          this.relatorioMensagemErro = 'Erro ao consultar status do relatório.';
+          this.relatorioSolicitando = false;
+          this.pararPollingRelatorio();
+        }
+      });
+    }, 4000);
+  }
+
+  private pararPollingRelatorio(): void {
+    if (this.relatorioPollingTimer) {
+      window.clearInterval(this.relatorioPollingTimer);
+      this.relatorioPollingTimer = undefined;
+    }
+  }
+
   private agendarScrollParaFim(): void { this.scrollPendente = true; }
 
   formatarMensagem(texto: string | undefined): string {
@@ -265,7 +383,29 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked {
     const html: string[] = [];
     let listaAberta = false;
 
-    for (const linha of linhas) {
+    for (let i = 0; i < linhas.length; i++) {
+      const linha = linhas[i];
+      const proximaLinha = linhas[i + 1];
+
+      if (this.ehLinhaTabela(linha) && this.ehSeparadorTabela(proximaLinha)) {
+        if (listaAberta) {
+          html.push('</ul>');
+          listaAberta = false;
+        }
+
+        const linhasTabela = [linha];
+        i += 2;
+
+        while (i < linhas.length && this.ehLinhaTabela(linhas[i])) {
+          linhasTabela.push(linhas[i]);
+          i++;
+        }
+
+        i--;
+        html.push(this.formatarTabela(linhasTabela));
+        continue;
+      }
+
       const itemLista = linha.match(/^\s*[-*]\s+(.+)$/);
 
       if (itemLista) {
@@ -282,11 +422,16 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked {
         listaAberta = false;
       }
 
-      if (linha.trim() === '') {
-        html.push('<br>');
-      } else {
-        html.push(`<p>${this.formatarInline(linha)}</p>`);
+      if (linha.trim() === '') continue;
+
+      const titulo = linha.match(/^(#{1,3})\s+(.+)$/);
+      if (titulo) {
+        const nivel = titulo[1].length + 2;
+        html.push(`<h${nivel}>${this.formatarInline(titulo[2])}</h${nivel}>`);
+        continue;
       }
+
+      html.push(`<p>${this.formatarInline(linha)}</p>`);
     }
 
     if (listaAberta) html.push('</ul>');
@@ -340,6 +485,39 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked {
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/__(.+?)__/g, '<strong>$1</strong>')
       .replace(/\*(.+?)\*/g, '<em>$1</em>');
+  }
+
+  private formatarTabela(linhas: string[]): string {
+    const [cabecalho, ...corpo] = linhas.map((linha) => this.quebrarLinhaTabela(linha));
+
+    const ths = cabecalho
+      .map((celula) => `<th>${this.formatarInline(celula)}</th>`)
+      .join('');
+    const trs = corpo
+      .map((linha) => `<tr>${linha.map((celula) => `<td>${this.formatarInline(celula)}</td>`).join('')}</tr>`)
+      .join('');
+
+    return `<div class="message-table-wrap"><table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table></div>`;
+  }
+
+  private quebrarLinhaTabela(linha: string): string[] {
+    return linha
+      .trim()
+      .replace(/^\|/, '')
+      .replace(/\|$/, '')
+      .split('|')
+      .map((celula) => celula.trim());
+  }
+
+  private ehLinhaTabela(linha: string | undefined): boolean {
+    if (!linha) return false;
+    const texto = linha.trim();
+    return texto.startsWith('|') && texto.endsWith('|') && texto.includes('|');
+  }
+
+  private ehSeparadorTabela(linha: string | undefined): boolean {
+    if (!this.ehLinhaTabela(linha)) return false;
+    return this.quebrarLinhaTabela(linha || '').every((celula) => /^:?-{3,}:?$/.test(celula));
   }
 
   private escaparHtml(texto: string): string {

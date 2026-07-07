@@ -5,6 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { interval, Subscription, of } from 'rxjs';
 import { switchMap, catchError } from 'rxjs/operators';
 import { FormBuilder, ReactiveFormsModule, Validators, FormGroup } from '@angular/forms';
+import { AdminService } from '../services/admin.service';
 import { EquipeService, Equipe } from '../services/equipe.services';
 
 // ✅ ajuste o path real do seu projeto
@@ -58,6 +59,7 @@ loading = true;
 error: string | null = null;
 
 isLoggedIn = false;
+isAdminSistema = false;
 userName: string | null = null;
 currentRole: UserRole = 'VIEWER';
 equipeSelecionada: EquipeSelecionada | null = null;
@@ -131,6 +133,7 @@ constructor(
     private http: HttpClient,
     private router: Router,
   private fb: FormBuilder,
+  private adminService: AdminService,
   private equipeService: EquipeService
   ) {
     this.editForm = this.fb.group({
@@ -151,6 +154,7 @@ constructor(
     }
 
     this.initializeWelcomeOverlay();
+    this.verificarAdminSistema();
     this.carregarEquipesMenu();
     this.loadDashboards();
     this.startPolling();
@@ -176,6 +180,17 @@ constructor(
   // -------------------------
   // AUTH HELPERS
   // -------------------------
+  verificarAdminSistema(): void {
+    this.adminService.souAdmin().subscribe({
+      next: (resposta) => {
+        this.isAdminSistema = resposta.admin;
+      },
+      error: () => {
+        this.isAdminSistema = false;
+      }
+    });
+  }
+
   get equipeMenuLabel(): string {
     return this.equipeSelecionada?.nome || 'Minha Equipe';
   }
