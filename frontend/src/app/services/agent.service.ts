@@ -41,6 +41,22 @@ export interface RelatorioStatusResponse {
   tipo: string;
 }
 
+export interface RelatorioHistoricoItem {
+  id: number;
+  departamento: string;
+  tipo: string;
+  status: 'PROCESSANDO' | 'PRONTO' | 'ERRO';
+  arquivo_url: string | null;
+  pdf_url: string | null;
+  mensagem_erro: string | null;
+  criado_em: string;
+  concluido_em: string | null;
+}
+
+export interface RelatorioPdfResponse {
+  pdf_url: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -86,5 +102,20 @@ export class AgentService {
   listarDepartamentosRelatorio(): Observable<string[]> {
     const url = 'http://localhost:8080/api/proiap/relatorio/departamentos';
     return this.http.get<string[]>(url, { withCredentials: true });
+  }
+
+  listarMeusRelatorios(): Observable<RelatorioHistoricoItem[]> {
+    const url = 'http://localhost:8080/api/proiap/relatorio/meus';
+    return this.http.get<RelatorioHistoricoItem[]>(url, { withCredentials: true });
+  }
+
+  gerarPdfRelatorio(id: number): Observable<RelatorioPdfResponse> {
+    const url = `http://localhost:8080/api/proiap/relatorio/${id}/pdf`;
+    return this.http.post<RelatorioPdfResponse>(url, {}, { withCredentials: true });
+  }
+
+  excluirRelatorio(id: number): Observable<void> {
+    const url = `http://localhost:8080/api/proiap/relatorio/${id}`;
+    return this.http.delete<void>(url, { withCredentials: true });
   }
 }

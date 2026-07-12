@@ -1,14 +1,14 @@
 package com.bicentral.bicentral_backend.config;
 
 import com.bicentral.bicentral_backend.service.AgenteProiap;
-import com.bicentral.bicentral_backend.service.AgenteRelatorio;
 import com.bicentral.bicentral_backend.service.AgenteConsultaSql;
+import com.bicentral.bicentral_backend.service.AgenteRelatorio;
 import com.bicentral.bicentral_backend.service.ConsultaAcoesTool;
+import com.bicentral.bicentral_backend.service.RelatorioContextoTool;
 
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.service.AiServices;
-
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,17 +23,17 @@ public class LangchainConfig {
         return AiServices.builder(AgenteProiap.class)
                 .chatLanguageModel(chatLanguageModel)
                 .chatMemoryProvider(chatMemoryProvider)
-                .build(); 
+                .build();
     }
 
     @Bean
-    public AgenteConsultaSql agenteConsultaSql(ChatLanguageModel chatLanguageModel, ConsultaAcoesTool consultaAcoesTool) {
+    public AgenteConsultaSql agenteConsultaSql(ChatLanguageModel chatLanguageModel, ConsultaAcoesTool consultaAcoesTool, RelatorioContextoTool relatorioContextoTool) {
         return AiServices.builder(AgenteConsultaSql.class)
                 .chatLanguageModel(chatLanguageModel)
-                .tools(consultaAcoesTool) 
+                .tools(consultaAcoesTool, relatorioContextoTool)
                 .build();
     }
-    
+
     @Bean
     public AgenteRelatorio agenteRelatorio(@Qualifier("geminiModel") ChatLanguageModel geminiModel) {
         return AiServices.builder(AgenteRelatorio.class)

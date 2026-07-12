@@ -63,43 +63,61 @@
           </button>
 
           <div class="notif-panel relatorio-panel" *ngIf="mostrarPainelRelatorio">
-            <div class="notif-panel-header">Gerar relatório (.docx)</div>
+            <div class="notif-panel-header">Meus Relatórios</div>
 
-            <div class="notif-panel-body relatorio-body">
-              <label class="relatorio-label">
-                Departamento
-                <select [(ngModel)]="relatorioDepartamento" [disabled]="relatorioSolicitando || carregandoDepartamentos">
-                  <option value="" disabled selected>{{ carregandoDepartamentos ? 'Carregando...' : 'Selecione um departamento' }}</option>
-                  <option *ngFor="let dep of departamentosDisponiveis" [value]="dep">{{ dep }}</option>
-                </select>
-              </label>
-
-              <label class="relatorio-label">
-                Tipo de plano
-                <select [(ngModel)]="relatorioTipo" [disabled]="relatorioSolicitando">
-                  <option value="PAT">PAT (ano corrente)</option>
-                  <option value="PDI">PDI (acumulado 5 anos)</option>
-                  <option value="COMPARATIVO">Comparativo (PDI x PAT)</option>
-                </select>
-              </label>
-
-              <button class="notif-bell relatorio-gerar-btn" type="button" (click)="solicitarRelatorio()"
-                [disabled]="!relatorioDepartamento.trim() || relatorioSolicitando">
-                {{ relatorioSolicitando ? 'Gerando...' : 'Gerar relatório' }}
-              </button>
-
-              <p class="notif-empty" *ngIf="relatorioStatusAtual === 'PROCESSANDO'">
-                ⏳ Processando... isso pode levar até 30 segundos.
+            <div class="notif-panel-body">
+              <p class="notif-empty" *ngIf="carregandoMeusRelatorios && meusRelatorios.length === 0">
+                Carregando...
+              </p>
+              <p class="notif-empty" *ngIf="!carregandoMeusRelatorios && meusRelatorios.length === 0">
+                Nenhum relatório gerado ainda. Peça um no chat, ex: "gera um relatório da PROEST".
               </p>
 
-              <p class="notif-empty relatorio-erro" *ngIf="relatorioStatusAtual === 'ERRO'">
-                ❌ {{ relatorioMensagemErro }}
-              </p>
+              <div class="relatorio-historico-item" *ngFor="let r of meusRelatorios">
+                <div class="relatorio-historico-info">
+                  <strong>{{ r.departamento }}</strong>
+                  <span>{{ r.tipo }} · {{ r.criado_em | date:'dd/MM HH:mm' }}</span>
+                </div>
 
-              <a class="notif-item relatorio-link" *ngIf="relatorioStatusAtual === 'PRONTO' && relatorioUrlArquivo"
-                [href]="relatorioUrlArquivo" target="_blank" rel="noopener">
-                ✅ Relatório pronto! Clique para baixar
-              </a>
+                <div class="relatorio-historico-actions">
+                  <span class="relatorio-status-badge" [ngClass]="r.status">
+                    <ng-container [ngSwitch]="r.status">
+                      <span *ngSwitchCase="'PROCESSANDO'">Processando</span>
+                      <span *ngSwitchCase="'ERRO'">Erro</span>
+                      <span *ngSwitchCase="'PRONTO'" class="relatorio-action-group">
+                        <a [href]="r.arquivo_url" target="_blank" rel="noopener" title="Baixar DOCX">DOCX</a>
+                        <button
+                          type="button"
+                          class="relatorio-pdf-btn"
+                          (click)="abrirPdfRelatorio(r, $event)"
+                          [disabled]="relatorioPdfGerandoId === r.id"
+                          title="Visualizar PDF">
+                          {{ relatorioPdfGerandoId === r.id ? '...' : 'PDF' }}
+                        </button>
+                      </span>
+                    </ng-container>
+                  </span>
+
+                  <button
+                    type="button"
+                    class="relatorio-delete-btn"
+                    (click)="excluirRelatorio(r, $event)"
+                    [disabled]="relatorioExcluindoId === r.id"
+                    aria-label="Excluir relatório"
+                    title="Excluir relatório">
+                    <svg *ngIf="relatorioExcluindoId !== r.id" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                      aria-hidden="true">
+                      <path d="M3 6h18"></path>
+                      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+                      <path d="M10 11v6"></path>
+                      <path d="M14 11v6"></path>
+                    </svg>
+                    <span *ngIf="relatorioExcluindoId === r.id" class="relatorio-delete-loading">...</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { GraficoIaComponent } from '../grafico-ia/grafico-ia';
-import { AgentService } from '../services/agent.service';
+import { AgentService, RelatorioHistoricoItem } from '../services/agent.service';
 import { SafeUrlPipe } from '../pipes/safe-url.pipe';
 interface FonteDisponivel {
   nome: string;
@@ -65,14 +65,10 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   // RELATÓRIO (.docx assíncrono)
   // ==========================================
   mostrarPainelRelatorio = false;
-  departamentosDisponiveis: string[] = [];
-  carregandoDepartamentos = false;
-  relatorioDepartamento = '';
-  relatorioTipo: 'PAT' | 'PDI' | 'COMPARATIVO' = 'PAT';
-  relatorioSolicitando = false;
-  relatorioStatusAtual: 'PROCESSANDO' | 'PRONTO' | 'ERRO' | null = null;
-  relatorioUrlArquivo: string | null = null;
-  relatorioMensagemErro: string | null = null;
+  meusRelatorios: RelatorioHistoricoItem[] = [];
+  carregandoMeusRelatorios = false;
+  relatorioExcluindoId?: number;
+  relatorioPdfGerandoId?: number;
   private relatorioPollingTimer?: number;
 
   constructor(private agentService: AgentService) {
@@ -300,71 +296,43 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   }
 
   // ==========================================
-  // RELATÓRIO (.docx assíncrono)
+  // RELATÓRIO (.docx assíncrono) — histórico "Meus Relatórios"
   // ==========================================
   toggleRelatorio(): void {
     this.mostrarPainelRelatorio = !this.mostrarPainelRelatorio;
     if (this.mostrarPainelNotificacoes) this.mostrarPainelNotificacoes = false;
 
-    if (this.mostrarPainelRelatorio && this.departamentosDisponiveis.length === 0) {
-      this.carregandoDepartamentos = true;
-      this.agentService.listarDepartamentosRelatorio().subscribe({
-        next: (lista) => {
-          this.departamentosDisponiveis = lista;
-          this.carregandoDepartamentos = false;
-        },
-        error: () => {
-          this.carregandoDepartamentos = false;
-        }
-      });
+    if (this.mostrarPainelRelatorio) {
+      this.carregarMeusRelatorios();
+      this.iniciarPollingHistorico();
+    } else {
+      this.pararPollingRelatorio();
     }
   }
 
-  solicitarRelatorio(): void {
-    const departamento = this.relatorioDepartamento.trim();
-    if (!departamento || this.relatorioSolicitando) return;
-
-    this.relatorioSolicitando = true;
-    this.relatorioStatusAtual = null;
-    this.relatorioUrlArquivo = null;
-    this.relatorioMensagemErro = null;
-
-    this.agentService.gerarRelatorio(departamento, this.relatorioTipo).subscribe({
-      next: (resposta) => {
-        this.relatorioStatusAtual = 'PROCESSANDO';
-        this.iniciarPollingRelatorio(resposta.id);
+  private carregarMeusRelatorios(): void {
+    this.carregandoMeusRelatorios = true;
+    this.agentService.listarMeusRelatorios().subscribe({
+      next: (lista) => {
+        this.meusRelatorios = lista;
+        this.carregandoMeusRelatorios = false;
       },
       error: () => {
-        this.relatorioSolicitando = false;
-        this.relatorioStatusAtual = 'ERRO';
-        this.relatorioMensagemErro = 'Não foi possível solicitar o relatório.';
+        this.carregandoMeusRelatorios = false;
       }
     });
   }
 
-  private iniciarPollingRelatorio(id: number): void {
+  private iniciarPollingHistorico(): void {
     this.pararPollingRelatorio();
     this.relatorioPollingTimer = window.setInterval(() => {
-      this.agentService.statusRelatorio(id).subscribe({
-        next: (status) => {
-          this.relatorioStatusAtual = status.status;
-          if (status.status === 'PRONTO') {
-            this.relatorioUrlArquivo = status.arquivo_url;
-            this.relatorioSolicitando = false;
-            this.pararPollingRelatorio();
-          } else if (status.status === 'ERRO') {
-            this.relatorioMensagemErro = status.mensagem_erro || 'Erro ao gerar relatório.';
-            this.relatorioSolicitando = false;
-            this.pararPollingRelatorio();
-          }
-        },
-        error: () => {
-          this.relatorioMensagemErro = 'Erro ao consultar status do relatório.';
-          this.relatorioSolicitando = false;
-          this.pararPollingRelatorio();
-        }
-      });
-    }, 4000);
+      const temProcessando = this.meusRelatorios.some(r => r.status === 'PROCESSANDO');
+      if (!temProcessando) {
+        this.pararPollingRelatorio();
+        return;
+      }
+      this.carregarMeusRelatorios();
+    }, 5000);
   }
 
   private pararPollingRelatorio(): void {
@@ -372,6 +340,49 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
       window.clearInterval(this.relatorioPollingTimer);
       this.relatorioPollingTimer = undefined;
     }
+  }
+
+  abrirPdfRelatorio(relatorio: RelatorioHistoricoItem, event: MouseEvent): void {
+    event.stopPropagation();
+    if (relatorio.status !== 'PRONTO' || this.relatorioPdfGerandoId) return;
+
+    if (relatorio.pdf_url) {
+      window.open(relatorio.pdf_url, '_blank', 'noopener');
+      return;
+    }
+
+    this.relatorioPdfGerandoId = relatorio.id;
+    this.agentService.gerarPdfRelatorio(relatorio.id)
+      .pipe(finalize(() => this.relatorioPdfGerandoId = undefined))
+      .subscribe({
+        next: (resposta) => {
+          relatorio.pdf_url = resposta.pdf_url;
+          window.open(resposta.pdf_url, '_blank', 'noopener');
+        },
+        error: () => {
+          this.erro = 'Não foi possível gerar o PDF deste relatório agora.';
+        }
+      });
+  }
+
+  excluirRelatorio(relatorio: RelatorioHistoricoItem, event: MouseEvent): void {
+    event.stopPropagation();
+
+    const nome = relatorio.departamento || 'este relatório';
+    const confirmar = window.confirm(`Excluir o relatório "${nome}"?`);
+    if (!confirmar || this.relatorioExcluindoId) return;
+
+    this.relatorioExcluindoId = relatorio.id;
+    this.agentService.excluirRelatorio(relatorio.id)
+      .pipe(finalize(() => this.relatorioExcluindoId = undefined))
+      .subscribe({
+        next: () => {
+          this.meusRelatorios = this.meusRelatorios.filter((item) => item.id !== relatorio.id);
+        },
+        error: () => {
+          this.erro = 'Não foi possível excluir o relatório agora.';
+        }
+      });
   }
 
   private agendarScrollParaFim(): void { this.scrollPendente = true; }
