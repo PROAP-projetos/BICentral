@@ -30,6 +30,23 @@ export interface ConfiguracaoNotificacao {
   limiteBomPct: number;
 }
 
+export interface ConfiguracaoUft {
+  id: number;
+  tipoApi: string;
+  url: string;
+  tokenConfigurado: boolean;
+  ativo: boolean;
+  ultimaExecucao?: string;
+  ultimoStatus?: string;
+  ultimaMensagem?: string;
+}
+
+export interface ConfiguracaoUftRequest {
+  url: string;
+  token?: string;
+  ativo: boolean;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -83,5 +100,13 @@ export class AdminService {
       limiteBaixoPct,
       limiteBomPct
     });
+  }
+
+  listarConfiguracoesUft(): Observable<ConfiguracaoUft[]> {
+    return this.http.get<ConfiguracaoUft[]>(`${this.apiURL}/integracao-uft`);
+  }
+
+  salvarConfiguracaoUft(tipoApi: string, request: ConfiguracaoUftRequest): Observable<void> {
+    return this.http.put<void>(`${this.apiURL}/integracao-uft/${tipoApi}`, request);
   }
 }

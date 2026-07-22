@@ -2,7 +2,8 @@ package com.bicentral.bicentral_backend.security;
 
 import com.bicentral.bicentral_backend.model.Usuario;
 import com.bicentral.bicentral_backend.repository.UsuarioRepository;
-import com.bicentral.bicentral_backend.service.JwtService;
+import com.bicentral.bicentral_backend.service.auth.JwtService;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

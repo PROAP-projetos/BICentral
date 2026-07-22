@@ -1,14 +1,15 @@
 package com.bicentral.bicentral_backend.controller;
 
 import com.bicentral.bicentral_backend.config.SecurityConfig;
-import com.bicentral.bicentral_backend.dto.ConviteEquipeResponseDTO;
+import com.bicentral.bicentral_backend.controller.equipe.EquipeController;
+import com.bicentral.bicentral_backend.dto.equipe.ConviteEquipeResponseDTO;
 import com.bicentral.bicentral_backend.model.ConviteEquipe;
 import com.bicentral.bicentral_backend.model.Role;
 import com.bicentral.bicentral_backend.model.Usuario;
 import com.bicentral.bicentral_backend.security.JwtAuthenticationFilter;
-import com.bicentral.bicentral_backend.service.ConviteEquipeService;
-import com.bicentral.bicentral_backend.service.EquipeService;
-import com.bicentral.bicentral_backend.service.UsuarioService;
+import com.bicentral.bicentral_backend.service.auth.UsuarioService;
+import com.bicentral.bicentral_backend.service.equipe.ConviteEquipeService;
+import com.bicentral.bicentral_backend.service.equipe.EquipeService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletRequest;

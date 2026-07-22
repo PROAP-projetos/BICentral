@@ -3,7 +3,7 @@ package com.bicentral.bicentral_backend.state;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.annotation.SessionScope;
 
-import com.bicentral.bicentral_backend.dto.GraficoSpec;
+import com.bicentral.bicentral_backend.dto.painel.GraficoSpec;
 
 import lombok.Getter;
 import lombok.Setter;

@@ -1,6 +1,6 @@
 package com.bicentral.bicentral_backend.service;
 
-import com.bicentral.bicentral_backend.dto.MembroEquipeRequestDTO;
+import com.bicentral.bicentral_backend.dto.equipe.MembroEquipeRequestDTO;
 import com.bicentral.bicentral_backend.model.Equipe;
 import com.bicentral.bicentral_backend.model.MembroEquipe;
 import com.bicentral.bicentral_backend.model.Role;
@@ -8,6 +8,8 @@ import com.bicentral.bicentral_backend.model.Usuario;
 import com.bicentral.bicentral_backend.repository.EquipeRepository;
 import com.bicentral.bicentral_backend.repository.MembroEquipeRepository;
 import com.bicentral.bicentral_backend.repository.UsuarioRepository;
+import com.bicentral.bicentral_backend.service.equipe.EquipeService;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

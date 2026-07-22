@@ -11,6 +11,7 @@ import {
 import { GestaoAdminsComponent } from './gestao-admins.component';
 import { GestaoGerentesComponent } from './gestao-gerentes.component';
 import { ConfiguracoesNotificacaoComponent } from './configuracoes-notificacao.component';
+import { GestaoApisComponent } from './gestao-apis.component';
 
 @Component({
   selector: 'app-painel-admin',
@@ -20,7 +21,8 @@ import { ConfiguracoesNotificacaoComponent } from './configuracoes-notificacao.c
     RouterModule,
     GestaoAdminsComponent,
     GestaoGerentesComponent,
-    ConfiguracoesNotificacaoComponent
+    ConfiguracoesNotificacaoComponent,
+    GestaoApisComponent
   ],
   templateUrl: './painel-admin.component.html',
   styleUrls: ['./painel-admin.component.css']

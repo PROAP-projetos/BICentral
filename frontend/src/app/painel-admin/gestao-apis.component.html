@@ -1,0 +1,61 @@
+<section class="card">
+  <div class="card-header">
+    <h2>Integrações UFT (APIs)</h2>
+    <span class="count">{{ apis.length }} integrações</span>
+    <span class="hint" *ngIf="carregando">Carregando...</span>
+  </div>
+
+  <div *ngIf="apis.length === 0 && !carregando" class="empty-state">
+    Nenhuma integração UFT configurada.
+  </div>
+
+  <div class="api-block" *ngFor="let api of apis">
+    <div class="api-block-header">
+      <h3>API: {{ api.tipoApi }}</h3>
+      <span class="role-chip-small" [class.api-active]="api.ativo">
+        {{ api.ativo ? 'Ativa' : 'Inativa' }}
+      </span>
+    </div>
+
+    <form class="form-compact api-form" (ngSubmit)="salvar(api)">
+      <input
+        type="url"
+        [(ngModel)]="api.url"
+        name="url_{{api.tipoApi}}"
+        placeholder="URL da API"
+        required />
+
+      <input
+        type="password"
+        [(ngModel)]="tokensAEditar[api.tipoApi]"
+        name="token_{{api.tipoApi}}"
+        [placeholder]="api.tokenConfigurado ? 'Novo Token (deixe em branco para manter o atual)' : 'Insira o Token Bearer JWT'" />
+
+      <label class="api-toggle">
+        <input
+          type="checkbox"
+          [(ngModel)]="api.ativo"
+          name="ativo_{{api.tipoApi}}" />
+        Ativar sincronização diária
+      </label>
+
+      <div class="api-footer">
+        <div class="api-meta">
+          <strong>Último Status:</strong> {{ api.ultimoStatus || 'Nunca executado' }}<br>
+          <span *ngIf="api.ultimaMensagem" [title]="api.ultimaMensagem">
+            <em>{{ api.ultimaMensagem.slice(0, 50) }}{{ api.ultimaMensagem.length > 50 ? '...' : '' }}</em>
+          </span>
+        </div>
+
+        <div class="api-actions">
+          <button
+            class="btn btn-primary btn-sm"
+            type="submit"
+            [disabled]="salvando || !api.url">
+            Salvar {{ api.tipoApi }}
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</section>

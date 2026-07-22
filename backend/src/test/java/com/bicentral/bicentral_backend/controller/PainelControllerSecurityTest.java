@@ -1,11 +1,12 @@
 package com.bicentral.bicentral_backend.controller;
 
 import com.bicentral.bicentral_backend.config.SecurityConfig;
-import com.bicentral.bicentral_backend.dto.PainelDTO;
+import com.bicentral.bicentral_backend.controller.painel.PainelController;
+import com.bicentral.bicentral_backend.dto.painel.PainelDTO;
 import com.bicentral.bicentral_backend.security.EquipeAuthorizationService;
 import com.bicentral.bicentral_backend.security.JwtAuthenticationFilter;
-import com.bicentral.bicentral_backend.service.PainelService;
-import com.bicentral.bicentral_backend.service.PowerBIScraperService;
+import com.bicentral.bicentral_backend.service.equipe.PainelService;
+import com.bicentral.bicentral_backend.service.equipe.PowerBIScraperService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletRequest;

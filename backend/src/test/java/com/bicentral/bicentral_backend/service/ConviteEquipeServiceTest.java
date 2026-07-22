@@ -1,8 +1,8 @@
 package com.bicentral.bicentral_backend.service;
 
-import com.bicentral.bicentral_backend.dto.AceiteConviteResponseDTO;
-import com.bicentral.bicentral_backend.dto.ConviteEquipeRequestDTO;
-import com.bicentral.bicentral_backend.dto.ConviteEquipeResponseDTO;
+import com.bicentral.bicentral_backend.dto.equipe.AceiteConviteResponseDTO;
+import com.bicentral.bicentral_backend.dto.equipe.ConviteEquipeRequestDTO;
+import com.bicentral.bicentral_backend.dto.equipe.ConviteEquipeResponseDTO;
 import com.bicentral.bicentral_backend.model.ConviteEquipe;
 import com.bicentral.bicentral_backend.model.Equipe;
 import com.bicentral.bicentral_backend.model.MembroEquipe;
@@ -12,6 +12,9 @@ import com.bicentral.bicentral_backend.repository.ConviteEquipeRepository;
 import com.bicentral.bicentral_backend.repository.EquipeRepository;
 import com.bicentral.bicentral_backend.repository.MembroEquipeRepository;
 import com.bicentral.bicentral_backend.repository.UsuarioRepository;
+import com.bicentral.bicentral_backend.service.auth.EmailService;
+import com.bicentral.bicentral_backend.service.equipe.ConviteEquipeService;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
