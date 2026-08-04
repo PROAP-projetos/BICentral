@@ -1,8 +1,5 @@
 package com.bicentral.bicentral_backend.config;
 
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.service.AiServices;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,6 +12,9 @@ import com.bicentral.bicentral_backend.service.ia.RelatorioContextoTool;
 import com.bicentral.bicentral_backend.service.ia.TarefasTool;
 
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.service.AiServices;
 
 @Configuration
 public class LangchainConfig {
@@ -30,8 +30,10 @@ public class LangchainConfig {
 
     @Bean
     public AgenteConsultaSql agenteConsultaSql(ChatLanguageModel chatLanguageModel, ConsultaAcoesTool consultaAcoesTool, RelatorioContextoTool relatorioContextoTool, TarefasTool tarefasTool) {
+        ChatMemoryProvider chatMemoryProvider = memoryId -> MessageWindowChatMemory.withMaxMessages(2); // memória para o sql, aumentar quando tiver a api não free tier
         return AiServices.builder(AgenteConsultaSql.class)
                 .chatLanguageModel(chatLanguageModel)
+                .chatMemoryProvider(chatMemoryProvider)
                 .tools(consultaAcoesTool, relatorioContextoTool, tarefasTool)
                 .build();
     }

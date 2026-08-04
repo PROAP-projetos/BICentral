@@ -1,14 +1,15 @@
 package com.bicentral.bicentral_backend.service.ia;
 
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+
 import com.bicentral.bicentral_backend.dto.ia.AnaliseComando;
 import com.bicentral.bicentral_backend.dto.ia.ContextoRAG;
 import com.bicentral.bicentral_backend.dto.ia.Intencao;
 import com.bicentral.bicentral_backend.dto.ia.RespostaTextual;
 import com.bicentral.bicentral_backend.dto.painel.GraficoSpec;
 import com.bicentral.bicentral_backend.state.EstadoSessao;
-import org.springframework.stereotype.Service;
-
-import java.util.UUID;
 
 @Service
 public class ProiapService {
@@ -26,12 +27,13 @@ public class ProiapService {
         this.embeddingService = embeddingService;
     }
 
-    public Object processarPergunta(String perguntaUsuario) {
+    public Object processarPergunta(String perguntaUsuario, String sessaoId) {
 
         System.out.println("\n================================");
         System.out.println("NOVA REQUISIÇÃO");
         System.out.println("Pergunta: " + perguntaUsuario);
-        System.out.println("Sessao Hash: " + System.identityHashCode(estadoSessao));
+        System.out.println("Sessao ID Front: " + sessaoId); // Logando o ID que veio do Angular
+        System.out.println("Sessao Hash (Estado): " + System.identityHashCode(estadoSessao));
         System.out.println("Aguardando confirmação: " + estadoSessao.isAguardandoConfirmacaoGrafico());
         System.out.println("Tem gráfico pendente: " + (estadoSessao.getGraficoPendente() != null));
         System.out.println("================================");
@@ -43,15 +45,13 @@ public class ProiapService {
 
             System.out.println(">>> ENTROU NO BLOCO DE CONFIRMAÇÃO");
 
-            // Usa memória descartável (UUID)
+            // Usa memória descartável (UUID) - MANTIDO
             String classificacao = agenteProiap.classificarConfirmacao(UUID.randomUUID().toString(), perguntaUsuario)
                     .trim().toUpperCase();
             System.out.println("IA Classificou a resposta como: " + classificacao);
 
             if (classificacao.contains("CONFIRMAR")) {
-
                 System.out.println(">>> USUÁRIO CONFIRMOU (IA ENTENDEU)");
-
                 GraficoSpec pendente = estadoSessao.getGraficoPendente();
 
                 GraficoSpec graficoPronto = new GraficoSpec(
@@ -70,14 +70,10 @@ public class ProiapService {
             }
 
             if (classificacao.contains("NEGAR")) {
-
                 System.out.println(">>> USUÁRIO NEGOU (IA ENTENDEU)");
-
                 estadoSessao.setAguardandoConfirmacaoGrafico(false);
                 estadoSessao.setGraficoPendente(null);
 
-                // Como agora devolvemos objeto, envelopamos o texto de negação e deixamos a
-                // lista de fontes vazia
                 return new RespostaTextual("Tudo bem! Me diz o que você quer ver e eu busco novamente.", null);
             }
 
@@ -86,7 +82,6 @@ public class ProiapService {
             estadoSessao.setGraficoPendente(null);
         }
 
-        // Usa memória descartável (UUID) para a IA analista não poluir o chat
         AnaliseComando analise = agenteProiap.analisarComando(UUID.randomUUID().toString(), perguntaUsuario);
 
         System.out.println("Intenção detectada: " + analise.intencao());
@@ -131,12 +126,18 @@ public class ProiapService {
         // ROTEAMENTO
         // ================================================================
         if (analise.intencao() == Intencao.RESPOSTA) {
-            String respostaTexto = agenteConsultaSql.responderComFerramentas(perguntaUsuario,
+            
+            String memoryId = (sessaoId != null && !sessaoId.isBlank()) 
+                    ? sessaoId 
+                    : "sessao-fallback-" + System.identityHashCode(estadoSessao);
+            
+            String respostaTexto = agenteConsultaSql.responderComFerramentas(memoryId, perguntaUsuario,
                     contextoRAG.textoContexto());
+            
             return new RespostaTextual(respostaTexto, contextoRAG.fontes());
+            
         } else if (analise.intencao() == Intencao.GRAFICO) {
 
-            // A IA gera o gráfico baseada APENAS no texto
             GraficoSpec spec = agenteProiap.gerarGrafico(
                     perguntaUsuario,
                     contextoRAG.textoContexto(),
@@ -149,7 +150,6 @@ public class ProiapService {
             estadoSessao.setGraficoPendente(spec);
             estadoSessao.setAguardandoConfirmacaoGrafico(true);
 
-            // Retornamos a pergunta amigável e as fontes para a barra lateral!
             return new RespostaTextual(spec.mensagemContexto(), contextoRAG.fontes());
         }
 

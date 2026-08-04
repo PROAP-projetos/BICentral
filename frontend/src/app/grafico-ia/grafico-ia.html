@@ -1,32 +1,18 @@
 <div class="card-grafico">
-  <div class="chart-actions" aria-label="Ações do gráfico">
-    <button type="button" (click)="baixarPng()">Baixar PNG</button>
-    <button type="button" (click)="copiarImagem()">Copiar imagem</button>
-    <button type="button" (click)="baixarCsv()">Baixar CSV</button>
-    <button type="button" (click)="copiarTabela()">Copiar tabela</button>
-    <button type="button" (click)="alternarTabela()">
-      {{ mostrarTabela ? 'Ocultar tabela' : 'Ver tabela' }}
+  <div class="chart-icon-actions">
+    <button type="button" class="chart-icon-btn" [class.active]="mostrarValores"
+      [title]="mostrarValores ? 'Ocultar números' : 'Mostrar números'" (click)="alternarValores()">
+      123
+    </button>
+    <button type="button" class="chart-icon-btn" title="Baixar imagem" (click)="baixarPng()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="7 10 12 15 17 10"></polyline>
+        <line x1="12" y1="15" x2="12" y2="3"></line>
+      </svg>
     </button>
   </div>
 
-  <p class="chart-action-message" *ngIf="mensagemAcao">{{ mensagemAcao }}</p>
-
   <div echarts [options]="chartOptions" (chartInit)="onChartInit($event)" class="chart-display"></div>
-
-  <div class="chart-table-wrap" *ngIf="mostrarTabela">
-    <table class="chart-table">
-      <thead>
-        <tr>
-          <th>Categoria</th>
-          <th *ngFor="let nome of nomesSeries">{{ nome }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let linha of linhasTabela">
-          <td>{{ linha.categoria }}</td>
-          <td *ngFor="let valor of linha.valores">{{ valor }}</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
 </div>

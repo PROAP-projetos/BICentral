@@ -57,6 +57,26 @@ export interface RelatorioPdfResponse {
   pdf_url: string;
 }
 
+export interface TarefaCritica {
+  titulo: string;
+  responsavel: string;
+  prazo: string;
+}
+
+export interface Notificacao {
+  emoji: string;
+  departamento: string;
+  mensagem: string;
+  percentual: number;
+  tarefas: TarefaCritica[];
+}
+
+export interface PainelAtrasos {
+  departamento: string;
+  grafico: any;
+  tarefas: TarefaCritica[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -65,13 +85,16 @@ export class AgentService {
 
   constructor(private http: HttpClient) { }
 
-  consultar(texto: string, equipeId: number, modelo: string): Observable<any> {
+  // MUDANÇA: sessaoId adicionado como parâmetro
+  consultar(texto: string, equipeId: number, modelo: string, sessaoId: string): Observable<any> {
     const urlNova = 'http://localhost:8080/api/proiap/perguntar';
 
+    // MUDANÇA: sessaoId incluído no payload enviado ao Spring Boot
     const body = {
       texto: texto,
       equipeId: equipeId,
-      modelo: modelo
+      modelo: modelo,
+      sessaoId: sessaoId 
     };
 
     return this.http.post(urlNova, body, {
@@ -84,9 +107,15 @@ export class AgentService {
     return this.http.get<FontesAgenteResponse>(`${this.apiUrl}/fontes`, { params });
   }
 
-  listarNotificacoes(): Observable<string[]> {
+  listarNotificacoes(): Observable<Notificacao[]> {
     const urlNotificacoes = 'http://localhost:8080/api/proiap/notificacoes';
-    return this.http.get<string[]>(urlNotificacoes, { withCredentials: true });
+    return this.http.get<Notificacao[]>(urlNotificacoes, { withCredentials: true });
+  }
+
+  buscarPainelAtrasos(departamento: string): Observable<PainelAtrasos> {
+    const url = 'http://localhost:8080/api/proiap/painel-atrasos';
+    const params = new HttpParams().set('departamento', departamento);
+    return this.http.get<PainelAtrasos>(url, { params, withCredentials: true });
   }
 
   gerarRelatorio(departamento: string, tipo: string): Observable<RelatorioSolicitadoResponse> {

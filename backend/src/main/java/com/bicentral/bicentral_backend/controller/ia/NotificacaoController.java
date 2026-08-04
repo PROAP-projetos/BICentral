@@ -1,5 +1,6 @@
 package com.bicentral.bicentral_backend.controller.ia;
 
+import com.bicentral.bicentral_backend.dto.notificacao.NotificacaoDTO;
 import com.bicentral.bicentral_backend.model.Usuario;
 import com.bicentral.bicentral_backend.service.auth.UsuarioService;
 import com.bicentral.bicentral_backend.service.notificacao.NotificacaoService;
@@ -26,7 +27,7 @@ public class NotificacaoController {
     }
 
     @GetMapping("/notificacoes")
-    public ResponseEntity<List<String>> minhasNotificacoes(@AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<List<NotificacaoDTO>> minhasNotificacoes(@AuthenticationPrincipal UserDetails userDetails) {
         Usuario usuario = usuarioService.buscarPorEmail(userDetails.getUsername());
         return ResponseEntity.ok(notificacaoService.gerarNotificacoes(usuario.getId()));
     }

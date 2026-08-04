@@ -4,8 +4,9 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { GraficoIaComponent } from '../grafico-ia/grafico-ia';
-import { AgentService, RelatorioHistoricoItem } from '../services/agent.service';
+import { AgentService, Notificacao, PainelAtrasos, RelatorioHistoricoItem } from '../services/agent.service';
 import { SafeUrlPipe } from '../pipes/safe-url.pipe';
+
 interface FonteDisponivel {
   nome: string;
   acesso: 'publico' | 'privado';
@@ -41,7 +42,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   modeloAtivoIndex = 0;
 
   sessoes: ChatSession[] = [
-    { id: 1, titulo: 'Nova Conversa', messages: [] }
+    { id: Date.now(), titulo: 'Nova Conversa', messages: [] }
   ];
   sessaoAtual: ChatSession = this.sessoes[0];
 
@@ -57,9 +58,13 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   // ==========================================
   // NOTIFICAÇÕES
   // ==========================================
-  notificacoes: string[] = [];
+  notificacoes: Notificacao[] = [];
   carregandoNotificacoes = false;
   mostrarPainelNotificacoes = false;
+  tarefasExpandidas = new Set<number>();
+
+  painelAtrasos: PainelAtrasos | null = null;
+  carregandoPainelAtrasos = false;
 
   // ==========================================
   // RELATÓRIO (.docx assíncrono)
@@ -183,7 +188,11 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.carregando = true;
     this.agendarScrollParaFim();
 
-    this.agentService.consultar(text, this.equipeId, this.modeloAtivo)
+    // MUDANÇA AQUI: Obtém o ID da sessão atual em formato de String
+    const idDaSessao = String(this.sessaoAtual.id);
+
+    // MUDANÇA AQUI: Passa o idDaSessao como quarto parâmetro
+    this.agentService.consultar(text, this.equipeId, this.modeloAtivo, idDaSessao)
       .pipe(finalize(() => this.carregando = false))
       .subscribe({
         next: (resposta: any) => {
@@ -293,6 +302,28 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
 
   toggleNotificacoes(): void {
     this.mostrarPainelNotificacoes = !this.mostrarPainelNotificacoes;
+  }
+
+  toggleTarefas(i: number): void {
+    if (this.tarefasExpandidas.has(i)) {
+      this.tarefasExpandidas.delete(i);
+    } else {
+      this.tarefasExpandidas.add(i);
+    }
+  }
+
+  abrirPainelAtrasos(departamento: string): void {
+    this.carregandoPainelAtrasos = true;
+    this.agentService.buscarPainelAtrasos(departamento)
+      .pipe(finalize(() => this.carregandoPainelAtrasos = false))
+      .subscribe({
+        next: (painel) => this.painelAtrasos = painel,
+        error: () => this.painelAtrasos = null
+      });
+  }
+
+  fecharPainelAtrasos(): void {
+    this.painelAtrasos = null;
   }
 
   // ==========================================
@@ -577,6 +608,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
       if (container) container.scrollTop = container.scrollHeight;
     });
   }
+  
   arquivoAberto: string | null = null;
 
   abrirDocumento(nome: string) {

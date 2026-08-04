@@ -1,5 +1,6 @@
 package com.bicentral.bicentral_backend.service.ia;
 
+import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
@@ -50,5 +51,5 @@ public interface AgenteConsultaSql {
 
         Usuário: {{pergunta}}
         """)
-    String responderComFerramentas(@V("pergunta") String pergunta, @V("contexto") String contexto);
+    String responderComFerramentas(@MemoryId String memoryId, @V("pergunta") String pergunta, @V("contexto") String contexto);
 }

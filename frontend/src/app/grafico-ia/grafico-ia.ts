@@ -3,11 +3,6 @@ import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
 import type { ECharts, EChartsOption } from 'echarts';
 import { NgxEchartsDirective, provideEchartsCore } from 'ngx-echarts';
 
-interface LinhaTabelaGrafico {
-  categoria: string;
-  valores: (string | number)[];
-}
-
 @Component({
   selector: 'app-grafico-ia',
   standalone: true,
@@ -17,11 +12,10 @@ interface LinhaTabelaGrafico {
   providers: [provideEchartsCore({ echarts: () => import('echarts') })]
 })
 export class GraficoIaComponent implements OnChanges {
-  @Input() spec: any; 
+  @Input() spec: any;
   chartOptions: EChartsOption = {};
   chartInstance?: ECharts;
-  mostrarTabela = false;
-  mensagemAcao = '';
+  mostrarValores = true;
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['spec'] && this.spec) {
@@ -33,6 +27,11 @@ export class GraficoIaComponent implements OnChanges {
     this.chartInstance = chart;
   }
 
+  alternarValores(): void {
+    this.mostrarValores = !this.mostrarValores;
+    this.mapearContratoParaECharts();
+  }
+
   baixarPng(): void {
     if (!this.chartInstance) return;
 
@@ -42,62 +41,10 @@ export class GraficoIaComponent implements OnChanges {
       backgroundColor: '#ffffff'
     });
 
-    this.baixarArquivo(url, `${this.nomeArquivoBase()}.png`);
-  }
-
-  async copiarImagem(): Promise<void> {
-    if (!this.chartInstance) return;
-
-    try {
-      const url = this.chartInstance.getDataURL({
-        type: 'png',
-        pixelRatio: 3,
-        backgroundColor: '#ffffff'
-      });
-      const blob = await (await fetch(url)).blob();
-      await navigator.clipboard.write([
-        new ClipboardItem({ [blob.type]: blob })
-      ]);
-      this.exibirMensagemAcao('Imagem copiada.');
-    } catch {
-      this.exibirMensagemAcao('Não foi possível copiar a imagem.');
-    }
-  }
-
-  baixarCsv(): void {
-    const csv = this.gerarCsv();
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-
-    this.baixarArquivo(url, `${this.nomeArquivoBase()}.csv`);
-    URL.revokeObjectURL(url);
-  }
-
-  async copiarTabela(): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(this.gerarCsv('\t'));
-      this.exibirMensagemAcao('Tabela copiada.');
-    } catch {
-      this.exibirMensagemAcao('Não foi possível copiar a tabela.');
-    }
-  }
-
-  alternarTabela(): void {
-    this.mostrarTabela = !this.mostrarTabela;
-  }
-
-  get nomesSeries(): string[] {
-    return (this.spec?.series || []).map((serie: any) => serie.nome);
-  }
-
-  get linhasTabela(): LinhaTabelaGrafico[] {
-    const categorias = this.spec?.eixoX || [];
-    const series = this.spec?.series || [];
-
-    return categorias.map((categoria: string, index: number) => ({
-      categoria,
-      valores: series.map((serie: any) => serie.valores?.[index] ?? '')
-    }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${this.nomeArquivoBase()}.png`;
+    link.click();
   }
 
   private mapearContratoParaECharts(): void {
@@ -123,6 +70,11 @@ export class GraficoIaComponent implements OnChanges {
         smooth: (this.spec.tipo || 'bar') === 'line',
         itemStyle: {
           borderRadius: this.spec.tipo === 'bar' ? [4, 4, 0, 0] : 0
+        },
+        label: {
+          show: this.mostrarValores,
+          position: 'top',
+          fontSize: 10
         }
       };
     });
@@ -146,8 +98,10 @@ export class GraficoIaComponent implements OnChanges {
         data: eixoX,
         axisLabel: {
           interval: 0,
-          rotate: 35,
-          fontSize: 10
+          rotate: 0,
+          fontSize: 10,
+          align: 'center',
+          formatter: (valor: string) => this.quebrarRotulo(valor)
         }
       },
       yAxis: { type: 'value' },
@@ -155,42 +109,30 @@ export class GraficoIaComponent implements OnChanges {
     };
   }
 
-  private gerarCsv(separador = ','): string {
-    const escapar = (valor: string | number) => {
-      const texto = String(valor ?? '');
-      if (separador === '\t') return texto;
-      return `"${texto.replace(/"/g, '""')}"`;
-    };
+  private quebrarRotulo(texto: string): string {
+    if (!texto || texto.length <= 14) return texto;
 
-    const cabecalho = ['Categoria', ...this.nomesSeries].map(escapar).join(separador);
-    const linhas = this.linhasTabela.map((linha) => [
-      escapar(linha.categoria),
-      ...linha.valores.map(escapar)
-    ].join(separador));
+    const palavras = texto.split(' ');
+    let linha1 = '';
+    let linha2 = '';
 
-    return [cabecalho, ...linhas].join('\n');
-  }
+    for (const palavra of palavras) {
+      if ((linha1 + ' ' + palavra).trim().length <= texto.length / 2 || !linha1) {
+        linha1 = (linha1 + ' ' + palavra).trim();
+      } else {
+        linha2 = (linha2 + ' ' + palavra).trim();
+      }
+    }
 
-  private baixarArquivo(url: string, nomeArquivo: string): void {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = nomeArquivo;
-    link.click();
+    return linha2 ? `${linha1}\n${linha2}` : linha1;
   }
 
   private nomeArquivoBase(): string {
     return String(this.spec?.titulo || 'grafico-ia')
       .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\p{Diacritic}/gu, '')
       .replace(/[^a-zA-Z0-9]+/g, '-')
       .replace(/^-|-$/g, '')
       .toLowerCase();
-  }
-
-  private exibirMensagemAcao(mensagem: string): void {
-    this.mensagemAcao = mensagem;
-    window.setTimeout(() => {
-      this.mensagemAcao = '';
-    }, 2500);
   }
 }

@@ -4,10 +4,13 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
+import com.bicentral.bicentral_backend.dto.notificacao.NotificacaoDTO;
+import com.bicentral.bicentral_backend.dto.notificacao.PainelAtrasosDTO;
 import com.bicentral.bicentral_backend.state.EstadoSessao;
 import com.bicentral.bicentral_backend.service.ia.ProiapService;
 import com.bicentral.bicentral_backend.service.notificacao.NotificacaoService;
@@ -23,20 +26,18 @@ public class ProiapController {
     private final EstadoSessao estadoSessao;
     private final NotificacaoService notificacaoService;
 
-
     public ProiapController(ProiapService proiapService, EstadoSessao estadoSessao, NotificacaoService notificacaoService) {
         this.proiapService = proiapService;
         this.estadoSessao = estadoSessao;
         this.notificacaoService = notificacaoService;
     }
 
-    public record RequisicaoProiap(String texto, Long equipeId, String modelo) {
+    public record RequisicaoProiap(String texto, Long equipeId, String modelo, String sessaoId) {
     }
 
     @PostMapping("/perguntar")
     public Object fazerPergunta(@RequestBody RequisicaoProiap requisicao) {
 
-        // 1. Atualiza a memória da sessão com os dados que vieram da tela
         if (requisicao.modelo() != null) {
             estadoSessao.setModelo(requisicao.modelo());
         }
@@ -45,12 +46,16 @@ public class ProiapController {
             estadoSessao.setEquipeId(requisicao.equipeId());
         }
 
-        // 2. Manda apenas a string da pergunta para o agente processar
-        return proiapService.processarPergunta(requisicao.texto());
+        return proiapService.processarPergunta(requisicao.texto(), requisicao.sessaoId());
     }
 
-    @GetMapping("/api/proiap/testar-notificacoes/{usuarioId}")
-    public List<String> testarNotificacoes(@PathVariable Long usuarioId) {
+    @GetMapping("/testar-notificacoes/{usuarioId}")
+    public List<NotificacaoDTO> testarNotificacoes(@PathVariable Long usuarioId) {
         return notificacaoService.gerarNotificacoes(usuarioId);
+    }
+
+    @GetMapping("/painel-atrasos")
+    public PainelAtrasosDTO painelAtrasos(@RequestParam String departamento) {
+        return notificacaoService.gerarPainelAtrasos(departamento);
     }
 }

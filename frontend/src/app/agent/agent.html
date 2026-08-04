@@ -141,8 +141,18 @@
               </p>
               <p class="notif-empty" *ngIf="carregandoNotificacoes">Carregando...</p>
 
-              <div class="notif-item" *ngFor="let n of notificacoes">
-                {{ n }}
+              <div class="notif-item" *ngFor="let n of notificacoes; let i = index">
+                <div class="notif-item-header">{{ n.emoji }} <strong>{{ n.departamento }}</strong> {{ n.mensagem }}</div>
+                <button class="notif-toggle" type="button" *ngIf="n.tarefas.length" (click)="toggleTarefas(i)">
+                  {{ tarefasExpandidas.has(i) ? 'ocultar tarefas' : 'ver tarefas (' + n.tarefas.length + ')' }}
+                </button>
+                <ul class="notif-tarefas" *ngIf="n.tarefas.length && tarefasExpandidas.has(i)">
+                  <li *ngFor="let t of n.tarefas">{{ t.titulo }} — {{ t.responsavel }} — prazo {{ t.prazo }}</li>
+                </ul>
+                <button class="notif-ver-painel" type="button" *ngIf="n.tarefas.length && tarefasExpandidas.has(i)"
+                  (click)="abrirPainelAtrasos(n.departamento)">
+                  ver painel completo
+                </button>
               </div>
             </div>
           </div>
@@ -261,6 +271,34 @@
         </div>
         <iframe [src]="'http://localhost:8080/api/documentos/view/' + encodeURIComponent(arquivoAberto) | safeUrl"
           width="100%" height="90%"></iframe>
+      </div>
+    </div>
+    <div class="pdf-viewer-overlay" *ngIf="painelAtrasos" (click)="fecharPainelAtrasos()">
+      <div class="pdf-viewer-content painel-atrasos-content" (click)="$event.stopPropagation()">
+        <div class="viewer-header">
+          <span>Atrasos — {{ painelAtrasos.departamento }}</span>
+          <button (click)="fecharPainelAtrasos()">X</button>
+        </div>
+        <div class="painel-atrasos-body">
+          <app-grafico-ia [spec]="painelAtrasos.grafico"></app-grafico-ia>
+          <table class="painel-atrasos-tabela">
+            <caption>Todas as tarefas atrasadas de {{ painelAtrasos.departamento }}</caption>
+            <thead>
+              <tr>
+                <th scope="col">Tarefa</th>
+                <th scope="col">Responsável</th>
+                <th scope="col">Prazo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let t of painelAtrasos.tarefas">
+                <td>{{ t.titulo }}</td>
+                <td>{{ t.responsavel }}</td>
+                <td>{{ t.prazo }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </main>
