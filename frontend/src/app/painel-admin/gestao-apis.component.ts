@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { AdminService, ConfiguracaoUft, ConfiguracaoUftRequest } from '../services/admin.service';
+import { AdminService, ConfiguracaoUft, ConfiguracaoUftRequest, ResultadoTesteUft } from '../services/admin.service';
 
 @Component({
   selector: 'app-gestao-apis',
@@ -17,6 +17,8 @@ export class GestaoApisComponent implements OnInit {
   tokensAEditar: { [tipoApi: string]: string } = {};
   carregando = true;
   salvando = false;
+  testando: { [tipoApi: string]: boolean } = {};
+  resultadoTeste: { [tipoApi: string]: ResultadoTesteUft | null } = {};
 
   constructor(private adminService: AdminService) {}
 
@@ -58,6 +60,29 @@ export class GestaoApisComponent implements OnInit {
       error: () => {
         this.salvando = false;
         this.alterado.emit(`Erro ao salvar a API ${api.tipoApi}.`);
+      }
+    });
+  }
+
+  testar(api: ConfiguracaoUft): void {
+    if (this.testando[api.tipoApi] || !api.url) return;
+
+    this.testando[api.tipoApi] = true;
+    this.resultadoTeste[api.tipoApi] = null;
+    const request: ConfiguracaoUftRequest = {
+      url: api.url,
+      token: this.tokensAEditar[api.tipoApi],
+      ativo: api.ativo
+    };
+
+    this.adminService.testarConexaoUft(api.tipoApi, request).subscribe({
+      next: (resultado) => {
+        this.testando[api.tipoApi] = false;
+        this.resultadoTeste[api.tipoApi] = resultado;
+      },
+      error: () => {
+        this.testando[api.tipoApi] = false;
+        this.resultadoTeste[api.tipoApi] = { sucesso: false, mensagem: 'Erro ao testar a conexão.' };
       }
     });
   }

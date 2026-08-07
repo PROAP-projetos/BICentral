@@ -8,6 +8,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.bicentral.bicentral_backend.dto.uft.ConfiguracaoUftDTO;
 import com.bicentral.bicentral_backend.dto.uft.ConfiguracaoUftRequestDTO;
+import com.bicentral.bicentral_backend.dto.uft.ResultadoTesteUftDTO;
 import com.bicentral.bicentral_backend.dto.admin.AdminSistemaDTO;
 import com.bicentral.bicentral_backend.dto.admin.ConfiguracaoNotificacaoDTO;
 import com.bicentral.bicentral_backend.dto.admin.AdminUsuarioRequestDTO;
@@ -17,6 +18,12 @@ import com.bicentral.bicentral_backend.dto.admin.GerenteDepartamentoRequestDTO;
 import com.bicentral.bicentral_backend.dto.admin.UsuarioResumoDTO;
 
 import java.math.BigDecimal;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -24,6 +31,10 @@ import java.util.List;
 public class AdminService {
 
     private static final long BOOTSTRAP_ADMIN_ID = 22L;
+
+    private static final HttpClient HTTP = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -215,14 +226,84 @@ public class AdminService {
     @Transactional
     public void salvarConfiguracaoUft(Long usuarioLogadoId, String tipoApi, ConfiguracaoUftRequestDTO request) {
         exigirAdmin(usuarioLogadoId);
+        validarConfiguracaoUftRequest(request);
 
         // Agora ele faz o UPDATE filtrando pela coluna tipo_api (ex: WHERE tipo_api = 'TAREFAS')
+        int atualizados;
         if (request.token() == null || request.token().isBlank()) {
-            jdbcTemplate.update("UPDATE integracao_uft SET url = ?, ativo = ? WHERE tipo_api = ?",
+            atualizados = jdbcTemplate.update("UPDATE integracao_uft SET url = ?, ativo = ? WHERE tipo_api = ?",
                 request.url(), request.ativo(), tipoApi);
         } else {
-            jdbcTemplate.update("UPDATE integracao_uft SET url = ?, token = ?, ativo = ? WHERE tipo_api = ?",
+            atualizados = jdbcTemplate.update("UPDATE integracao_uft SET url = ?, token = ?, ativo = ? WHERE tipo_api = ?",
                 request.url(), request.token(), request.ativo(), tipoApi);
+        }
+
+        if (atualizados == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Tipo de API desconhecido: " + tipoApi);
+        }
+    }
+
+    public ResultadoTesteUftDTO testarConexaoUft(Long usuarioLogadoId, String tipoApi, ConfiguracaoUftRequestDTO request) {
+        exigirAdmin(usuarioLogadoId);
+
+        if (request.url() == null || request.url().isBlank()) {
+            return new ResultadoTesteUftDTO(false, "Informe a URL antes de testar.");
+        }
+        if (!request.url().matches("^https?://.+")) {
+            return new ResultadoTesteUftDTO(false, "URL inválida (deve começar com http:// ou https://).");
+        }
+
+        String token = request.token();
+        if (token == null || token.isBlank()) {
+            token = buscarTokenSalvo(tipoApi);
+            if (token == null || token.isBlank()) {
+                return new ResultadoTesteUftDTO(false, "Informe um token ou salve um token antes de testar.");
+            }
+        }
+
+        try {
+            HttpRequest httpRequest = HttpRequest.newBuilder()
+                    .uri(URI.create(request.url()))
+                    .timeout(Duration.ofSeconds(15))
+                    .header("Authorization", "Bearer " + token)
+                    .header("Accept", "application/json")
+                    .GET()
+                    .build();
+
+            HttpResponse<String> response = HTTP.send(httpRequest, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                return new ResultadoTesteUftDTO(false, "A API respondeu com HTTP " + response.statusCode() + ".");
+            }
+            if (response.body().trim().matches("(?s)\\{\\s*\"erro\"\\s*:.*\\}")) {
+                return new ResultadoTesteUftDTO(false, "A API da UFT retornou um erro interno.");
+            }
+            return new ResultadoTesteUftDTO(true, "Conexão bem-sucedida.");
+        } catch (HttpTimeoutException e) {
+            return new ResultadoTesteUftDTO(false, "Tempo limite excedido ao tentar conectar.");
+        } catch (Exception e) {
+            return new ResultadoTesteUftDTO(false, "Falha ao conectar: " + e.getMessage());
+        }
+    }
+
+    private String buscarTokenSalvo(String tipoApi) {
+        try {
+            return jdbcTemplate.queryForObject(
+                    "SELECT token FROM integracao_uft WHERE tipo_api = ?", String.class, tipoApi);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private void validarConfiguracaoUftRequest(ConfiguracaoUftRequestDTO request) {
+        if (request.url() == null || request.url().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe a URL da API");
+        }
+        if (!request.url().matches("^https?://.+")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "URL inválida (deve começar com http:// ou https://)");
+        }
+        if (request.ativo() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe se a integração está ativa");
         }
     }
 

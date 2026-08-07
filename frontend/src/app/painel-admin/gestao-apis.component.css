@@ -72,6 +72,35 @@
   display: flex;
   justify-content: flex-end;
   align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.btn-secondary {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.btn-secondary:hover {
+  background: #e2e8f0;
+}
+
+.teste-resultado {
+  grid-column: 1 / -1;
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.teste-sucesso {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.teste-erro {
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 .api-meta em {

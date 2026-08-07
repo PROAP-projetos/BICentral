@@ -213,6 +213,10 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
               text: resposta.texto,
               fontes: resposta.fontes // Guarda as fontes lidas
             });
+
+            if (resposta.relatorioGerado) {
+              this.abrirPainelRelatorios();
+            }
           }
           // 3. Fallback genérico caso o formato venha diferente
           else {
@@ -304,6 +308,10 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.mostrarPainelNotificacoes = !this.mostrarPainelNotificacoes;
   }
 
+  get temAlertaNegativo(): boolean {
+    return this.notificacoes.some(n => ['⚠️', '📉', '⏸️'].includes(n.emoji));
+  }
+
   toggleTarefas(i: number): void {
     if (this.tarefasExpandidas.has(i)) {
       this.tarefasExpandidas.delete(i);
@@ -339,6 +347,21 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     } else {
       this.pararPollingRelatorio();
     }
+  }
+
+  /** Abre o painel de relatórios sozinho (ex: quando o agente gera um relatório pelo chat). */
+  private abrirPainelRelatorios(): void {
+    this.mostrarPainelRelatorio = true;
+    this.mostrarPainelNotificacoes = false;
+    this.carregarMeusRelatorios();
+    this.iniciarPollingHistorico();
+  }
+
+  paraDataUtc(valor: string | null): Date | null {
+    if (!valor) return null;
+    const temFuso = /(Z|[+-]\d{2}:?\d{2})$/.test(valor);
+    const data = new Date(temFuso ? valor : valor + 'Z');
+    return isNaN(data.getTime()) ? null : data;
   }
 
   private carregarMeusRelatorios(): void {

@@ -4,5 +4,6 @@ import java.util.List;
 
 public record RespostaTextual(
     String texto,
-    List<String> fontes
+    List<String> fontes,
+    boolean relatorioGerado
 ) {}

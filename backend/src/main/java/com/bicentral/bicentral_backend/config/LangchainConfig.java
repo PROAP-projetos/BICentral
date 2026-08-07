@@ -29,8 +29,12 @@ public class LangchainConfig {
     }
 
     @Bean
-    public AgenteConsultaSql agenteConsultaSql(ChatLanguageModel chatLanguageModel, ConsultaAcoesTool consultaAcoesTool, RelatorioContextoTool relatorioContextoTool, TarefasTool tarefasTool) {
-        ChatMemoryProvider chatMemoryProvider = memoryId -> MessageWindowChatMemory.withMaxMessages(2); // memória para o sql, aumentar quando tiver a api não free tier
+    public AgenteConsultaSql agenteConsultaSql(@Qualifier("sambanovaModel") ChatLanguageModel chatLanguageModel, ConsultaAcoesTool consultaAcoesTool, RelatorioContextoTool relatorioContextoTool, TarefasTool tarefasTool) {
+        // 8 em vez de 2: uma única chamada de ferramenta já gera 3-4 mensagens (pergunta, chamada,
+        // resultado, resposta final); com janela menor a pergunta original é evictada no meio do
+        // turno e o modelo perde o fio, repetindo chamadas de ferramenta (viu isso travar em loop
+        // gerando o mesmo relatório várias vezes). 8 cobre 1-2 chamadas de ferramenta com folga.
+        ChatMemoryProvider chatMemoryProvider = memoryId -> MessageWindowChatMemory.withMaxMessages(8);
         return AiServices.builder(AgenteConsultaSql.class)
                 .chatLanguageModel(chatLanguageModel)
                 .chatMemoryProvider(chatMemoryProvider)
@@ -39,7 +43,7 @@ public class LangchainConfig {
     }
 
     @Bean
-    public AgenteRelatorio agenteRelatorio(@Qualifier("geminiModel") ChatLanguageModel geminiModel) {
+    public AgenteRelatorio agenteRelatorio(@Qualifier("groqModel") ChatLanguageModel geminiModel) {
         return AiServices.builder(AgenteRelatorio.class)
                 .chatLanguageModel(geminiModel)
                 .build();

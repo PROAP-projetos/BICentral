@@ -11,6 +11,7 @@ import com.bicentral.bicentral_backend.dto.admin.GerenteDepartamentoRequestDTO;
 import com.bicentral.bicentral_backend.dto.admin.UsuarioResumoDTO;
 import com.bicentral.bicentral_backend.dto.uft.ConfiguracaoUftDTO;
 import com.bicentral.bicentral_backend.dto.uft.ConfiguracaoUftRequestDTO;
+import com.bicentral.bicentral_backend.dto.uft.ResultadoTesteUftDTO;
 import com.bicentral.bicentral_backend.service.auth.UsuarioService;
 
 import org.springframework.http.ResponseEntity;
@@ -127,5 +128,14 @@ public class AdminController {
         Usuario usuario = usuarioLogado(userDetails);
         adminService.salvarConfiguracaoUft(usuario.getId(), tipoApi, request);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/integracao-uft/{tipoApi}/testar")
+    public ResponseEntity<ResultadoTesteUftDTO> testarConexaoUft(
+            @PathVariable String tipoApi,
+            @RequestBody ConfiguracaoUftRequestDTO request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Usuario usuario = usuarioLogado(userDetails);
+        return ResponseEntity.ok(adminService.testarConexaoUft(usuario.getId(), tipoApi, request));
     }
 }

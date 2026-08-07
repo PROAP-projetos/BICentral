@@ -49,12 +49,27 @@
 
         <div class="api-actions">
           <button
+            class="btn btn-secondary btn-sm"
+            type="button"
+            [disabled]="testando[api.tipoApi] || !api.url"
+            (click)="testar(api)">
+            {{ testando[api.tipoApi] ? 'Testando...' : 'Testar conexão' }}
+          </button>
+          <button
             class="btn btn-primary btn-sm"
             type="submit"
             [disabled]="salvando || !api.url">
             Salvar {{ api.tipoApi }}
           </button>
         </div>
+      </div>
+
+      <div
+        class="teste-resultado"
+        *ngIf="resultadoTeste[api.tipoApi]"
+        [class.teste-sucesso]="resultadoTeste[api.tipoApi]!.sucesso"
+        [class.teste-erro]="!resultadoTeste[api.tipoApi]!.sucesso">
+        {{ resultadoTeste[api.tipoApi]!.mensagem }}
       </div>
     </form>
   </div>

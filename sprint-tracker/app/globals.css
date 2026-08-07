@@ -1,0 +1,117 @@
+:root {
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --surface-alt: #edf0f5;
+  --border: #dde3ec;
+  --ink: #1b2333;
+  --ink-soft: #5b6478;
+  --ink-faint: #8892a3;
+  --accent: #0e7c7b;
+  --accent-soft: #e4f2f1;
+  --owner-dallyla: #7c5cfc;
+  --owner-dallyla-bg: #f1edff;
+  --owner-neci: #c77b12;
+  --owner-neci-bg: #fbf0dd;
+  --owner-lean: #d4506b;
+  --owner-lean-bg: #fceaee;
+  --danger: #c23a3a;
+  --danger-bg: #fbe4e4;
+  --shadow: 0 1px 2px rgba(27, 35, 51, 0.04), 0 4px 14px rgba(27, 35, 51, 0.05);
+  --overlay: rgba(16, 20, 28, 0.32);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #10141c;
+    --surface: #1a2030;
+    --surface-alt: #212840;
+    --border: #2a3145;
+    --ink: #e7ebf3;
+    --ink-soft: #a7b0c4;
+    --ink-faint: #6d7690;
+    --accent: #3fbab5;
+    --accent-soft: #16302f;
+    --owner-dallyla: #a796ff;
+    --owner-dallyla-bg: #241f3d;
+    --owner-neci: #e2a344;
+    --owner-neci-bg: #362a15;
+    --owner-lean: #eb7c93;
+    --owner-lean-bg: #3a1e25;
+    --danger: #ef6a6a;
+    --danger-bg: #3a1e1e;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 20px rgba(0, 0, 0, 0.35);
+    --overlay: rgba(0, 0, 0, 0.55);
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #10141c;
+  --surface: #1a2030;
+  --surface-alt: #212840;
+  --border: #2a3145;
+  --ink: #e7ebf3;
+  --ink-soft: #a7b0c4;
+  --ink-faint: #6d7690;
+  --accent: #3fbab5;
+  --accent-soft: #16302f;
+  --owner-dallyla: #a796ff;
+  --owner-dallyla-bg: #241f3d;
+  --owner-neci: #e2a344;
+  --owner-neci-bg: #362a15;
+  --owner-lean: #eb7c93;
+  --owner-lean-bg: #3a1e25;
+  --danger: #ef6a6a;
+  --danger-bg: #3a1e1e;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 20px rgba(0, 0, 0, 0.35);
+  --overlay: rgba(0, 0, 0, 0.55);
+}
+
+:root[data-theme="light"] {
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --surface-alt: #edf0f5;
+  --border: #dde3ec;
+  --ink: #1b2333;
+  --ink-soft: #5b6478;
+  --ink-faint: #8892a3;
+  --accent: #0e7c7b;
+  --accent-soft: #e4f2f1;
+  --owner-dallyla: #7c5cfc;
+  --owner-dallyla-bg: #f1edff;
+  --owner-neci: #c77b12;
+  --owner-neci-bg: #fbf0dd;
+  --owner-lean: #d4506b;
+  --owner-lean-bg: #fceaee;
+  --danger: #c23a3a;
+  --danger-bg: #fbe4e4;
+  --shadow: 0 1px 2px rgba(27, 35, 51, 0.04), 0 4px 14px rgba(27, 35, 51, 0.05);
+  --overlay: rgba(16, 20, 28, 0.32);
+}
+
+body {
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+button {
+  font-family: inherit;
+}

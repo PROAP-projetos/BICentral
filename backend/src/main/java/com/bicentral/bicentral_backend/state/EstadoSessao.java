@@ -33,6 +33,10 @@ public class EstadoSessao {
     private boolean aguardandoConfirmacaoGrafico = false;
     private GraficoSpec graficoPendente = null;
 
+    // Sinaliza que um relatório foi solicitado durante o processamento da pergunta atual,
+    // pra o front saber que deve abrir o painel de relatórios sozinho.
+    private boolean relatorioGerado = false;
+
     // =====================================================
     // SETTERS COM LOG DE DEPURAÇÃO
     // =====================================================

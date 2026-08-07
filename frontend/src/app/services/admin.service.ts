@@ -47,6 +47,11 @@ export interface ConfiguracaoUftRequest {
   ativo: boolean;
 }
 
+export interface ResultadoTesteUft {
+  sucesso: boolean;
+  mensagem: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -108,5 +113,9 @@ export class AdminService {
 
   salvarConfiguracaoUft(tipoApi: string, request: ConfiguracaoUftRequest): Observable<void> {
     return this.http.put<void>(`${this.apiURL}/integracao-uft/${tipoApi}`, request);
+  }
+
+  testarConexaoUft(tipoApi: string, request: ConfiguracaoUftRequest): Observable<ResultadoTesteUft> {
+    return this.http.post<ResultadoTesteUft>(`${this.apiURL}/integracao-uft/${tipoApi}/testar`, request);
   }
 }

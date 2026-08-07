@@ -29,6 +29,9 @@ public class ProiapService {
 
     public Object processarPergunta(String perguntaUsuario, String sessaoId) {
 
+        // Limpa qualquer sinal de relatório de uma pergunta anterior antes de processar esta.
+        estadoSessao.setRelatorioGerado(false);
+
         System.out.println("\n================================");
         System.out.println("NOVA REQUISIÇÃO");
         System.out.println("Pergunta: " + perguntaUsuario);
@@ -74,7 +77,7 @@ public class ProiapService {
                 estadoSessao.setAguardandoConfirmacaoGrafico(false);
                 estadoSessao.setGraficoPendente(null);
 
-                return new RespostaTextual("Tudo bem! Me diz o que você quer ver e eu busco novamente.", null);
+                return new RespostaTextual("Tudo bem! Me diz o que você quer ver e eu busco novamente.", null, false);
             }
 
             System.out.println(">>> USUÁRIO REFORMULOU A CONSULTA (IA ENTENDEU)");
@@ -133,8 +136,8 @@ public class ProiapService {
             
             String respostaTexto = agenteConsultaSql.responderComFerramentas(memoryId, perguntaUsuario,
                     contextoRAG.textoContexto());
-            
-            return new RespostaTextual(respostaTexto, contextoRAG.fontes());
+
+            return new RespostaTextual(respostaTexto, contextoRAG.fontes(), estadoSessao.isRelatorioGerado());
             
         } else if (analise.intencao() == Intencao.GRAFICO) {
 
@@ -150,9 +153,9 @@ public class ProiapService {
             estadoSessao.setGraficoPendente(spec);
             estadoSessao.setAguardandoConfirmacaoGrafico(true);
 
-            return new RespostaTextual(spec.mensagemContexto(), contextoRAG.fontes());
+            return new RespostaTextual(spec.mensagemContexto(), contextoRAG.fontes(), false);
         }
 
-        return new RespostaTextual("Desculpe, não consegui entender a intenção do seu comando.", null);
+        return new RespostaTextual("Desculpe, não consegui entender a intenção do seu comando.", null, false);
     }
 }

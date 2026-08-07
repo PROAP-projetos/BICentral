@@ -76,7 +76,7 @@
               <div class="relatorio-historico-item" *ngFor="let r of meusRelatorios">
                 <div class="relatorio-historico-info">
                   <strong>{{ r.departamento }}</strong>
-                  <span>{{ r.tipo }} · {{ r.criado_em | date:'dd/MM HH:mm' }}</span>
+                  <span>{{ r.tipo }} · {{ (paraDataUtc(r.criado_em) | date:'dd/MM HH:mm') || 'sem data registrada' }}</span>
                 </div>
 
                 <div class="relatorio-historico-actions">
@@ -129,7 +129,7 @@
               <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
               <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
             </svg>
-            <span class="notif-badge" *ngIf="notificacoes.length > 0">{{ notificacoes.length }}</span>
+            <span class="notif-badge" [class.notif-badge-ok]="!temAlertaNegativo" *ngIf="notificacoes.length > 0">{{ notificacoes.length }}</span>
           </button>
 
           <div class="notif-panel" *ngIf="mostrarPainelNotificacoes">
@@ -142,7 +142,10 @@
               <p class="notif-empty" *ngIf="carregandoNotificacoes">Carregando...</p>
 
               <div class="notif-item" *ngFor="let n of notificacoes; let i = index">
-                <div class="notif-item-header">{{ n.emoji }} <strong>{{ n.departamento }}</strong> {{ n.mensagem }}</div>
+                <div class="notif-item-header">
+                  <span class="notif-emoji">{{ n.emoji }}</span>
+                  <span><strong>{{ n.departamento }}</strong> {{ n.mensagem }}</span>
+                </div>
                 <button class="notif-toggle" type="button" *ngIf="n.tarefas.length" (click)="toggleTarefas(i)">
                   {{ tarefasExpandidas.has(i) ? 'ocultar tarefas' : 'ver tarefas (' + n.tarefas.length + ')' }}
                 </button>
