@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { supabase, Sprint, Tarefa, Status, Dono } from "@/lib/supabase";
 import styles from "./page.module.css";
 import Mascote from "@/components/Mascote";
+import BoasVindas from "@/components/BoasVindas";
 
 const OWNER_LABEL: Record<Dono, string> = {
   dallyla: "Dallyla",
@@ -172,6 +173,7 @@ export default function Page() {
   if (carregando) {
     return (
       <div className={styles.page}>
+        <BoasVindas />
         <p className={styles.loading}>Carregando quadro...</p>
       </div>
     );
@@ -180,6 +182,7 @@ export default function Page() {
   if (erro) {
     return (
       <div className={styles.page}>
+        <BoasVindas />
         <p className={styles.error}>
           Erro ao carregar: {erro}. Confira se rodou o <span className="mono">supabase/schema.sql</span> e se as
           variáveis de ambiente estão certas.
@@ -190,6 +193,7 @@ export default function Page() {
 
   return (
     <div className={styles.page}>
+      <BoasVindas />
       <div className={styles.ruleBanner}>🔒 REGRA: ABRA PR, SEMPRE. Sem exceção.</div>
 
       {sprintAtual && (
@@ -411,6 +415,7 @@ export default function Page() {
         <Mascote
           onTrocarTema={alternarTema}
           tarefas={tarefas}
+          sprints={sprints}
           despedindo={despedindo}
           onDespedida={mascoteFoiEmbora}
         />

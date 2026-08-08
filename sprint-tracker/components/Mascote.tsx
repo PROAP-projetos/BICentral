@@ -1,44 +1,26 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Tarefa } from "@/lib/supabase";
+import type { Sprint, Tarefa } from "@/lib/supabase";
 import styles from "./Mascote.module.css";
 
 interface Props {
   onTrocarTema: () => void;
   tarefas: Tarefa[];
+  sprints: Sprint[];
   despedindo: boolean;
   onDespedida: () => void;
 }
 
-type Acao =
-  | "andando"
-  | "apontando"
-  | "trocando-tema"
-  | "comemorando"
-  | "tropecando"
-  | "dancando"
-  | "soneca"
-  | "assustado"
-  | "indo-embora";
+type Acao = "andando" | "apontando" | "trocando-tema" | "empolgado" | "comemorando" | "mega-comemorando" | "indo-embora";
 
-const BICHINHOS = ["🦖", "🤖", "👻"];
+const BICHINHOS = ["🐻", "🐼", "🐨"];
 
-const FALAS = [
-  "boa, hein",
-  "vamo que vamo 🚀",
-  "clica aí ↑",
-  "não esquece a PR",
-  "ó, tem tarefa ali",
-  "tá indo bem",
-  "hmm, deixa eu ver...",
-  "ninguém tá vendo, né?",
-];
+const FALAS = ["vamos lá!", "boa 👍", "olha essa aqui", "tá indo bem", "clica aí ↑"];
 
-export default function Mascote({ onTrocarTema, tarefas, despedindo, onDespedida }: Props) {
+export default function Mascote({ onTrocarTema, tarefas, sprints, despedindo, onDespedida }: Props) {
   const [pos, setPos] = useState({ x: 80, y: 80 });
   const [virado, setVirado] = useState(false);
-  const [moonwalk, setMoonwalk] = useState(false);
   const [acao, setAcao] = useState<Acao>("andando");
   const [fala, setFala] = useState<string | null>(null);
   const [bichinho] = useState(() => BICHINHOS[Math.floor(Math.random() * BICHINHOS.length)]);
@@ -49,13 +31,26 @@ export default function Mascote({ onTrocarTema, tarefas, despedindo, onDespedida
   const tarefasAnterioresRef = useRef<Map<number, string>>(new Map());
   const cicloRef = useRef<() => void>();
 
-  function moverPara(alvo: { x: number; y: number }, opts?: { semMoonwalk?: boolean }) {
-    const indoPraEsquerda = alvo.x < posAtualRef.current.x;
-    const fazMoonwalk = !opts?.semMoonwalk && Math.random() < 0.3;
-    setVirado(fazMoonwalk ? !indoPraEsquerda : indoPraEsquerda);
-    setMoonwalk(fazMoonwalk);
+  function moverPara(alvo: { x: number; y: number }) {
+    setVirado(alvo.x < posAtualRef.current.x);
     posAtualRef.current = alvo;
     setPos(alvo);
+  }
+
+  function reagirNoCard(tarefaId: number, acaoNova: Acao, texto: string, duracaoMs: number) {
+    const card = document.querySelector<HTMLElement>(`[data-tarefa-id="${tarefaId}"]`);
+    if (!card) return false;
+    clearTimeout(timeoutRef.current);
+    const rect = card.getBoundingClientRect();
+    moverPara({ x: rect.left + rect.width / 2 - 20, y: rect.top - 40 });
+    setAcao(acaoNova);
+    setFala(texto);
+    timeoutRef.current = setTimeout(() => {
+      setFala(null);
+      setAcao("andando");
+      agendarProximoExterno();
+    }, duracaoMs);
+    return true;
   }
 
   // Sequência de despedida
@@ -64,7 +59,7 @@ export default function Mascote({ onTrocarTema, tarefas, despedindo, onDespedida
     clearTimeout(timeoutRef.current);
     setFala("tchau... 😢");
     const indoEsquerda = posAtualRef.current.x > window.innerWidth / 2;
-    moverPara({ x: indoEsquerda ? -80 : window.innerWidth + 20, y: posAtualRef.current.y }, { semMoonwalk: true });
+    moverPara({ x: indoEsquerda ? -80 : window.innerWidth + 20, y: posAtualRef.current.y });
     setAcao("indo-embora");
     timeoutRef.current = setTimeout(() => setFala(null), 1600);
     timeoutRef.current = setTimeout(() => {
@@ -74,28 +69,41 @@ export default function Mascote({ onTrocarTema, tarefas, despedindo, onDespedida
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [despedindo]);
 
-  // Comemora sempre que alguma tarefa vira "concluido"
+  // Reage a mudanças de status: comemora "concluído" (em dobro se fecha a sprint) e anima "fazendo"
   useEffect(() => {
     if (despedindo) return;
     const anteriores = tarefasAnterioresRef.current;
-    if (anteriores.size > 0) {
+    if (anteriores.size > 0 && !reduzMovimento) {
       const concluidaAgora = tarefas.find(
         (t) => t.status === "concluido" && anteriores.get(t.id) && anteriores.get(t.id) !== "concluido"
       );
-      if (concluidaAgora && !reduzMovimento) {
-        const card = document.querySelector<HTMLElement>(`[data-tarefa-id="${concluidaAgora.id}"]`);
-        if (card) {
+      const comecadaAgora = tarefas.find(
+        (t) => t.status === "fazendo" && anteriores.get(t.id) && anteriores.get(t.id) !== "fazendo"
+      );
+
+      if (concluidaAgora) {
+        const tarefasDoSprint = tarefas.filter((t) => t.sprint_id === concluidaAgora.sprint_id);
+        const completaAgora = tarefasDoSprint.every((t) => t.status === "concluido");
+        const completaAntes = tarefasDoSprint.every((t) => (anteriores.get(t.id) ?? t.status) === "concluido");
+
+        if (completaAgora && !completaAntes) {
+          const sprint = sprints.find((s) => s.id === concluidaAgora.sprint_id);
           clearTimeout(timeoutRef.current);
-          const rect = card.getBoundingClientRect();
-          moverPara({ x: rect.left + rect.width / 2 - 20, y: rect.top - 40 });
-          setAcao("comemorando");
-          setFala("mandou bem! 🎉");
+          moverPara({ x: window.innerWidth / 2 - 20, y: window.innerHeight / 2 - 60 });
+          setAcao("mega-comemorando");
+          setFala(
+            sprint ? `SPRINT ${sprint.numero} COMPLETA! Time incrível! 🏆` : "SPRINT COMPLETA! Time incrível! 🏆"
+          );
           timeoutRef.current = setTimeout(() => {
             setFala(null);
             setAcao("andando");
             agendarProximoExterno();
-          }, 2600);
+          }, 3600);
+        } else {
+          reagirNoCard(concluidaAgora.id, "comemorando", "mandou bem! 🎉", 2600);
         }
+      } else if (comecadaAgora) {
+        reagirNoCard(comecadaAgora.id, "empolgado", "vai que vai! 💪", 1800);
       }
     }
     tarefas.forEach((t) => anteriores.set(t.id, t.status));
@@ -103,7 +111,7 @@ export default function Mascote({ onTrocarTema, tarefas, despedindo, onDespedida
   }, [tarefas]);
 
   function agendarProximoExterno() {
-    timeoutRef.current = setTimeout(() => cicloRef.current?.(), 3000 + Math.random() * 3000);
+    timeoutRef.current = setTimeout(() => cicloRef.current?.(), 3500 + Math.random() * 3500);
   }
 
   useEffect(() => {
@@ -111,16 +119,16 @@ export default function Mascote({ onTrocarTema, tarefas, despedindo, onDespedida
     setReduzMovimento(reduzir);
     if (reduzir) return;
 
-    function encerrarAcao(proximaAcao: () => void, ms: number) {
+    function encerrarAcao(proxima: () => void, ms: number) {
       timeoutRef.current = setTimeout(() => {
         setFala(null);
         setAcao("andando");
-        proximaAcao();
+        proxima();
       }, ms);
     }
 
     function agendarProximo() {
-      timeoutRef.current = setTimeout(proximoCiclo, 4000 + Math.random() * 4000);
+      timeoutRef.current = setTimeout(proximoCiclo, 5000 + Math.random() * 4000);
     }
 
     function proximoCiclo() {
@@ -128,7 +136,7 @@ export default function Mascote({ onTrocarTema, tarefas, despedindo, onDespedida
       let alvo: { x: number; y: number } | null = null;
       let proximaAcao: Acao = "andando";
 
-      if (dado < 0.16) {
+      if (dado < 0.3) {
         const cards = Array.from(document.querySelectorAll<HTMLElement>("[data-tarefa-id]"));
         if (cards.length > 0) {
           const card = cards[Math.floor(Math.random() * cards.length)];
@@ -138,21 +146,13 @@ export default function Mascote({ onTrocarTema, tarefas, despedindo, onDespedida
             proximaAcao = "apontando";
           }
         }
-      } else if (dado < 0.27) {
+      } else if (dado < 0.42) {
         const botao = document.querySelector<HTMLElement>("[data-theme-toggle]");
         if (botao) {
           const rect = botao.getBoundingClientRect();
           alvo = { x: rect.left - 36, y: rect.top };
           proximaAcao = "trocando-tema";
         }
-      } else if (dado < 0.42) {
-        proximaAcao = "tropecando";
-      } else if (dado < 0.55) {
-        proximaAcao = "dancando";
-      } else if (dado < 0.66) {
-        proximaAcao = "soneca";
-      } else if (dado < 0.76) {
-        proximaAcao = "assustado";
       }
 
       if (!alvo) {
@@ -167,44 +167,19 @@ export default function Mascote({ onTrocarTema, tarefas, despedindo, onDespedida
       const mostraFala = Math.random() < 0.25;
 
       timeoutRef.current = setTimeout(() => {
-        switch (proximaAcao) {
-          case "apontando":
-            setAcao("apontando");
-            if (mostraFala) setFala(FALAS[Math.floor(Math.random() * FALAS.length)]);
-            encerrarAcao(agendarProximo, 1800);
-            break;
-          case "trocando-tema":
-            setAcao("trocando-tema");
-            onTrocarTema();
-            encerrarAcao(agendarProximo, 1200);
-            break;
-          case "tropecando":
-            setAcao("tropecando");
-            setFala("aaaai 😵");
-            encerrarAcao(agendarProximo, 1400);
-            break;
-          case "dancando":
-            setAcao("dancando");
-            setFala("🎶🕺🎶");
-            encerrarAcao(agendarProximo, 2000);
-            break;
-          case "soneca":
-            setAcao("soneca");
-            setFala("💤 zzz...");
-            encerrarAcao(agendarProximo, 2200);
-            break;
-          case "assustado":
-            setAcao("assustado");
-            setFala("💦 nossa, que susto");
-            encerrarAcao(agendarProximo, 1300);
-            break;
-          default:
-            if (mostraFala) {
-              setFala(FALAS[Math.floor(Math.random() * FALAS.length)]);
-              encerrarAcao(agendarProximo, 1600);
-            } else {
-              agendarProximo();
-            }
+        if (proximaAcao === "apontando") {
+          setAcao("apontando");
+          if (mostraFala) setFala(FALAS[Math.floor(Math.random() * FALAS.length)]);
+          encerrarAcao(agendarProximo, 1700);
+        } else if (proximaAcao === "trocando-tema") {
+          setAcao("trocando-tema");
+          onTrocarTema();
+          encerrarAcao(agendarProximo, 1200);
+        } else if (mostraFala) {
+          setFala(FALAS[Math.floor(Math.random() * FALAS.length)]);
+          encerrarAcao(agendarProximo, 1400);
+        } else {
+          agendarProximo();
         }
       }, 1500);
     }
@@ -220,14 +195,11 @@ export default function Mascote({ onTrocarTema, tarefas, despedindo, onDespedida
   const parado = acao !== "andando" && acao !== "indo-embora";
 
   let classeCorpo = styles.andando;
-  if (acao === "comemorando") classeCorpo = styles.comemorando;
-  else if (acao === "tropecando") classeCorpo = styles.tropecando;
-  else if (acao === "dancando") classeCorpo = styles.dancando;
-  else if (acao === "soneca") classeCorpo = styles.soneca;
-  else if (acao === "assustado") classeCorpo = styles.assustado;
+  if (acao === "mega-comemorando") classeCorpo = styles.megaComemorando;
+  else if (acao === "comemorando") classeCorpo = styles.comemorando;
+  else if (acao === "empolgado") classeCorpo = styles.empolgado;
   else if (acao === "indo-embora") classeCorpo = styles.indoEmbora;
   else if (parado) classeCorpo = styles.parado;
-  else if (moonwalk) classeCorpo = styles.moonwalking;
 
   return (
     <div
@@ -250,18 +222,23 @@ export default function Mascote({ onTrocarTema, tarefas, despedindo, onDespedida
       )}
       <span className={classeCorpo}>{bichinho}</span>
       <span className={styles.sombra} />
-      {acao === "andando" && moonwalk && (
-        <>
-          <span className={styles.nota}>🎵</span>
-          <span className={styles.oculos}>🕶️</span>
-        </>
-      )}
       {acao === "apontando" && <span className={styles.aponta}>👉</span>}
       {acao === "trocando-tema" && <span className={styles.sparkle}>✨</span>}
+      {acao === "empolgado" && <span className={styles.sparkle}>💫</span>}
       {acao === "comemorando" && (
         <>
           <span className={styles.confete1}>🎉</span>
           <span className={styles.confete2}>🎊</span>
+        </>
+      )}
+      {acao === "mega-comemorando" && (
+        <>
+          <span className={styles.confeteMega1}>🎉</span>
+          <span className={styles.confeteMega2}>🎊</span>
+          <span className={styles.confeteMega3}>🏆</span>
+          <span className={styles.confeteMega4}>🎉</span>
+          <span className={styles.confeteMega5}>🎊</span>
+          <span className={styles.confeteMega6}>⭐</span>
         </>
       )}
       {acao === "indo-embora" && <span className={styles.triste}>😢</span>}

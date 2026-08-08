@@ -13,6 +13,16 @@
   animation: bob 0.4s ease-in-out infinite;
 }
 
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-4deg);
+  }
+  50% {
+    transform: translateY(-7px) rotate(4deg);
+  }
+}
+
 .parado {
   display: inline-block;
   animation: respirar 2.4s ease-in-out infinite;
@@ -25,6 +35,21 @@
   }
   50% {
     transform: scale(1.05) rotate(-3deg);
+  }
+}
+
+.empolgado {
+  display: inline-block;
+  animation: empolgar 0.3s ease-in-out infinite;
+}
+
+@keyframes empolgar {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-6px) scale(1.08);
   }
 }
 
@@ -43,47 +68,35 @@
   }
 }
 
-.moonwalking {
+.megaComemorando {
   display: inline-block;
-  animation: deslizar 0.25s ease-in-out infinite;
+  animation: pularMega 0.3s ease-in-out infinite;
+  font-size: 1.4em;
 }
 
-@keyframes deslizar {
+@keyframes pularMega {
+  0%,
+  100% {
+    transform: translateY(0) scale(1) rotate(-6deg);
+  }
+  50% {
+    transform: translateY(-18px) scale(1.25) rotate(6deg);
+  }
+}
+
+.indoEmbora {
+  display: inline-block;
+  animation: caminharTriste 0.6s ease-in-out infinite;
+  filter: grayscale(0.4);
+}
+
+@keyframes caminharTriste {
   0%,
   100% {
     transform: translateY(0) rotate(-2deg);
   }
   50% {
     transform: translateY(-2px) rotate(2deg);
-  }
-}
-
-.nota {
-  position: absolute;
-  top: -0.6rem;
-  left: -1rem;
-  font-size: 1.1rem;
-  animation: notaflutua 0.7s ease-in-out infinite alternate;
-}
-
-@keyframes notaflutua {
-  from {
-    transform: translateY(0) rotate(-10deg);
-    opacity: 0.5;
-  }
-  to {
-    transform: translateY(-6px) rotate(10deg);
-    opacity: 1;
-  }
-}
-
-@keyframes bob {
-  0%,
-  100% {
-    transform: translateY(0) rotate(-4deg);
-  }
-  50% {
-    transform: translateY(-7px) rotate(4deg);
   }
 }
 
@@ -123,123 +136,6 @@
   }
 }
 
-.tropecando {
-  display: inline-block;
-  animation: tropecar 0.7s ease-in-out;
-}
-
-@keyframes tropecar {
-  0% {
-    transform: rotate(0deg) translateY(0);
-  }
-  30% {
-    transform: rotate(-25deg) translateY(2px);
-  }
-  55% {
-    transform: rotate(95deg) translateY(10px);
-  }
-  75% {
-    transform: rotate(70deg) translateY(8px);
-  }
-  100% {
-    transform: rotate(0deg) translateY(0);
-  }
-}
-
-.dancando {
-  display: inline-block;
-  animation: dancar 0.3s ease-in-out infinite;
-}
-
-@keyframes dancar {
-  0%,
-  100% {
-    transform: rotate(-18deg) scale(1) translateY(0);
-  }
-  25% {
-    transform: rotate(12deg) scale(1.1) translateY(-4px);
-  }
-  50% {
-    transform: rotate(-8deg) scale(0.95) translateY(2px);
-  }
-  75% {
-    transform: rotate(18deg) scale(1.1) translateY(-4px);
-  }
-}
-
-.soneca {
-  display: inline-block;
-  animation: cochilar 1.6s ease-in-out infinite;
-  transform-origin: bottom center;
-}
-
-@keyframes cochilar {
-  0%,
-  100% {
-    transform: rotate(0deg);
-  }
-  50% {
-    transform: rotate(12deg);
-  }
-}
-
-.assustado {
-  display: inline-block;
-  animation: susto 0.25s ease-in-out 3;
-}
-
-@keyframes susto {
-  0%,
-  100% {
-    transform: translateY(0) scale(1);
-  }
-  50% {
-    transform: translateY(-16px) scale(1.2);
-  }
-}
-
-.indoEmbora {
-  display: inline-block;
-  animation: caminharTriste 0.6s ease-in-out infinite;
-  filter: grayscale(0.4);
-}
-
-@keyframes caminharTriste {
-  0%,
-  100% {
-    transform: translateY(0) rotate(-2deg);
-  }
-  50% {
-    transform: translateY(-2px) rotate(2deg);
-  }
-}
-
-.triste {
-  position: absolute;
-  top: -1.1rem;
-  right: -0.8rem;
-  font-size: 1.1rem;
-  animation: chorar 0.9s ease-in-out infinite alternate;
-}
-
-@keyframes chorar {
-  from {
-    transform: translateY(0);
-    opacity: 0.7;
-  }
-  to {
-    transform: translateY(4px);
-    opacity: 1;
-  }
-}
-
-.oculos {
-  position: absolute;
-  top: -0.35rem;
-  left: 0.15rem;
-  font-size: 0.85rem;
-}
-
 .sombra {
   position: absolute;
   bottom: -0.4rem;
@@ -277,6 +173,78 @@
   }
   to {
     transform: translateY(-10px) rotate(15deg);
+    opacity: 1;
+  }
+}
+
+.confeteMega1,
+.confeteMega2,
+.confeteMega3,
+.confeteMega4,
+.confeteMega5,
+.confeteMega6 {
+  position: absolute;
+  font-size: 1.4rem;
+  animation: confeteMega 0.8s ease-in-out infinite alternate;
+}
+
+.confeteMega1 {
+  top: -1.6rem;
+  left: -2.2rem;
+  animation-delay: 0s;
+}
+.confeteMega2 {
+  top: -2rem;
+  right: -2rem;
+  animation-delay: 0.15s;
+}
+.confeteMega3 {
+  top: -2.6rem;
+  left: 0.6rem;
+  animation-delay: 0.3s;
+}
+.confeteMega4 {
+  bottom: -0.4rem;
+  left: -2.6rem;
+  animation-delay: 0.45s;
+}
+.confeteMega5 {
+  bottom: -0.4rem;
+  right: -2.6rem;
+  animation-delay: 0.6s;
+}
+.confeteMega6 {
+  top: -1.2rem;
+  left: -3.4rem;
+  animation-delay: 0.2s;
+}
+
+@keyframes confeteMega {
+  from {
+    transform: translateY(0) rotate(-20deg) scale(1);
+    opacity: 0.7;
+  }
+  to {
+    transform: translateY(-14px) rotate(20deg) scale(1.3);
+    opacity: 1;
+  }
+}
+
+.triste {
+  position: absolute;
+  top: -1.1rem;
+  right: -0.8rem;
+  font-size: 1.1rem;
+  animation: chorar 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes chorar {
+  from {
+    transform: translateY(0);
+    opacity: 0.7;
+  }
+  to {
+    transform: translateY(4px);
     opacity: 1;
   }
 }
