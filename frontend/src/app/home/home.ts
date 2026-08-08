@@ -1,10 +1,12 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { interval, Subscription, of } from 'rxjs';
 import { switchMap, catchError } from 'rxjs/operators';
 import { FormBuilder, ReactiveFormsModule, Validators, FormGroup } from '@angular/forms';
+import { AdminService } from '../services/admin.service';
+import { EquipeService, Equipe } from '../services/equipe.services';
 
 // ✅ ajuste o path real do seu projeto
 import { AddPainelComponent } from '../add-painel/add-painel.component';
@@ -20,9 +22,25 @@ carregada?: boolean;
 }
 
 interface UsuarioLocalStorage {
-token?: string;
-username?: string;
-email?: string;
+  id?: string;
+  token?: string;
+  username?: string;
+  email?: string;
+  role?: string;
+}
+
+type UserRole = 'VIEWER' | 'EDITOR' | 'ADMIN';
+
+interface EquipeSelecionada {
+  id: number;
+  nome: string;
+  role: UserRole;
+}
+
+interface EquipeMenuItem {
+  id: number;
+  nome: string;
+  role: UserRole;
 }
 
 @Component({
@@ -33,16 +51,59 @@ templateUrl: './home.html',
 styleUrls: ['./home.css']
 })
 export class HomeComponent implements OnInit, OnDestroy {
+private static readonly SELECTED_EQUIPE_KEY = 'bicentral_selected_equipe';
 
 dashboards: PainelDTO[] = [];
+equipesMenu: EquipeMenuItem[] = [];
 loading = true;
 error: string | null = null;
 
 isLoggedIn = false;
+isAdminSistema = false;
 userName: string | null = null;
+currentRole: UserRole = 'VIEWER';
+equipeSelecionada: EquipeSelecionada | null = null;
+showWelcomeOverlay = false;
+welcomeStep = 0;
+isWelcomeClosing = false;
+welcomeOutroTitle = 'Que bom ter voce aqui.';
+welcomeOutroSubtitle = 'Preparando seu espaco para organizar paineis...';
+private welcomeTimers: number[] = [];
+agentBubbleVisible = false;
+private agentBubbleTimer?: number;
+showFooterSignature = false;
+private footerSignatureTimer?: number;
+
+readonly welcomeSlides = [
+  {
+    badge: 'Bem-vindo ao BICentral',
+    title: 'Seu centro para organizar os painéis da PROAP',
+    text: 'Aqui você centraliza os links dos painéis, mantém tudo em um único lugar e facilita o acesso diário da equipe.'
+  },
+  {
+    badge: 'Como funciona',
+    title: 'Cadastre, visualize e atualize sem complicação',
+    text: 'Use o botão "Adicionar Painel", acompanhe a capa gerada automaticamente e edite os painéis sempre que precisar.'
+  },
+  {
+    badge: 'Comece agora',
+    title: 'Gerencie seus painéis com mais controle',
+    text: 'Monte sua biblioteca de dashboards e mantenha sua rotina de análise mais rápida e organizada dentro do BICentral.'
+  }
+];
 
 private pollingSub?: Subscription;
-private readonly API_URL = 'http://localhost:8080/api/paineis';
+
+get canEdit(): boolean {
+  return this.currentRole === 'ADMIN' || this.currentRole === 'EDITOR';
+}
+
+get apiUrl(): string | null {
+  if (!this.equipeSelecionada?.id) {
+    return null;
+  }
+  return `/api/equipes/${this.equipeSelecionada.id}/paineis`;
+}
 
 // -------------------------
 // MODAL EDIÇÃO
@@ -71,7 +132,9 @@ isAddOpen = false;
 constructor(
     private http: HttpClient,
     private router: Router,
-    private fb: FormBuilder
+  private fb: FormBuilder,
+  private adminService: AdminService,
+  private equipeService: EquipeService
   ) {
     this.editForm = this.fb.group({
       nome: ['', [Validators.required, Validators.minLength(2)]],
@@ -90,12 +153,22 @@ constructor(
       return;
     }
 
+    this.initializeWelcomeOverlay();
+    this.verificarAdminSistema();
+    this.carregarEquipesMenu();
     this.loadDashboards();
     this.startPolling();
   }
 
   ngOnDestroy(): void {
     this.pararPolling();
+    this.clearWelcomeTimers();
+    if (this.agentBubbleTimer) {
+      window.clearTimeout(this.agentBubbleTimer);
+    }
+    if (this.footerSignatureTimer) {
+      window.clearTimeout(this.footerSignatureTimer);
+    }
   }
 
   trackById(index: number, item: PainelDTO) {
@@ -107,6 +180,126 @@ constructor(
   // -------------------------
   // AUTH HELPERS
   // -------------------------
+  verificarAdminSistema(): void {
+    this.adminService.souAdmin().subscribe({
+      next: (resposta) => {
+        this.isAdminSistema = resposta.admin;
+      },
+      error: () => {
+        this.isAdminSistema = false;
+      }
+    });
+  }
+
+  get equipeMenuLabel(): string {
+    return this.equipeSelecionada?.nome || 'Minha Equipe';
+  }
+
+  mostrarBalaoAgente(): void {
+    this.agentBubbleVisible = true;
+    if (this.agentBubbleTimer) {
+      window.clearTimeout(this.agentBubbleTimer);
+    }
+    this.agentBubbleTimer = window.setTimeout(() => {
+      this.agentBubbleVisible = false;
+    }, 2600);
+  }
+
+  revelarAssinaturaFooter(): void {
+    this.showFooterSignature = true;
+    if (this.footerSignatureTimer) {
+      window.clearTimeout(this.footerSignatureTimer);
+    }
+    this.footerSignatureTimer = window.setTimeout(() => {
+      this.showFooterSignature = false;
+    }, 7000);
+  }
+
+  private toEquipeMenuItem(equipe: Equipe): EquipeMenuItem | null {
+    if (!equipe.id) {
+      return null;
+    }
+
+    const role = (equipe.role || 'VIEWER').toUpperCase();
+    const roleNormalizado: UserRole =
+      role === 'ADMIN' || role === 'EDITOR' || role === 'VIEWER' ? role : 'VIEWER';
+
+    return {
+      id: equipe.id,
+      nome: equipe.nome,
+      role: roleNormalizado
+    };
+  }
+
+  private salvarEquipeSelecionada(equipe: EquipeMenuItem): void {
+    localStorage.setItem(HomeComponent.SELECTED_EQUIPE_KEY, JSON.stringify(equipe));
+  }
+
+  carregarEquipesMenu(): void {
+    this.equipeService.listarMinhasEquipes().subscribe({
+      next: (equipes) => {
+        this.equipesMenu = (equipes || [])
+          .map((equipe) => this.toEquipeMenuItem(equipe))
+          .filter((equipe): equipe is EquipeMenuItem => !!equipe)
+          .sort((a, b) => a.nome.localeCompare(b.nome));
+
+        if (this.equipeSelecionada && !this.equipesMenu.some((e) => e.id === this.equipeSelecionada?.id)) {
+          this.equipeSelecionada = null;
+          this.currentRole = 'VIEWER';
+        }
+      },
+      error: () => {
+        this.equipesMenu = [];
+      }
+    });
+  }
+
+  selecionarEquipeDoMenu(equipe: EquipeMenuItem): void {
+    this.equipeSelecionada = equipe;
+    this.currentRole = equipe.role;
+    this.salvarEquipeSelecionada(equipe);
+    this.isAddOpen = false;
+    this.loadDashboards();
+    this.startPolling();
+  }
+
+    private getUserRoleFromEquipe(): UserRole {
+      const role = (this.equipeSelecionada?.role || 'VIEWER').toUpperCase();
+      if (role === 'VIEWER' || role === 'EDITOR' || role === 'ADMIN') {
+        return role;
+      }
+      return 'VIEWER';
+  }
+
+    private loadEquipeSelecionada(): void {
+      const raw = localStorage.getItem(HomeComponent.SELECTED_EQUIPE_KEY);
+      if (!raw) {
+        this.equipeSelecionada = null;
+        this.currentRole = 'VIEWER';
+        return;
+      }
+
+      try {
+        const equipe = JSON.parse(raw) as Partial<EquipeSelecionada>;
+        if (!equipe.id || !equipe.nome) {
+          this.equipeSelecionada = null;
+          this.currentRole = 'VIEWER';
+          return;
+        }
+
+        const role = (equipe.role || 'VIEWER').toUpperCase() as UserRole;
+        this.equipeSelecionada = {
+          id: equipe.id,
+          nome: equipe.nome,
+          role: (role === 'VIEWER' || role === 'EDITOR' || role === 'ADMIN') ? role : 'VIEWER'
+        };
+        this.currentRole = this.getUserRoleFromEquipe();
+      } catch {
+        this.equipeSelecionada = null;
+        this.currentRole = 'VIEWER';
+      }
+    }
+
   private getUserFromStorage(): UsuarioLocalStorage | null {
     const userStr = localStorage.getItem('user');
     if (!userStr) return null;
@@ -118,21 +311,14 @@ constructor(
     }
   }
 
-  private getAuthHeaders(): HttpHeaders {
-    const user = this.getUserFromStorage();
-    const token = user?.token;
-
-    if (!token) return new HttpHeaders();
-
-    return new HttpHeaders({
-      Authorization: `Bearer ${token}`
-    });
-  }
-
   private handleAuthError(err: any) {
-    if (err?.status === 401 || err?.status === 403) {
+    if (err?.status === 401) {
       this.pararPolling();
       this.logout();
+      return true;
+    }
+    if (err?.status === 403) {
+      this.error = 'Permissão insuficiente para esta ação na equipe selecionada.';
       return true;
     }
     return false;
@@ -142,12 +328,20 @@ constructor(
   // Listagem
   // -------------------------
   loadDashboards(): void {
+    this.loadEquipeSelecionada();
+
+    const apiUrl = this.apiUrl;
+    if (!apiUrl) {
+      this.loading = false;
+      this.dashboards = [];
+      this.error = 'Selecione uma equipe em "Minha Equipe" para visualizar os painéis.';
+      return;
+    }
+
     this.loading = true;
     this.error = null;
 
-    const headers = this.getAuthHeaders();
-
-    this.http.get<PainelDTO[]>(this.API_URL, { headers }).subscribe({
+    this.http.get<PainelDTO[]>(apiUrl).subscribe({
       next: (data) => {
         this.processarDadosRecebidos(data);
         this.loading = false;
@@ -169,20 +363,14 @@ constructor(
   private startPolling(): void {
     this.pararPolling();
 
+    const apiUrl = this.apiUrl;
+    if (!apiUrl) {
+      return;
+    }
+
     this.pollingSub = interval(5000).pipe(
       switchMap(() => {
-        // ✅ se modal estiver aberto, você pode pausar polling (opcional)
-        // if (this.isAddOpen || this.isEditOpen) return of(null);
-
-        const headers = this.getAuthHeaders();
-
-        if (!headers.has('Authorization')) {
-          this.pararPolling();
-          this.logout();
-          return of(null);
-        }
-
-        return this.http.get<PainelDTO[]>(this.API_URL, { headers }).pipe(
+        return this.http.get<PainelDTO[]>(apiUrl).pipe(
           catchError((err) => {
             this.handleAuthError(err);
             return of(null);
@@ -207,15 +395,21 @@ constructor(
       const antigo = antigos.get(novo.id);
 
       if (novo.imagemCapaUrl) {
-        const pronto: PainelDTO = {
-          ...novo,
-          previewSrc: antigo?.previewSrc || novo.imagemCapaUrl,
-          carregada: !!antigo?.carregada
-        };
+        const serverUrl = novo.imagemCapaUrl;
+        const estavaCarregada = !!antigo?.carregada;
+        const previewAnterior = antigo?.previewSrc;
 
-        if (!antigo || !antigo.previewSrc) {
+        // Se a imagem ainda não carregou (ou falhou), use sempre a URL mais recente do servidor
+        // (signed URLs podem mudar; não queremos ficar "presos" em uma URL inválida/expirada).
+        const precisaAtualizarPreview = !estavaCarregada || !previewAnterior || previewAnterior !== serverUrl;
+        const previewSrc = precisaAtualizarPreview ? serverUrl : previewAnterior;
+        const carregada = precisaAtualizarPreview ? false : estavaCarregada;
+
+        const pronto: PainelDTO = { ...novo, previewSrc, carregada };
+        if (!carregada) {
           this.preloadImageForPainel(pronto);
         }
+
         return pronto;
       }
 
@@ -249,6 +443,14 @@ constructor(
   // ✅ ADD (POPUP COMPONENT)
   // -------------------------
   abrirAdicionar(): void {
+    if (!this.canEdit) {
+      this.error = 'Permissão insuficiente: somente EDITOR e ADMIN podem criar painéis.';
+      return;
+    }
+    if (!this.apiUrl) {
+      this.error = 'Selecione uma equipe antes de criar um painel.';
+      return;
+    }
     this.isAddOpen = true;
   }
 
@@ -267,6 +469,7 @@ constructor(
   // CRUD: DELETE
   // -------------------------
   abrirExcluir(painel: PainelDTO, ev?: MouseEvent) {
+    if (!this.canEdit) return;
     if (ev) {
       ev.preventDefault();
       ev.stopPropagation();
@@ -296,12 +499,17 @@ constructor(
   confirmarExclusao() {
     if (!this.deletingPainel) return;
 
+    const apiUrl = this.apiUrl;
+    if (!apiUrl) {
+      this.deleting = false;
+      this.deleteError = 'Selecione uma equipe para excluir o painel.';
+      return;
+    }
+
     this.deleting = true;
     this.deleteError = null;
 
-    const headers = this.getAuthHeaders();
-
-    this.http.delete(`${this.API_URL}/${this.deletingPainel.id}`, { headers }).subscribe({
+    this.http.delete(`${apiUrl}/${this.deletingPainel.id}`).subscribe({
       next: () => {
         this.dashboards = this.dashboards.filter(p => p.id !== this.deletingPainel!.id);
         this.deleting = false;
@@ -312,6 +520,7 @@ constructor(
       error: (err) => {
         if (this.handleAuthError(err)) {
           this.deleting = false;
+          this.deleteError = 'Permissão insuficiente para excluir painel nesta equipe.';
           this.fecharExcluir();
           return;
         }
@@ -327,6 +536,7 @@ constructor(
   // CRUD: EDIT (MODAL)
   // -------------------------
   abrirEdicao(painel: PainelDTO, ev: MouseEvent) {
+    if (!this.canEdit) return;
     ev.preventDefault();
     ev.stopPropagation();
 
@@ -351,6 +561,12 @@ constructor(
 
   salvarEdicao() {
     if (!this.editingPainel) return;
+
+    const apiUrl = this.apiUrl;
+    if (!apiUrl) {
+      this.editError = 'Selecione uma equipe para editar o painel.';
+      return;
+    }
 
     if (this.editForm.invalid) {
       this.editForm.markAllAsTouched();
@@ -388,9 +604,7 @@ constructor(
       return;
     }
 
-    const headers = this.getAuthHeaders();
-
-    this.http.put<PainelDTO>(`${this.API_URL}/${this.editingPainel.id}`, payload, { headers })
+    this.http.put<PainelDTO>(`${apiUrl}/${this.editingPainel.id}`, payload)
       .subscribe({
         next: (atualizado) => {
           this.dashboards = this.dashboards.map(p =>
@@ -403,7 +617,13 @@ constructor(
           this.fecharEdicao();
         },
         error: (err) => {
-          if (this.handleAuthError(err)) return;
+          if (this.handleAuthError(err)) {
+            if (err?.status === 403) {
+              this.editError = 'Permissão insuficiente para editar painel nesta equipe.';
+            }
+            this.savingEdit = false;
+            return;
+          }
 
           if (err?.status === 409) {
             this.editError = 'Você já possui este painel cadastrado (link duplicado).';
@@ -441,16 +661,85 @@ constructor(
     if (!user?.token) {
       this.isLoggedIn = false;
       this.userName = null;
+      this.currentRole = 'VIEWER';
       return;
     }
 
     this.isLoggedIn = true;
-    this.userName = user.username || 'Usuário';
+    this.userName = user.username || 'Usuario';
+    this.loadEquipeSelecionada();
+  }
+
+  private initializeWelcomeOverlay(): void {
+    const key = this.getWelcomeStorageKey();
+    this.showWelcomeOverlay = localStorage.getItem(key) !== '1';
+    this.welcomeStep = 0;
+  }
+
+  private getWelcomeStorageKey(): string {
+    const user = this.getUserFromStorage();
+    const userKey = user?.id || user?.email || user?.username || 'default';
+    return `bicentral_welcome_seen_${userKey}`;
+  }
+
+  closeWelcomeOverlay(): void {
+    this.clearWelcomeTimers();
+    this.isWelcomeClosing = false;
+    this.showWelcomeOverlay = false;
+    localStorage.setItem(this.getWelcomeStorageKey(), '1');
+  }
+
+  nextWelcomeStep(): void {
+    if (this.isWelcomeClosing) return;
+
+    if (this.welcomeStep >= this.welcomeSlides.length - 1) {
+      this.playWelcomeOutro();
+      return;
+    }
+
+    this.welcomeStep += 1;
+  }
+
+  previousWelcomeStep(): void {
+    if (this.welcomeStep <= 0) return;
+    this.welcomeStep -= 1;
+  }
+
+  goToWelcomeStep(index: number): void {
+    if (this.isWelcomeClosing) return;
+    if (index < 0 || index >= this.welcomeSlides.length) return;
+    this.welcomeStep = index;
+  }
+
+  private playWelcomeOutro(): void {
+    this.clearWelcomeTimers();
+    this.isWelcomeClosing = true;
+    this.welcomeOutroTitle = 'Que bom ter voce aqui.';
+    this.welcomeOutroSubtitle = 'Preparando seu espaco para organizar paineis...';
+
+    this.welcomeTimers.push(
+      window.setTimeout(() => {
+        this.welcomeOutroTitle = 'Tudo pronto!';
+        this.welcomeOutroSubtitle = 'Agora voce ja pode gerenciar seus paineis.';
+      }, 1100)
+    );
+
+    this.welcomeTimers.push(
+      window.setTimeout(() => {
+        this.closeWelcomeOverlay();
+      }, 2600)
+    );
+  }
+
+  private clearWelcomeTimers(): void {
+    this.welcomeTimers.forEach((timer) => window.clearTimeout(timer));
+    this.welcomeTimers = [];
   }
 
   logout(): void {
     this.pararPolling();
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
     this.isLoggedIn = false;
     this.userName = null;
     this.router.navigate(['/login']);

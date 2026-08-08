@@ -1,0 +1,67 @@
+<main class="support-page">
+  <header class="support-header">
+    <div>
+      <h1>Central de Suporte</h1>
+      <p>Tire dúvidas rápidas no FAQ ou envie uma mensagem para a equipe do BICentral.</p>
+    </div>
+    <a class="back-link" routerLink="/">Voltar para Home</a>
+  </header>
+
+  <section class="support-grid">
+    <article class="support-card faq-card">
+      <h2>FAQ</h2>
+      <div class="faq-list">
+        <button
+          type="button"
+          class="faq-item"
+          *ngFor="let item of faqs; let i = index"
+          [class.open]="openFaqIndex === i"
+          (click)="toggleFaq(i)">
+          <span class="faq-question">{{ item.pergunta }}</span>
+          <span class="faq-icon">{{ openFaqIndex === i ? '−' : '+' }}</span>
+        </button>
+        <p *ngIf="openFaqIndex !== null" class="faq-answer">{{ faqs[openFaqIndex].resposta }}</p>
+      </div>
+    </article>
+
+    <article class="support-card form-card">
+      <h2>Fale com o Suporte</h2>
+      <p class="form-help">Sua mensagem será enviada para <strong>bicentraluft@gmail.com</strong>.</p>
+
+      <form [formGroup]="form" (ngSubmit)="enviar()" class="support-form">
+        <label>
+          Nome
+          <input type="text" formControlName="nome" />
+        </label>
+        <p class="field-error" *ngIf="campoInvalido('nome')">Informe seu nome.</p>
+
+        <label>
+          E-mail
+          <input type="email" formControlName="email" />
+        </label>
+        <p class="field-error" *ngIf="campoInvalido('email')">Informe um e-mail válido.</p>
+
+        <label>
+          Assunto
+          <input type="text" formControlName="assunto" />
+        </label>
+        <p class="field-error" *ngIf="campoInvalido('assunto')">Informe o assunto da mensagem.</p>
+
+        <label>
+          Mensagem
+          <textarea rows="6" formControlName="mensagem"></textarea>
+        </label>
+        <p class="field-error" *ngIf="campoInvalido('mensagem')">A mensagem precisa ter pelo menos 10 caracteres.</p>
+
+        <button type="submit" class="send-btn" [disabled]="sending">
+          {{ sending ? 'Enviando...' : 'Enviar mensagem' }}
+        </button>
+      </form>
+
+      <div class="feedback" *ngIf="feedbackMessage" [ngClass]="feedbackType">
+        {{ feedbackMessage }}
+      </div>
+    </article>
+  </section>
+</main>
+

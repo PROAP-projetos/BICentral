@@ -1,0 +1,126 @@
+<div class="ingestao-shell">
+  <header class="ingestao-topbar">
+    <a class="logo" routerLink="/">BICentral</a>
+
+    <nav class="top-nav" aria-label="Navegação principal">
+      <ul>
+        <li><a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Painéis</a></li>
+        <li><a routerLink="/ingestao-ia" routerLinkActive="active">Ingestão</a></li>
+        <li><a routerLink="/agente" routerLinkActive="active">Agente IA</a></li>
+      </ul>
+    </nav>
+    <div class="topbar-user">
+      <span>{{ usuarioLogado }} · {{ equipeSelecionada }}</span>
+      <div class="agent-menu">
+        <a class="agent-btn" routerLink="/agente">
+          <span></span>Pergunte ao agente
+        </a>
+        <div class="agent-bubble" *ngIf="agentBubbleVisible">calma, to quase nascendo</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="ingestao-body">
+    <main class="page-container">
+      <div class="top-header">
+        <h1>Enviar documentos</h1>
+        <p>Adicione arquivos para consulta do agente.</p>
+      </div>
+
+      <div class="content-grid">
+        <section class="left-column">
+          <div class="upload-card">
+            <div class="upload-area" (click)="fileInput.click()" (dragover)="onDragOver($event)" (drop)="onDrop($event)">
+              <input type="file" multiple #fileInput (change)="onArquivosSelecionados($event)" hidden accept=".xlsx,.pdf">
+
+              <div class="upload-icon">↥</div>
+              <h2>Arraste ou clique para adicionar arquivos</h2>
+              <p class="upload-limite">Máximo 50 MB por arquivo</p>
+              <div class="formatos">
+                <span class="formato-badge sheet">XLSX</span>
+                <span class="formato-badge pdf">PDF</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="arquivos-list" *ngIf="arquivos.length > 0">
+            <article class="arquivo-item" *ngFor="let item of arquivos; let i = index">
+              <div class="arquivo-type" [ngClass]="getTipoClasse(item.arquivo.name)">
+                {{ getTipoAbreviado(item.arquivo.name) }}
+              </div>
+
+              <div class="arquivo-content">
+                <div class="arquivo-topline">
+                  <div>
+                    <h3 class="arquivo-nome">{{ item.arquivo.name }}</h3>
+                    <p class="arquivo-meta">{{ getTamanhoFormatado(item.arquivo.size) }} · {{ getTipoArquivo(item.arquivo.name) }}</p>
+                  </div>
+                  <div class="arquivo-actions">
+                    <span class="status-badge" [ngClass]="getStatusClasse(item.status)">
+                      {{ getStatusArquivo(item.status) }}
+                    </span>
+                    <button class="remover-btn" type="button" aria-label="Remover arquivo" (click)="removerArquivo(i)">×</button>
+                  </div>
+                </div>
+                <div class="progress-bar">
+                  <div class="progress-fill" [style.width.%]="item.progresso"></div>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <aside class="right-column">
+          <section class="metadata-card">
+            <h2 class="card-title">Metadados da ingestão</h2>
+
+            <label class="metadata-field">
+              <span>Equipe / origem</span>
+              <select [(ngModel)]="equipeSelecionada">
+                <option *ngFor="let equipe of equipes" [value]="equipe">{{ equipe }}</option>
+              </select>
+            </label>
+
+            <div class="metadata-field">
+              <span>Nível de acesso</span>
+              <div class="access-group">
+                <label class="access-option" [class.active]="visibilidade === 'PUBLICO'">
+                  <input type="radio" value="PUBLICO" [(ngModel)]="visibilidade">
+                  <span>🔓 Público</span>
+                </label>
+                <label class="access-option" [class.active]="visibilidade === 'PRIVADO'">
+                  <input type="radio" value="PRIVADO" [(ngModel)]="visibilidade">
+                  <span>🔒 Privado</span>
+                </label>
+              </div>
+            </div>
+          </section>
+
+          <section class="resumo-card">
+            <h2 class="card-title">Resumo</h2>
+            <div class="resumo-item">
+              <span>Arquivos</span>
+              <strong>{{ getQuantidadeArquivos() }} arquivos</strong>
+            </div>
+            <div class="resumo-item">
+              <span>Equipe</span>
+              <strong>{{ equipeSelecionada }}</strong>
+            </div>
+            <div class="resumo-item">
+              <span>Acesso</span>
+              <strong>{{ visibilidade === 'PUBLICO' ? 'Público' : 'Privado' }}</strong>
+            </div>
+            <button class="confirmar-btn" type="button" [disabled]="carregando || arquivos.length === 0" (click)="confirmarIngestao()">
+              {{ carregando ? 'Processando...' : 'Confirmar ingestão →' }}
+            </button>
+          </section>
+        </aside>
+      </div>
+    </main>
+  </div>
+
+  <div *ngIf="mensagem" class="toast" [class.toast-erro]="erro">
+    {{ mensagem }}
+    <button class="toast-close" type="button" (click)="fecharMensagem()">×</button>
+  </div>
+</div>

@@ -7,7 +7,12 @@ import java.time.LocalDateTime;
 
 @Data
 @Entity
-@Table(name = "add_painel")
+@Table(
+        name = "add_painel",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_painel_equipe_link", columnNames = {"equipe_id", "link_power_bi"})
+        }
+)
 @NoArgsConstructor
 public class Painel {
 
@@ -17,8 +22,7 @@ public class Painel {
 
     private String nome;
 
-    // Mapeamento explícito para combinar com seu comando ALTER TABLE
-    @Column(name = "link_power_bi", nullable = false, unique = true)
+    @Column(name = "link_power_bi", nullable = false)
     private String linkPowerBi;
 
     @Column(name = "imagem_capa_url", columnDefinition = "text")
@@ -32,8 +36,8 @@ public class Painel {
     private LocalDateTime dataUltimaCaptura;
 
     @ManyToOne
-    @JoinColumn(name = "usuario_id", nullable = false)
-    private Usuario usuario;
+    @JoinColumn(name = "equipe_id")
+    private Equipe equipe;
 
     public enum StatusCaptura {
         PENDENTE, PROCESSANDO, CONCLUIDA, ERRO

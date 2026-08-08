@@ -1,10 +1,12 @@
 package com.bicentral.bicentral_backend.config;
 
+import com.bicentral.bicentral_backend.exception.RecursoJaExistenteException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -28,6 +30,22 @@ public class GlobalExceptionHandler {
     }
 
     // 2. Erros manuais (conflitos propositais)
+    @ExceptionHandler(jakarta.persistence.EntityNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleEntityNotFoundException(jakarta.persistence.EntityNotFoundException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("mensagem", ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    // 2b. Acesso negado
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, String>> handleAccessDeniedException(AccessDeniedException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("mensagem", ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
+    // 3. ResponseStatusException
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, String>> handleResponseStatusException(ResponseStatusException ex) {
         Map<String, String> error = new HashMap<>();
@@ -35,11 +53,19 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, ex.getStatusCode());
     }
 
+    @ExceptionHandler(RecursoJaExistenteException.class)
+    public ResponseEntity<Map<String, String>> handleRecursoJaExistente(RecursoJaExistenteException ex) {
+        Map<String, String> error = new HashMap<>();
+        error.put("mensagem", ex.getMessage());
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
     // 3. O QUE VOCÊ PRECISA: Captura a trava do SQL (uk_link_power_bi)
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, String>> handleDataIntegrity(DataIntegrityViolationException ex) {
         Map<String, String> error = new HashMap<>();
-        String rootMsg = ex.getRootCause() != null ? ex.getRootCause().getMessage() : ex.getMessage();
+        Throwable rootCause = ex.getRootCause();
+        String rootMsg = rootCause != null ? rootCause.getMessage() : ex.getMessage();
 
         // Verifica se o erro no banco menciona a sua CONSTRAINT uk_link_power_bi
         if (rootMsg != null && rootMsg.contains("uk_link_power_bi")) {

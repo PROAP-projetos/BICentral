@@ -6,8 +6,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,16 +24,19 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
-
-    private static final String FRONTEND_ORIGIN = "http://localhost:4200";
 
     private static final String[] PUBLIC_ENDPOINTS = {
             "/api/usuarios/cadastro",
             "/api/usuarios/login",
-            "/api/usuarios/verify/**",
+            "/api/usuarios/verify",
+            "/api/convites/aceitar",
             "/auth/**",
-            "/error"
+            "/error",
+            "/ai/test/**",
+            "/api/proiap/**",
+            "/favicon.ico"
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -44,9 +49,13 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf(csrf -> csrf.disable())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .csrf(AbstractHttpConfigurer::disable)
+
+                .headers(headers -> headers
+                        .frameOptions(frameOptions -> frameOptions.disable()))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
+                    // Esse é o log que você vê quando dá 401
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     response.setContentType("application/json");
                     response.setCharacterEncoding(StandardCharsets.UTF_8.name());
@@ -54,16 +63,13 @@ public class SecurityConfig {
                 }))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
-                        .anyRequest().authenticated()
-                )
-                // Lê o Authorization: Bearer <token> e autentica a request
+                        .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        // padrão seguro e compatível com matches()/encode()
         return new BCryptPasswordEncoder();
     }
 
@@ -71,22 +77,23 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowedOrigins(List.of(FRONTEND_ORIGIN));
+        config.setAllowedOriginPatterns(List.of(
+                "http://localhost:*",
+                "http://127.0.0.1:*",
+                "http://*.localhost:*"));
+
         config.setAllowedMethods(List.of(
                 HttpMethod.GET.name(),
                 HttpMethod.POST.name(),
                 HttpMethod.PUT.name(),
                 HttpMethod.DELETE.name(),
                 HttpMethod.PATCH.name(),
-                HttpMethod.OPTIONS.name()
-        ));
-        config.setAllowedHeaders(List.of("*"));
+                HttpMethod.OPTIONS.name()));
 
-        // útil se você quiser devolver um token via header
+        config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of(HttpHeaders.AUTHORIZATION));
 
-        // se você usa cookies/sessão no front, ligue isso e troque allowedOrigins por allowedOriginPatterns
-        // config.setAllowCredentials(true);
+        config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

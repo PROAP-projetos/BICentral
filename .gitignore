@@ -42,3 +42,7 @@ Thumbs.db
 # --- IMPORTANTE: Garante que nada dentro de src seja ignorado ---
 !**/src/**
 backend/src/main/resources/application.properties
+.github
+.idea
+ROADMAP_PROXIMAS_SPRINTS_IA.md
+EVIDENCIAS_RESULTADOS_PARCIAIS_IA.md

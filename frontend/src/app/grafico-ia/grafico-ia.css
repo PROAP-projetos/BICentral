@@ -1,0 +1,55 @@
+.card-grafico {
+  position: relative;
+  background: #ffffff;
+  border-radius: 6px;
+  padding: 10px 6px 4px;
+  margin: 10px 0 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.chart-icon-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: flex;
+  gap: 4px;
+}
+
+.chart-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.chart-icon-btn:hover {
+  opacity: 1;
+  background: #f1f5f9;
+  color: #173d64;
+}
+
+.chart-icon-btn.active {
+  opacity: 1;
+  color: #2563eb;
+}
+
+.chart-display {
+  height: 320px;
+  width: 100%;
+  min-width: 0;
+}
