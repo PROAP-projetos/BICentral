@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { GraficoIaComponent } from '../grafico-ia/grafico-ia';
 import { AgentService, Notificacao, PainelAtrasos, RelatorioHistoricoItem } from '../services/agent.service';
+import { AdminService } from '../services/admin.service';
 import { SafeUrlPipe } from '../pipes/safe-url.pipe';
 
 interface FonteDisponivel {
@@ -54,6 +55,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   private mensagemCopiadaTimer?: number;
 
   mensagemBoasVindas = '';
+  isAdminSistema = false;
 
   // ==========================================
   // NOTIFICAÇÕES
@@ -76,11 +78,12 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   relatorioPdfGerandoId?: number;
   private relatorioPollingTimer?: number;
 
-  constructor(private agentService: AgentService) {
+  constructor(private agentService: AgentService, private adminService: AdminService) {
     this.carregarUsuario();
     this.carregarEquipeSelecionada();
     this.carregarFontes();
     this.carregarNotificacoes();
+    this.verificarAdminSistema();
 
     if (localStorage.getItem('theme') === 'dark') {
       this.isDarkMode = true;
@@ -89,6 +92,17 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
 
   ngOnInit() {
     this.gerarMensagemBoasVindas();
+  }
+
+  verificarAdminSistema(): void {
+    this.adminService.souAdmin().subscribe({
+      next: (resposta) => {
+        this.isAdminSistema = resposta.admin;
+      },
+      error: () => {
+        this.isAdminSistema = false;
+      }
+    });
   }
 
   // ==========================================

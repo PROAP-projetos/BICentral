@@ -33,7 +33,7 @@ export const routes: Routes = [
   // Painéis (CRUD)
   { path: 'adicionar-painel', component: AddPainelComponent, canActivate: [authGuard] },
 
-  { path: 'ingestao-ia', component: IngestaoIaComponent, canActivate: [authGuard] },
+  { path: 'ingestao-ia', component: IngestaoIaComponent, canActivate: [authGuard, adminGuard] },
 
   // Agente de IA
   { path: 'agente', component: AgentComponent, canActivate: [authGuard] },

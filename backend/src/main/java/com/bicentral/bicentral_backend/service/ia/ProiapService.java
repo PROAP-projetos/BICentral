@@ -1,5 +1,6 @@
 package com.bicentral.bicentral_backend.service.ia;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -27,7 +28,7 @@ public class ProiapService {
         this.embeddingService = embeddingService;
     }
 
-    public Object processarPergunta(String perguntaUsuario, String sessaoId) {
+    public Object processarPergunta(String perguntaUsuario, String sessaoId, boolean usuarioEhAdmin) {
 
         // Limpa qualquer sinal de relatório de uma pergunta anterior antes de processar esta.
         estadoSessao.setRelatorioGerado(false);
@@ -120,8 +121,10 @@ public class ProiapService {
         // ================================================================
         // BUSCA O CONTEXTO E AS FONTES
         // ================================================================
-        ContextoRAG contextoRAG = embeddingService.buscarContextoSemelhante(termoDeBusca, equipeDaSessao, modelo);
-
+        ContextoRAG contextoRAG = usuarioEhAdmin
+                   ? embeddingService.buscarContextoSemelhante(termoDeBusca, equipeDaSessao, modelo)
+                   : new ContextoRAG("", List.of());
+                   
         System.out.println("DEBUG - Termo usado na busca: " + termoDeBusca);
         System.out.println("DEBUG - Fontes encontradas: " + contextoRAG.fontes());
 

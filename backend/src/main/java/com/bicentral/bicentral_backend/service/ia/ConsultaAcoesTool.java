@@ -15,6 +15,27 @@ public class ConsultaAcoesTool {
 
     public ConsultaAcoesTool(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
+        garantirView();
+    }
+
+    private void garantirView() {
+        jdbcTemplate.execute("""
+            CREATE OR REPLACE VIEW pat_execucao_departamento AS
+            SELECT
+                p.departamento,
+                substring(p.dados_completos->>'Título' from '[A-Z]+ [0-9]+(?:\\.[0-9]+)*') AS codigo_acao,
+                p.dados_completos->>'Título' AS titulo_acao,
+                NULLIF(replace(p.dados_completos->>'%', ',', '.'), '')::numeric / 100 AS percentual_execucao,
+                gd.tipo_unidade
+            FROM pat_dados p
+            LEFT JOIN (
+                SELECT DISTINCT departamento, tipo_unidade FROM gerentes_departamento
+            ) gd ON gd.departamento = p.departamento
+            """);
+
+        // CREATE OR REPLACE VIEW não garante essa opção sozinho — sem ela, a view roda com o
+        // privilégio de quem a criou, driblando o RLS de pat_dados pra quem consulta via API anônima.
+        jdbcTemplate.execute("ALTER VIEW pat_execucao_departamento SET (security_invoker = true)");
     }
 
     @Tool("Busca um item do PDI (Eixo, Objetivo Estratégico, Objetivo Tático ou Ação) pelo código exato, ex: 1.1.1.3")
@@ -81,26 +102,32 @@ public class ConsultaAcoesTool {
         return formatarResultado(resultado);
     }
 
-    @Tool("Ranqueia Unidades Gestoras (UG) pela média de execução do PAT (Plano Anual de Trabalho) do ano corrente. Use para perguntas sobre quais UGs estão melhores ou piores no PAT/ano atual. NÃO use para perguntas sobre o PDI (execução dos 5 anos) — para isso use outra ferramenta.")
-    public String ranquearUnidadesGestorasPorExecucaoPAT(
+    @Tool("Ranqueia departamentos pela média de execução do PAT (ano corrente). Use para perguntas sobre quais unidades estão melhores ou piores no PAT. Pode filtrar por UG ou UA.")
+    public String ranquearDepartamentosPorExecucaoPAT(
             @P("'melhores' para maior execução primeiro, 'piores' para menor execução primeiro") String ordem,
-            @P(value = "quantidade de unidades a retornar, padrão 10", required = false) Integer limite) {
+            @P(value = "'UG' para só Unidades Gestoras, 'UA' para só Unidades Acadêmicas, deixe null para todas", required = false) String tipoUnidade,
+            @P(value = "quantidade a retornar, padrão 10", required = false) Integer limite) {
         int qtd = (limite == null || limite <= 0) ? 10 : limite;
         String direcao = ordem != null && ordem.toLowerCase().contains("melhor") ? "DESC" : "ASC";
-        System.out.println(">>> TOOL CHAMADA: ranquearUnidadesGestorasPorExecucaoPAT(ordem=" + ordem + ", limite=" + qtd + ")");
+        boolean filtrarTipo = tipoUnidade != null && (tipoUnidade.equalsIgnoreCase("UA") || tipoUnidade.equalsIgnoreCase("UG"));
+        System.out.println(">>> TOOL CHAMADA: ranquearDepartamentosPorExecucaoPAT(ordem=" + ordem + ", tipoUnidade=" + tipoUnidade + ", limite=" + qtd + ")");
 
         String sql = "SELECT departamento, ROUND(AVG(percentual_execucao) * 100, 2) AS media_execucao_pct, COUNT(*) AS qtd_acoes " +
                      "FROM pat_execucao_departamento " +
-                     "WHERE tipo_unidade = 'UG' " +
+                     (filtrarTipo ? "WHERE tipo_unidade = ? " : "") +
                      "GROUP BY departamento " +
                      "ORDER BY media_execucao_pct " + direcao + " " +
                      "LIMIT ?";
-        List<Map<String, Object>> resultado = jdbcTemplate.queryForList(sql, qtd);
-        System.out.println(">>> TOOL RESULTADO: " + resultado.size() + " unidade(s) retornada(s)");
+
+        List<Map<String, Object>> resultado = filtrarTipo
+            ? jdbcTemplate.queryForList(sql, tipoUnidade.toUpperCase(), qtd)
+            : jdbcTemplate.queryForList(sql, qtd);
+
+        System.out.println(">>> TOOL RESULTADO: " + resultado.size() + " departamento(s) retornado(s)");
         if (resultado.isEmpty()) {
-            return "Nenhuma Unidade Gestora encontrada no PAT do ano corrente.";
+            return "Nenhum departamento encontrado no PAT do ano corrente.";
         }
-        return "Ranking de Unidades Gestoras (UG) por execução média do PAT (ano corrente, escala percentual):\n" + formatarResultado(resultado);
+        return "Ranking de departamentos por execução média do PAT (ano corrente):\n" + formatarResultado(resultado);
     }
 
     @Tool("Busca as ações com MENOR execução do PAT (ano corrente) de um departamento específico, até 15 ações. Use para perguntas pontuais tipo 'quais ações estão mais atrasadas na PROEST'. Para pedidos de RELATÓRIO ou PANORAMA completo de uma unidade, use buscarDetalhamentoDesempenhoDepartamento em vez desta.")

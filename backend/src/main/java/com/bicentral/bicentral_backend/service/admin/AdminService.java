@@ -49,11 +49,15 @@ public class AdminService {
                 usuario_id BIGINT PRIMARY KEY
             )
             """);
-        jdbcTemplate.update("""
-            INSERT INTO admins_sistema (usuario_id)
-            VALUES (?)
-            ON CONFLICT (usuario_id) DO NOTHING
-            """, BOOTSTRAP_ADMIN_ID);
+
+        Integer total = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM admins_sistema", Integer.class);
+        if (total == null || total == 0) {
+            jdbcTemplate.update("""
+                INSERT INTO admins_sistema (usuario_id)
+                VALUES (?)
+                ON CONFLICT (usuario_id) DO NOTHING
+                """, BOOTSTRAP_ADMIN_ID);
+        }
     }
 
     public boolean isAdmin(Long usuarioId) {
