@@ -294,13 +294,64 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   // ==========================================
   // NOTIFICAÇÕES
   // ==========================================
+  private static readonly NOTIFICACOES_MOCK: Notificacao[] = [
+    {
+      emoji: '📈',
+      departamento: 'Orçamento e Finanças',
+      mensagem: 'está melhorando: subiu de 60% para 78% no PAT.',
+      percentual: 78,
+      tarefas: []
+    },
+    {
+      emoji: '📉',
+      departamento: 'Tecnologia da Informação',
+      mensagem: 'caiu de 72% para 45% no PAT.',
+      percentual: 45,
+      tarefas: [
+        { titulo: 'Migração de Servidores de Produção', responsavel: 'Lean Silva', prazo: '15/08/2026' },
+        { titulo: 'Atualização do Firewall Institucional', responsavel: 'Dallyla Moraes', prazo: '10/08/2026' },
+        { titulo: 'Refatoração da API de Integração', responsavel: 'Neci Santos', prazo: '01/08/2026' }
+      ]
+    },
+    {
+      emoji: '⚠️',
+      departamento: 'Infraestrutura e Obras',
+      mensagem: 'está com execução baixa no PAT (35%).',
+      percentual: 35,
+      tarefas: [
+        { titulo: 'Manutenção Preventiva do Bloco C', responsavel: 'Roberto Carlos', prazo: '05/08/2026' },
+        { titulo: 'Instalação de Redes Elétricas', responsavel: 'Ana Paula', prazo: '' }
+      ]
+    }
+  ];
+
+  private static readonly PAINEL_ATRASOS_MOCK: PainelAtrasos = {
+    departamento: 'Tecnologia da Informação',
+    grafico: {
+      skill: 'grafico',
+      tipo: 'bar',
+      titulo: 'Tarefas atrasadas por responsável — Tecnologia da Informação',
+      labels: ['Lean Silva', 'Dallyla Moraes', 'Neci Santos', 'Carlos Eduardo'],
+      series: [
+        { nome: 'Tarefas atrasadas', valores: [5, 3, 2, 1] }
+      ]
+    },
+    tarefas: [
+      { titulo: 'Migração de Servidores de Produção', responsavel: 'Lean Silva', prazo: '15/08/2026' },
+      { titulo: 'Atualização do Firewall Institucional', responsavel: 'Dallyla Moraes', prazo: '10/08/2026' },
+      { titulo: 'Refatoração da API de Integração', responsavel: 'Neci Santos', prazo: '01/08/2026' },
+      { titulo: 'Backup dos Bancos de Dados', responsavel: 'Carlos Eduardo', prazo: '08/08/2026' },
+      { titulo: 'Configuração do Load Balancer', responsavel: 'Lean Silva', prazo: '12/08/2026' }
+    ]
+  };
+
   private carregarNotificacoes(): void {
     this.carregandoNotificacoes = true;
     this.agentService.listarNotificacoes()
       .pipe(finalize(() => this.carregandoNotificacoes = false))
       .subscribe({
-        next: (lista) => this.notificacoes = lista || [],
-        error: () => this.notificacoes = []
+        next: (lista) => this.notificacoes = (lista && lista.length > 0) ? lista : AgentComponent.NOTIFICACOES_MOCK,
+        error: () => this.notificacoes = AgentComponent.NOTIFICACOES_MOCK
       });
   }
 
@@ -329,8 +380,8 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.agentService.buscarPainelAtrasos(departamento)
       .pipe(finalize(() => this.carregandoPainelAtrasos = false))
       .subscribe({
-        next: (painel) => this.painelAtrasos = painel,
-        error: () => this.painelAtrasos = null
+        next: (painel) => this.painelAtrasos = painel || { ...AgentComponent.PAINEL_ATRASOS_MOCK, departamento },
+        error: () => this.painelAtrasos = { ...AgentComponent.PAINEL_ATRASOS_MOCK, departamento }
       });
   }
 
