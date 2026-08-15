@@ -33,25 +33,33 @@ export class AceitarConviteComponent implements OnInit {
       return;
     }
 
+    if (!localStorage.getItem('user')){
+      this.loading = false;
+      this.router.navigate(['/login'], {
+        queryParams: {returnUrl: `/aceitar-convite?token=${token}`}
+      });
+      return;
+    }
+
     this.equipeService.aceitarConvite(token).subscribe({
       next: (resposta) => {
         this.loading = false;
         this.success = true;
         this.title = 'Convite aceito';
         this.message = `${resposta.mensagem} Você agora faz parte da equipe ${resposta.equipeNome} como ${resposta.role}.`;
-        setTimeout(() => {
-          if (localStorage.getItem('user')) {
-            this.router.navigate(['/equipe']);
-            return;
-          }
-          this.router.navigate(['/login']);
-        }, 4000);
+        setTimeout(() => this.router.navigate(['/equipe']), 4000);
       },
       error: (erro) => {
         this.loading = false;
         this.success = false;
         this.title = this.resolveTitle(erro?.status);
         this.message = erro?.error?.mensagem || 'Não foi possível processar o convite.';
+
+        if (erro?.status == 401){
+          this.router.navigate(['/login'],{
+            queryParams: { returnUrl: `/aceitar-convite?token=${token}`}
+          });
+        }
       }
     });
   }

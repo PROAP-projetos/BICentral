@@ -149,7 +149,7 @@ class ConviteEquipeServiceTest {
         when(membroEquipeRepository.save(any(MembroEquipe.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(conviteEquipeRepository.save(any(ConviteEquipe.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        AceiteConviteResponseDTO resposta = conviteEquipeService.aceitarConvite("token-valido");
+        AceiteConviteResponseDTO resposta = conviteEquipeService.aceitarConvite("token-valido", convidado);
 
         assertEquals("Convite aceito com sucesso.", resposta.mensagem());
         assertEquals("Equipe BI", resposta.equipeNome());
@@ -167,12 +167,12 @@ class ConviteEquipeServiceTest {
         membroExistente.setRole(Role.VIEWER);
 
         when(conviteEquipeRepository.findByToken("token-update")).thenReturn(Optional.of(convite));
-        when(usuarioRepository.findByEmail("convite@bicentral.com")).thenReturn(Optional.of(convidado));
+        //when(usuarioRepository.findByEmail("convite@bicentral.com")).thenReturn(Optional.of(convidado));
         when(membroEquipeRepository.findByUsuarioAndEquipe(convidado, equipe)).thenReturn(Optional.of(membroExistente));
         when(membroEquipeRepository.save(any(MembroEquipe.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(conviteEquipeRepository.save(any(ConviteEquipe.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        conviteEquipeService.aceitarConvite("token-update");
+        conviteEquipeService.aceitarConvite("token-update", convidado);
 
         assertEquals(Role.ADMIN, membroExistente.getRole());
         assertEquals(ConviteEquipe.Status.ACEITO, convite.getStatus());
@@ -186,7 +186,7 @@ class ConviteEquipeServiceTest {
         when(conviteEquipeRepository.save(any(ConviteEquipe.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
-                () -> conviteEquipeService.aceitarConvite("token-expirado"));
+                () -> conviteEquipeService.aceitarConvite("token-expirado", convidado));
 
         assertEquals(HttpStatus.GONE, ex.getStatusCode());
         assertEquals("Este convite expirou.", ex.getReason());
@@ -198,7 +198,7 @@ class ConviteEquipeServiceTest {
         when(conviteEquipeRepository.findByToken("invalido")).thenReturn(Optional.empty());
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
-                () -> conviteEquipeService.aceitarConvite("invalido"));
+                () -> conviteEquipeService.aceitarConvite("invalido", convidado));
 
         assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
         assertEquals("Convite inválido.", ex.getReason());
@@ -213,7 +213,7 @@ class ConviteEquipeServiceTest {
         when(conviteEquipeRepository.findByToken("token-usado")).thenReturn(Optional.of(convite));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
-                () -> conviteEquipeService.aceitarConvite("token-usado"));
+                () -> conviteEquipeService.aceitarConvite("token-usado", convidado));
 
         assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
         assertEquals("Este convite já foi utilizado.", ex.getReason());

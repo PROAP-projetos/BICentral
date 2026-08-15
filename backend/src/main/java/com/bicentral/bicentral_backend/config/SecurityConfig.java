@@ -31,8 +31,7 @@ public class SecurityConfig {
             "/api/usuarios/cadastro",
             "/api/usuarios/login",
             "/api/usuarios/verify",
-            "/api/convites/aceitar",
-            "/auth/**",
+            "/auth/**", //removi api/convites/aceitar
             "/error",
             "/ai/test/**",
             "/api/proiap/**",

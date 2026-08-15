@@ -42,7 +42,7 @@ public class AiConfig {
     // --- CHAT MODELS (LLMs) ---
 
     @Bean("groqModel")
-    @Primary
+
     public ChatLanguageModel groqModel() {
         return OpenAiChatModel.builder()
                 .apiKey(groqApiKey)
@@ -72,6 +72,7 @@ public class AiConfig {
     }
 
     @Bean("geminiModel")
+    @Primary
     public ChatLanguageModel geminiModel() {
         return GoogleAiGeminiChatModel.builder()
                 .apiKey(geminiApiKey)

@@ -114,22 +114,23 @@ public class ConviteEquipeService {
     }
 
     @Transactional
-    public AceiteConviteResponseDTO aceitarConvite(String token) {
+    public AceiteConviteResponseDTO aceitarConvite(String token, Usuario usuarioLogado) {
         ConviteEquipe convite = conviteEquipeRepository.findByToken(token)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Convite inválido."));
 
         validarConviteParaAceite(convite);
 
-        Usuario usuario = usuarioRepository.findByEmail(convite.getEmail())
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Nenhuma conta foi encontrada para este convite. Cadastre-se com o e-mail convidado antes de aceitar."
-                ));
+        if (!normalizarEmail(convite.getEmail()).equals(normalizarEmail(usuarioLogado.getEmail()))) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Este convite foi enviado para outro e-mail (" + convite.getEmail() + "). Faça login com essa conta para aceitá-lo."
+            );
+        }
 
-        MembroEquipe membro = membroEquipeRepository.findByUsuarioAndEquipe(usuario, convite.getEquipe())
+        MembroEquipe membro = membroEquipeRepository.findByUsuarioAndEquipe(usuarioLogado, convite.getEquipe())
                 .orElseGet(() -> {
                     MembroEquipe novoMembro = new MembroEquipe();
-                    novoMembro.setUsuario(usuario);
+                    novoMembro.setUsuario(usuarioLogado);
                     novoMembro.setEquipe(convite.getEquipe());
                     return novoMembro;
                 });

@@ -29,7 +29,7 @@ public class LangchainConfig {
     }
 
     @Bean
-    public AgenteConsultaSql agenteConsultaSql(@Qualifier("sambanovaModel") ChatLanguageModel chatLanguageModel, ConsultaAcoesTool consultaAcoesTool, RelatorioContextoTool relatorioContextoTool, TarefasTool tarefasTool) {
+    public AgenteConsultaSql agenteConsultaSql(@Qualifier("geminiModel") ChatLanguageModel chatLanguageModel, ConsultaAcoesTool consultaAcoesTool, RelatorioContextoTool relatorioContextoTool, TarefasTool tarefasTool) {
         // 8 em vez de 2: uma única chamada de ferramenta já gera 3-4 mensagens (pergunta, chamada,
         // resultado, resposta final); com janela menor a pergunta original é evictada no meio do
         // turno e o modelo perde o fio, repetindo chamadas de ferramenta (viu isso travar em loop
