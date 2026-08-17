@@ -2,10 +2,10 @@ package com.bicentral.bicentral_backend.dto.ia;
 
 import dev.langchain4j.model.output.structured.Description;
 
-public record AnaliseComando(
+public record AnaliseComandoDTO(
 
     @Description("A intenção do usuário. Escolha GRAFICO para visuais numéricos/gráficos, PAINEL para dashboards, ou RESPOSTA para dúvidas textuais.")
-    Intencao intencao,
+    IntencaoDTO intencao,
 
     @Description("O formato visual do gráfico. Ex: 'bar', 'pie', 'line'. Se não for mencionado, retorne nulo.")
     String tipoGrafico,

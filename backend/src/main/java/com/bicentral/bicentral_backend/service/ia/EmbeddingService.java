@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.bicentral.bicentral_backend.dto.ia.ChunkDTO;
-import com.bicentral.bicentral_backend.dto.ia.ContextoRAG;
+import com.bicentral.bicentral_backend.dto.ia.ContextoRAGDTO;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import java.net.URI;
@@ -104,7 +104,7 @@ public class EmbeddingService {
     // ==========================================
     // BUSCA VETORIAL DINÂMICA (RAG MULTIMODELO COM FONTES)
     // ==========================================
-    public ContextoRAG buscarContextoSemelhante(String pergunta, Long equipeId, String modeloSelecionado) {
+    public ContextoRAGDTO buscarContextoSemelhante(String pergunta, Long equipeId, String modeloSelecionado) {
         try {
             boolean usarOllama = modeloSelecionado != null && modeloSelecionado.toLowerCase().contains("ollama");
             
@@ -158,15 +158,15 @@ public class EmbeddingService {
                     }
                 }
                 
-                return new ContextoRAG(contextoFinal.toString().trim(), new ArrayList<>(fontesUnicas));
+                return new ContextoRAGDTO(contextoFinal.toString().trim(), new ArrayList<>(fontesUnicas));
             } else {
                 System.err.println("Erro na busca vetorial: " + response.body());
-                return new ContextoRAG("", new ArrayList<>());
+                return new ContextoRAGDTO("", new ArrayList<>());
             }
 
         } catch (Exception e) {
             System.err.println("Erro de conexão ao buscar contexto: " + e.getMessage());
-            return new ContextoRAG("", new ArrayList<>());
+            return new ContextoRAGDTO("", new ArrayList<>());
         }
     }
 }

@@ -4,7 +4,7 @@ import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 
-import com.bicentral.bicentral_backend.dto.relatorio.RelatorioConteudoIA;
+import com.bicentral.bicentral_backend.dto.relatorio.RelatorioConteudoIADTO;
 
 public interface AgenteRelatorio {
 
@@ -29,5 +29,5 @@ public interface AgenteRelatorio {
 
         Produza o resumo executivo, a análise de cada ação de menor execução e as recomendações.
         """)
-    RelatorioConteudoIA gerarConteudoRelatorio(@V("dadosColetados") String dadosColetados);
+    RelatorioConteudoIADTO gerarConteudoRelatorio(@V("dadosColetados") String dadosColetados);
 }

@@ -6,8 +6,8 @@ import org.springframework.stereotype.Service;
 import com.bicentral.bicentral_backend.dto.notificacao.NotificacaoDTO;
 import com.bicentral.bicentral_backend.dto.notificacao.PainelAtrasosDTO;
 import com.bicentral.bicentral_backend.dto.notificacao.TarefaCriticaDTO;
-import com.bicentral.bicentral_backend.dto.painel.GraficoSpec;
-import com.bicentral.bicentral_backend.dto.painel.SerieGrafico;
+import com.bicentral.bicentral_backend.dto.painel.GraficoSpecDTO;
+import com.bicentral.bicentral_backend.dto.painel.SerieGraficoDTO;
 
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -231,9 +231,9 @@ public class NotificacaoService {
             System.err.println(">>> AVISO: falha ao agregar atrasos por responsável de '" + departamento + "': " + e.getMessage());
         }
 
-        GraficoSpec grafico = new GraficoSpec(
+        GraficoSpecDTO grafico = new GraficoSpecDTO(
                 "", "grafico", "Tarefas atrasadas por responsável — " + departamento, "bar",
-                responsaveis, List.of(new SerieGrafico("Tarefas atrasadas", totais)), false);
+                responsaveis, List.of(new SerieGraficoDTO("Tarefas atrasadas", totais)), false);
 
         return new PainelAtrasosDTO(departamento, grafico, tarefas);
     }

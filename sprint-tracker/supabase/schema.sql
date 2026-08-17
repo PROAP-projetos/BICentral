@@ -206,7 +206,21 @@ insert into sprint_tracker_tarefas (id, sprint_id, titulo, descricao, contexto, 
  'Pra ser um MVP que a pró-reitoria realmente acessa (não só vocês três no próprio computador), precisa estar hospedado em algum lugar acessível pela internet.',
  '["Escolher host pro backend (Spring Boot precisa de host Java, ex: Railway/Render/Fly.io).","Escolher host pro frontend (Angular estático, ex: Vercel/Netlify).","Configurar variáveis de ambiente em produção (chaves de API, banco).","Testar o sistema inteiro ponta a ponta com as URLs reais de produção."]',
  '[]',
- 'todos', null);
+ 'todos', null),
+
+(26, 2, 'Vincular usuário logado ao responsável do PAT',
+ 'Criar a tela/endpoint que faltava pra alguém virar "responsável" reconhecido pelo agente — sem isso, "minhas tarefas" não funciona pra ninguém.',
+ 'A ferramenta buscarMinhasTarefas() já existe e já funciona: resolve o e-mail de quem está logado, busca o nome_responsavel vinculado na tabela usuario_responsavel, e filtra as tarefas do PAT por esse nome. O que falta é só a ponta administrativa — hoje essa tabela só pode ser preenchida com SQL direto no banco, não existe tela nem endpoint pra isso. É o mesmo formato exato do que já existe pra gerentes_departamento (CRUD completo em AdminController/AdminService/admin.service.ts, tela gestao-gerentes.component.ts) — copiar esse padrão em vez de inventar um novo.',
+ '["Ler AdminController/AdminService/admin.service.ts na parte de gerentes_departamento como referência de padrão.","Criar o mesmo CRUD (listar, adicionar, remover) pra usuario_responsavel.","Criar a tela admin (nova ou dentro de gestao-admins) pra vincular usuário ao nome_responsavel.","Testar: vincular um usuário, logar com ele, perguntar \"minhas tarefas\" no chat e confirmar que retorna certo."]',
+ '[{"path":"backend/.../controller/admin/AdminController.java","novo":false},{"path":"backend/.../service/admin/AdminService.java","novo":false},{"path":"frontend/src/app/services/admin.service.ts","novo":false},{"path":"frontend/src/app/painel-admin/gestao-gerentes.component.ts (referência de padrão)","novo":false},{"path":"backend/.../service/ia/TarefasTool.java (referência, não muda)","novo":false}]',
+ 'dallyla', null),
+
+(27, 2, 'Marcar tarefas atrasadas em "minhas tarefas"',
+ 'A tool que devolve as tarefas da pessoa não sinaliza quais já passaram do prazo — a IA não tem noção de "hoje" pra perceber isso sozinha.',
+ 'Não é ensinar a IA que dia é hoje e deixar ela calcular atraso — LLM fazendo conta de data é arriscado. O padrão certo já existe em NotificacaoService: "atrasada" = to_date(data_final) < CURRENT_DATE AND percentual < 100, calculado direto no SQL/Java. A ideia é reaproveitar exatamente essa regra dentro de buscarMinhasTarefas() e já entregar o fato pronto e marcado pro LLM, tipo "⚠️ ATRASADA há 12 dias" — a IA só repete o que já veio calculado certo, não faz conta nenhuma.',
+ '["Abrir NotificacaoService.java e copiar a regra exata de atraso (CURRENT_DATE + percentual < 100).","Aplicar a mesma regra dentro de TarefasTool.buscarMinhasTarefas(), calculando também há quantos dias está atrasada.","Marcar visualmente cada tarefa atrasada no texto devolvido pro LLM.","Testar com uma tarefa propositalmente vencida e confirmar que a resposta do agente menciona o atraso."]',
+ '[{"path":"backend/.../service/ia/TarefasTool.java","novo":false},{"path":"backend/.../service/notificacao/NotificacaoService.java (referência de padrão)","novo":false}]',
+ 'dallyla', null);
 
 select setval('sprint_tracker_tarefas_id_seq', (select max(id) from sprint_tracker_tarefas));
 select setval('sprint_tracker_sprints_id_seq', (select max(id) from sprint_tracker_sprints));

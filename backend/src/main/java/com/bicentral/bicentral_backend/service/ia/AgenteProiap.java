@@ -1,7 +1,7 @@
 package com.bicentral.bicentral_backend.service.ia;
 
-import com.bicentral.bicentral_backend.dto.ia.AnaliseComando;
-import com.bicentral.bicentral_backend.dto.painel.GraficoSpec;
+import com.bicentral.bicentral_backend.dto.ia.AnaliseComandoDTO;
+import com.bicentral.bicentral_backend.dto.painel.GraficoSpecDTO;
 
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
@@ -24,7 +24,7 @@ public interface AgenteProiap {
                         "REGRA 4: Se o usuário pedir para alterar o 'título', 'formato' ou 'cores' de um gráfico, NÃO altere o campo 'indicador'. O indicador deve conter apenas o nome da métrica raiz (ex: Matrículas, Taxa de Evasão) para não quebrar a busca no banco de dados.",
                         "Retorne apenas o JSON estruturado."
         })
-        AnaliseComando analisarComando(@MemoryId String id, @UserMessage String pergunta);
+        AnaliseComandoDTO analisarComando(@MemoryId String id, @UserMessage String pergunta);
 
         // ==========================================
         // SKILL 1: RESPOSTA TEXTUAL
@@ -64,7 +64,7 @@ public interface AgenteProiap {
                         "REGRA 5: Preencha o 'mensagemContexto' com uma frase natural e amigável dizendo os dados que encontrou e perguntando se o usuário quer ver o gráfico. NUNCA termine com dois pontos (:).",
                         "Retorne estritamente o objeto estruturado."
         })
-        GraficoSpec gerarGrafico(
+        GraficoSpecDTO gerarGrafico(
                         @UserMessage String pergunta,
                         @V("dados_recuperados") String dadosRecuperados,
                         @V("indicador") String indicadorSessao,

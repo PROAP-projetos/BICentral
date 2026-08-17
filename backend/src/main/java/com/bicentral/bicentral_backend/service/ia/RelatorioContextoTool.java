@@ -6,7 +6,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
-import com.bicentral.bicentral_backend.dto.relatorio.RelatorioEstruturado;
+import com.bicentral.bicentral_backend.dto.relatorio.RelatorioEstruturadoDTO;
 import com.bicentral.bicentral_backend.service.auth.UsuarioService;
 import com.bicentral.bicentral_backend.state.EstadoSessao;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -83,7 +83,7 @@ public class RelatorioContextoTool {
         }
 
         try {
-            RelatorioEstruturado estruturado = MAPPER.readValue(json, RelatorioEstruturado.class);
+            RelatorioEstruturadoDTO estruturado = MAPPER.readValue(json, RelatorioEstruturadoDTO.class);
             String texto = estruturado.paraTextoLegivel();
             System.out.println(">>> TOOL RESULTADO: relatório de " + ultimo.get("departamento") + " recuperado (" + texto.length() + " caracteres)");
             return "RELATÓRIO MAIS RECENTE (" + ultimo.get("departamento") + ", " + ultimo.get("tipo") + "):\n\n" + texto;
