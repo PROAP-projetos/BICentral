@@ -1,4 +1,4 @@
-package com.bicentral.bicentral_backend.controller.usuario;
+package com.bicentral.bicentral_backend.controller.suporte;
 
 import com.bicentral.bicentral_backend.dto.suporte.SuporteRequestDTO;
 import com.bicentral.bicentral_backend.service.auth.EmailService;

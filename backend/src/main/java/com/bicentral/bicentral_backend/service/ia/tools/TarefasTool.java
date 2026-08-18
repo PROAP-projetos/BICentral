@@ -1,4 +1,4 @@
-package com.bicentral.bicentral_backend.service.ia;
+package com.bicentral.bicentral_backend.service.ia.tools;
 
 import com.bicentral.bicentral_backend.service.auth.UsuarioService;
 import dev.langchain4j.agent.tool.P;
@@ -46,10 +46,13 @@ public class TarefasTool {
                 departamento,
                 NULLIF(regexp_replace(dados_completos->>'% Concluído', '[^0-9.,]', '', 'g'), '')::numeric AS percentual,
                 dados_completos->>'Data Inicial' AS data_inicial,
-                to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') AS data_final
+                to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') AS data_final,
+                (to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') < CURRENT_DATE
+                    AND NULLIF(regexp_replace(dados_completos->>'% Concluído', '[^0-9.,]', '', 'g'), '')::numeric < 100) AS atrasada,
+                (CURRENT_DATE - to_date(dados_completos->>'Data Final', 'DD/MM/YYYY')) AS dias_atraso
             FROM pat_tarefas
             WHERE dados_completos->>'Responsável' ILIKE ?
-            ORDER BY to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') ASC NULLS LAST
+            ORDER BY atrasada DESC, to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') ASC NULLS LAST
             """, "%" + nomeResponsavel.trim() + "%");
 
         System.out.println(">>> TOOL RESULTADO: " + tarefas.size() + " tarefa(s) para " + nomeResponsavel);
@@ -59,12 +62,18 @@ public class TarefasTool {
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.append("Tarefas de ").append(nomeResponsavel).append(" (").append(tarefas.size()).append(" no total):\n");
+        sb.append("Tarefas de ").append(nomeResponsavel).append(" (").append(tarefas.size()).append(" no total):\n\n");
+        sb.append("| Ação | Tarefa | % | Prazo |\n");
+        sb.append("|---|---|---|---|\n");
         for (Map<String, Object> t : tarefas) {
-            sb.append("- [").append(t.get("codigo_acao")).append("] ").append(t.get("titulo_tarefa"))
-              .append(" — ").append(t.get("percentual")).append("% concluído")
-              .append(" — prazo: ").append(t.get("data_final"))
-              .append(" — depto: ").append(t.get("departamento")).append("\n");
+            boolean atrasada = Boolean.TRUE.equals(t.get("atrasada"));
+            String prefixo = atrasada ? "⚠️ ATRASADA (" + t.get("dias_atraso") + "d) — " : "";
+
+            sb.append("| ").append(t.get("codigo_acao"))
+              .append(" | ").append(prefixo).append(t.get("titulo_tarefa"))
+              .append(" | ").append(t.get("percentual")).append("%")
+              .append(" | ").append(t.get("data_final"))
+              .append(" |\n");
         }
         return sb.toString();
     }
@@ -93,10 +102,15 @@ public class TarefasTool {
         }
 
         StringBuilder sb = new StringBuilder();
+        sb.append("| Ação | Tarefa | Responsável | % | Prazo |\n");
+        sb.append("|---|---|---|---|---|\n");
         for (Map<String, Object> t : tarefas) {
-            sb.append("- [").append(t.get("codigo_acao")).append("] ").append(t.get("titulo_tarefa"))
-              .append(" — ").append(t.get("percentual")).append("% — responsável: ").append(t.get("responsavel"))
-              .append(" — prazo: ").append(t.get("data_final")).append("\n");
+            sb.append("| ").append(t.get("codigo_acao"))
+              .append(" | ").append(t.get("titulo_tarefa"))
+              .append(" | ").append(t.get("responsavel"))
+              .append(" | ").append(t.get("percentual")).append("%")
+              .append(" | ").append(t.get("data_final"))
+              .append(" |\n");
         }
         return sb.toString();
     }

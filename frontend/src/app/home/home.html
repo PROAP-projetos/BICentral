@@ -51,7 +51,7 @@
 
 <nav class="sub-nav-button-container">
   <div class="sub-nav-actions">
-    <a class="sub-nav-agent-link" routerLink="/ingestao-ia">
+    <a class="sub-nav-agent-link" routerLink="/ingestao-ia" *ngIf="isAdminSistema">
       <span>IA</span>
       Ingestão
     </a>

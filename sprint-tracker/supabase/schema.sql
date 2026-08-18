@@ -87,7 +87,7 @@ insert into sprint_tracker_tarefas (id, sprint_id, titulo, descricao, contexto, 
 
 (6, 1, 'Prototipar painel de ranking',
  'Decidir a abordagem de animação (biblioteca, layout) enquanto o backend do Sprint 2 ainda não existe.',
- 'A VISÃO COMPLETA (da Dallyla, pra não se perder no meio das sprints): um painel geral, visual e futurista, que mostra TODAS as UGs (unidades gestoras/departamentos) de uma vez, ranqueadas por desempenho — não é um gráfico de barra comum, é pensado pra impressionar. O ponto central é a ANIMAÇÃO: quando uma UG melhora de desempenho, ela literalmente sobe de posição na tela, visivelmente, na frente do usuário — não é só atualizar um número, é a linha/card dela se movendo pra cima na lista. E esse painel não fica escondido em menu nenhum: ele aparece na TELA DE ENTRADA, quando a pessoa abre o agente proIAp — é a primeira coisa que ela vê. Esse card (Sprint 1) é só decidir COMO fazer a animação de reordenação antes de ter dado real pra testar — não precisa ficar bonito ainda, só validar a mecânica.',
+ 'A VISÃO COMPLETA (pra não se perder no meio das sprints): um painel geral, visual e futurista, que mostra TODAS as UGs (unidades gestoras/departamentos) de uma vez, ranqueadas por desempenho — não é um gráfico de barra comum, é pensado pra impressionar. O ponto central é a ANIMAÇÃO: quando uma UG melhora de desempenho, ela literalmente sobe de posição na tela, visivelmente, na frente do usuário — não é só atualizar um número, é a linha/card dela se movendo pra cima na lista. E esse painel não fica escondido em menu nenhum: ele aparece na TELA DE ENTRADA, quando a pessoa abre o agente proIAp — é a primeira coisa que ela vê. Esse card (Sprint 1) é só decidir COMO fazer a animação de reordenação antes de ter dado real pra testar — não precisa ficar bonito ainda, só validar a mecânica.',
  '["Avaliar se dá pra reaproveitar ngx-echarts (já usado em grafico-ia) ou se precisa de Angular Animations pra mover cards de posição suavemente.","Fazer um mock estático (lista fixa de departamentos com posição inventada) só pra validar a animação de troca de posição — sem precisar de backend ainda.","Pensar no visual \"futurista\": cores, gradientes, talvez algo tipo leaderboard de jogo — não precisa ser polido agora, só ter a direção.","Alinhar com a Dallyla o formato de dado que o endpoint do Sprint 2 vai devolver."]',
  '[{"path":"frontend/src/app/grafico-ia/grafico-ia.ts","novo":false},{"path":"frontend/src/app/dashboard/dashboard.component.ts","novo":false}]',
  'lean', null),
@@ -108,14 +108,14 @@ insert into sprint_tracker_tarefas (id, sprint_id, titulo, descricao, contexto, 
 
 (9, 2, 'Endpoint do ranking geral',
  'Endpoint novo que devolve o ranking das UGs em JSON puro, sem passar pelo modelo de IA.',
- 'Esse endpoint é a base de dados de todo o painel futurista que o Lean está construindo (ver contexto do card "Prototipar painel de ranking"). Importante: tem que trazer TODAS as UGs, não uma amostra — a visão da Dallyla é o painel mostrar o ranking completo. Fonte de dado: pat_dados (via a query reconciliada no Sprint 1), NÃO pat_tarefas — pat_dados tem o % de execução por departamento, que é o número que vira posição no ranking; pat_tarefas é tarefa operacional individual, serve pra outra coisa (notificação de atrasos). O endpoint só faz SELECT, nunca escreve em pat_dados — quem escreve ali é só o job de sincronização diário (SincronizacaoPatJob), escrever por fora bagunçaria o próximo sync. Diferente das tools de ranking (que devolvem texto pro LLM formatar), esse endpoint precisa devolver dado estruturado e rápido, porque o painel carrega assim que a pessoa abre o agente. Atenção: já existe PainelController.java, mas é de outra coisa (embed do Power BI) — não misturar.',
+ 'Esse endpoint é a base de dados de todo o painel futurista que o Lean está construindo (ver contexto do card "Prototipar painel de ranking"). Importante: tem que trazer TODAS as UGs, não uma amostra — a ideia é o painel mostrar o ranking completo. Fonte de dado: pat_dados (via a query reconciliada no Sprint 1), NÃO pat_tarefas — pat_dados tem o % de execução por departamento, que é o número que vira posição no ranking; pat_tarefas é tarefa operacional individual, serve pra outra coisa (notificação de atrasos). O endpoint só faz SELECT, nunca escreve em pat_dados — quem escreve ali é só o job de sincronização diário (SincronizacaoPatJob), escrever por fora bagunçaria o próximo sync. Diferente das tools de ranking (que devolvem texto pro LLM formatar), esse endpoint precisa devolver dado estruturado e rápido, porque o painel carrega assim que a pessoa abre o agente. Atenção: já existe PainelController.java, mas é de outra coisa (embed do Power BI) — não misturar.',
  '["Criar um controller novo (ex: RankingController.java).","Reaproveitar a query SQL já validada na ferramenta reconciliada do Sprint 1.","Garantir que traz TODAS as UGs, não um top N.","Formato sugerido: lista de {departamento, percentualExecucao, posicaoAtual}.","Testar isolado via curl/Postman antes do Lean integrar."]',
  '[{"path":"backend/.../controller/painel/RankingController.java","novo":true}]',
  'dallyla', 2),
 
 (10, 2, 'Modelo de snapshot diário',
  'Guardar uma "foto" do ranking a cada dia pra dar pra comparar e animar quem subiu/desceu.',
- 'Essa é a peça que dá dado real pra ANIMAÇÃO CENTRAL do painel do Lean: sem saber a posição de ontem, não dá pra saber se a UG subiu ou desceu hoje, e a animação de "subir na lista" é o coração da ideia da Dallyla pro painel. Precisa persistir um snapshot diário, no espírito dos jobs de sincronização que já existem.',
+ 'Essa é a peça que dá dado real pra ANIMAÇÃO CENTRAL do painel do Lean: sem saber a posição de ontem, não dá pra saber se a UG subiu ou desceu hoje, e a animação de "subir na lista" é o coração da ideia do painel. Precisa persistir um snapshot diário, no espírito dos jobs de sincronização que já existem.',
  '["Criar uma tabela nova (ranking_snapshot).","Criar um job agendado novo (padrão de SincronizacaoPatJob).","Incluir a posição de ontem no endpoint do ranking geral, pra o frontend saber se anima pra cima ou pra baixo."]',
  '[{"path":"backend/.../job/SincronizacaoPatJob.java","novo":false},{"path":"backend/.../job/RankingSnapshotJob.java","novo":true}]',
  'dallyla', 9),
@@ -171,7 +171,7 @@ insert into sprint_tracker_tarefas (id, sprint_id, titulo, descricao, contexto, 
 
 (18, 3, 'Terminar animação de posição',
  'UG subindo ou descendo no ranking, de forma visível e fluida.',
- 'Essa é a parte que faz o painel ser "futurista" de verdade em vez de só uma lista — é o efeito visual que a Dallyla descreveu desde o início: a UG se movendo pra cima na tela quando melhora. Vale caprichar aqui, é o diferencial do painel.',
+ 'Essa é a parte que faz o painel ser "futurista" de verdade em vez de só uma lista — é o efeito visual pensado desde o início: a UG se movendo pra cima na tela quando melhora. Vale caprichar aqui, é o diferencial do painel.',
  '["Refinar a transição visual (suavidade, duração, seta verde/vermelha ou indicador equivalente).","Testar em telas menores e temas claro/escuro.","Conferir que dá pra perceber a mudança de posição mesmo sem prestar atenção total na tela — o efeito precisa chamar atenção."]',
  '[{"path":"frontend/src/app/painel-ranking/","novo":false}]',
  'lean', 13),
@@ -206,7 +206,21 @@ insert into sprint_tracker_tarefas (id, sprint_id, titulo, descricao, contexto, 
  'Pra ser um MVP que a pró-reitoria realmente acessa (não só vocês três no próprio computador), precisa estar hospedado em algum lugar acessível pela internet.',
  '["Escolher host pro backend (Spring Boot precisa de host Java, ex: Railway/Render/Fly.io).","Escolher host pro frontend (Angular estático, ex: Vercel/Netlify).","Configurar variáveis de ambiente em produção (chaves de API, banco).","Testar o sistema inteiro ponta a ponta com as URLs reais de produção."]',
  '[]',
- 'todos', null);
+ 'todos', null),
+
+(26, 2, 'Vincular usuário logado ao responsável do PAT',
+ 'Criar a tela/endpoint que faltava pra alguém virar "responsável" reconhecido pelo agente — sem isso, "minhas tarefas" não funciona pra ninguém.',
+ 'A ferramenta buscarMinhasTarefas() já existe e já funciona: resolve o e-mail de quem está logado, busca o nome_responsavel vinculado na tabela usuario_responsavel, e filtra as tarefas do PAT por esse nome. O que falta é só a ponta administrativa — hoje essa tabela só pode ser preenchida com SQL direto no banco, não existe tela nem endpoint pra isso. É o mesmo formato exato do que já existe pra gerentes_departamento (CRUD completo em AdminController/AdminService/admin.service.ts, tela gestao-gerentes.component.ts) — copiar esse padrão em vez de inventar um novo.',
+ '["Ler AdminController/AdminService/admin.service.ts na parte de gerentes_departamento como referência de padrão.","Criar o mesmo CRUD (listar, adicionar, remover) pra usuario_responsavel.","Criar a tela admin (nova ou dentro de gestao-admins) pra vincular usuário ao nome_responsavel.","Testar: vincular um usuário, logar com ele, perguntar \"minhas tarefas\" no chat e confirmar que retorna certo."]',
+ '[{"path":"backend/.../controller/admin/AdminController.java","novo":false},{"path":"backend/.../service/admin/AdminService.java","novo":false},{"path":"frontend/src/app/services/admin.service.ts","novo":false},{"path":"frontend/src/app/painel-admin/gestao-gerentes.component.ts (referência de padrão)","novo":false},{"path":"backend/.../service/ia/TarefasTool.java (referência, não muda)","novo":false}]',
+ 'dallyla', null),
+
+(27, 2, 'Marcar tarefas atrasadas em "minhas tarefas"',
+ 'A tool que devolve as tarefas da pessoa não sinaliza quais já passaram do prazo — a IA não tem noção de "hoje" pra perceber isso sozinha.',
+ 'Não é ensinar a IA que dia é hoje e deixar ela calcular atraso — LLM fazendo conta de data é arriscado. O padrão certo já existe em NotificacaoService: "atrasada" = to_date(data_final) < CURRENT_DATE AND percentual < 100, calculado direto no SQL/Java. A ideia é reaproveitar exatamente essa regra dentro de buscarMinhasTarefas() e já entregar o fato pronto e marcado pro LLM, tipo "⚠️ ATRASADA há 12 dias" — a IA só repete o que já veio calculado certo, não faz conta nenhuma.',
+ '["Abrir NotificacaoService.java e copiar a regra exata de atraso (CURRENT_DATE + percentual < 100).","Aplicar a mesma regra dentro de TarefasTool.buscarMinhasTarefas(), calculando também há quantos dias está atrasada.","Marcar visualmente cada tarefa atrasada no texto devolvido pro LLM.","Testar com uma tarefa propositalmente vencida e confirmar que a resposta do agente menciona o atraso."]',
+ '[{"path":"backend/.../service/ia/TarefasTool.java","novo":false},{"path":"backend/.../service/notificacao/NotificacaoService.java (referência de padrão)","novo":false}]',
+ 'dallyla', null);
 
 select setval('sprint_tracker_tarefas_id_seq', (select max(id) from sprint_tracker_tarefas));
 select setval('sprint_tracker_sprints_id_seq', (select max(id) from sprint_tracker_sprints));

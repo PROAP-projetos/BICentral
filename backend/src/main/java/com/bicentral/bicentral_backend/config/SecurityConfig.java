@@ -34,7 +34,6 @@ public class SecurityConfig {
             "/api/convites/aceitar",
             "/auth/**",
             "/error",
-            "/ai/test/**",
             "/api/proiap/**",
             "/favicon.ico"
     };

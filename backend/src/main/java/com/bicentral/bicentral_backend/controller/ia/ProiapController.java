@@ -1,5 +1,8 @@
 package com.bicentral.bicentral_backend.controller.ia;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -8,12 +11,17 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.bicentral.bicentral_backend.dto.notificacao.NotificacaoDTO;
 import com.bicentral.bicentral_backend.dto.notificacao.PainelAtrasosDTO;
+import com.bicentral.bicentral_backend.model.Usuario;
 import com.bicentral.bicentral_backend.state.EstadoSessao;
+import com.bicentral.bicentral_backend.service.admin.AdminService;
+import com.bicentral.bicentral_backend.service.auth.UsuarioService;
 import com.bicentral.bicentral_backend.service.ia.ProiapService;
 import com.bicentral.bicentral_backend.service.notificacao.NotificacaoService;
+
 
 import java.util.List;
 
@@ -25,18 +33,31 @@ public class ProiapController {
     private final ProiapService proiapService;
     private final EstadoSessao estadoSessao;
     private final NotificacaoService notificacaoService;
+    private final UsuarioService usuarioService;
+    private final AdminService adminService;
 
-    public ProiapController(ProiapService proiapService, EstadoSessao estadoSessao, NotificacaoService notificacaoService) {
+    public ProiapController(ProiapService proiapService, EstadoSessao estadoSessao, NotificacaoService notificacaoService, 
+        UsuarioService usuarioService, AdminService adminService) {
         this.proiapService = proiapService;
         this.estadoSessao = estadoSessao;
         this.notificacaoService = notificacaoService;
+        this.usuarioService = usuarioService;
+        this.adminService = adminService;
     }
 
     public record RequisicaoProiap(String texto, Long equipeId, String modelo, String sessaoId) {
     }
 
     @PostMapping("/perguntar")
-    public Object fazerPergunta(@RequestBody RequisicaoProiap requisicao) {
+    public Object fazerPergunta(@RequestBody RequisicaoProiap requisicao,
+    @AuthenticationPrincipal UserDetails userDetails) {
+
+        if (userDetails == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sessão expirada, faça login novamente");
+        }
+
+        Usuario usuario = usuarioService.buscarPorEmail(userDetails.getUsername());
+        boolean usuarioEhAdmin = adminService.isAdmin(usuario.getId());
 
         if (requisicao.modelo() != null) {
             estadoSessao.setModelo(requisicao.modelo());
@@ -46,7 +67,7 @@ public class ProiapController {
             estadoSessao.setEquipeId(requisicao.equipeId());
         }
 
-        return proiapService.processarPergunta(requisicao.texto(), requisicao.sessaoId());
+        return proiapService.processarPergunta(requisicao.texto(), requisicao.sessaoId(), usuarioEhAdmin);
     }
 
     @GetMapping("/testar-notificacoes/{usuarioId}")

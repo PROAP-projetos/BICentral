@@ -1,6 +1,11 @@
 import { HttpInterceptorFn } from '@angular/common/http';
+import { inject } from '@angular/core';
+import { Router } from '@angular/router';
+import { catchError, throwError } from 'rxjs';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
+  const router = inject(Router);
+
   // 1. Corrigido para localStorage (L e S maiúsculos)
   const token = localStorage.getItem('token');
   const userJson = localStorage.getItem('user');
@@ -22,16 +27,23 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     }
   }
 
-  // 4. Se temos um token, clonamos a requisição
-  if (finalToken) {
-    const authReq = req.clone({
-      // 5. Corrigido para setHeaders (H maiúsculo)
-      setHeaders: {
-        Authorization: `Bearer ${finalToken}`
-      }
-    });
-    return next(authReq);
-  }
+  const finalReq = finalToken
+    ? req.clone({
+        // 5. Corrigido para setHeaders (H maiúsculo)
+        setHeaders: {
+          Authorization: `Bearer ${finalToken}`
+        }
+      })
+    : req;
 
-  return next(req);
+  return next(finalReq).pipe(
+    catchError((err) => {
+      if (err.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        router.navigate(['/login']);
+      }
+      return throwError(() => err);
+    })
+  );
 };

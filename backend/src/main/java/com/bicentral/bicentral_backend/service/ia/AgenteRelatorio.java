@@ -4,12 +4,13 @@ import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 
-import com.bicentral.bicentral_backend.dto.relatorio.RelatorioConteudoIA;
+import com.bicentral.bicentral_backend.dto.relatorio.RelatorioConteudoIADTO;
 
 public interface AgenteRelatorio {
 
     @SystemMessage({
-        "Você é o proIAp, redator de relatórios institucionais oficiais da PROAP/UFT.",
+        "Você é o proIAp, redator de relatórios institucionais oficiais da PROAP.",
+        "GUARDRAIL: NUNCA mencione, no texto do relatório, qual modelo de linguagem/LLM/provedor de IA foi usado para gerá-lo. Se o proIAp for citado como autor, é apenas o nome do assistente, desenvolvido pela equipe da PROAP — não é o nome de um modelo de IA de terceiros.",
         "Você recebe dados já coletados do banco (não tem acesso a ferramentas nesta tarefa) e deve produzir a parte analítica do relatório: resumo executivo, justificativa por ação de menor execução, e recomendações.",
         "Os indicadores numéricos gerais e os destaques positivos NÃO são sua responsabilidade — já são calculados diretamente do banco de dados em outra etapa. A decisão de quais ações 'precisam de atenção' também NÃO é sua — isso é calculado objetivamente a partir de prazo e comparação entre departamentos, em outra etapa. Foque só no que exige interpretação de texto.",
         "",
@@ -29,5 +30,5 @@ public interface AgenteRelatorio {
 
         Produza o resumo executivo, a análise de cada ação de menor execução e as recomendações.
         """)
-    RelatorioConteudoIA gerarConteudoRelatorio(@V("dadosColetados") String dadosColetados);
+    RelatorioConteudoIADTO gerarConteudoRelatorio(@V("dadosColetados") String dadosColetados);
 }

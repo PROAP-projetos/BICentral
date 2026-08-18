@@ -47,7 +47,7 @@ public class AiConfig {
         return OpenAiChatModel.builder()
                 .apiKey(groqApiKey)
                 .baseUrl("https://api.groq.com/openai/v1")
-                .modelName("llama-3.3-70b-versatile")
+                .modelName("openai/gpt-oss-120b")
                 .temperature(0.0)
                 .build();
     }
@@ -93,7 +93,16 @@ public class AiConfig {
     @Bean("localEmbeddingModel")
     @Primary
     public EmbeddingModel localEmbeddingModel() {
-        return new AllMiniLmL6V2EmbeddingModel();
+        try {
+            System.setProperty("ai.djl.onnx.disable_cuda", "true");
+            return new AllMiniLmL6V2EmbeddingModel();
+        } catch (Throwable t) {
+            System.err.println(">>> AVISO: Não foi possível carregar AllMiniLmL6V2EmbeddingModel local (" + t.getMessage() + "). Utilizando Gemini Embedding como fallback.");
+            return GoogleAiEmbeddingModel.builder()
+                    .apiKey(geminiApiKey)
+                    .modelName("text-embedding-004")
+                    .build();
+        }
     }
 
     @Bean("geminiEmbeddingModel")

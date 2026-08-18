@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 64" width="300" height="64" role="img" aria-label="proIAp">
+  <style>
+    .primary { fill: #0d0d0d; }
+    .accent { fill: #004a80; }
+    @media (prefers-color-scheme: dark) {
+      .primary { fill: #ececf1; }
+      .accent { fill: #5b9bd5; }
+    }
+  </style>
+  <g transform="translate(0,4) scale(1.9)">
+    <path class="primary" d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
+  </g>
+  <text x="62" y="42" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="40" font-weight="700" class="primary">pro<tspan class="accent">IA</tspan>p</text>
+</svg>

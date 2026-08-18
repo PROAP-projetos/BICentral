@@ -1,0 +1,72 @@
+<section class="card">
+  <div class="card-header">
+    <h2>Responsáveis do PAT</h2>
+    <span class="count">{{ responsaveis.length }} vinculos</span>
+  </div>
+
+  <form class="form-compact" (ngSubmit)="adicionar()">
+    <select [(ngModel)]="usuarioId" name="responsavelUsuario" required>
+      <option [ngValue]="null">Selecione um usuario</option>
+      <option *ngFor="let usuario of usuarios" [ngValue]="usuario.id">
+        {{ usuario.nome }} - {{ usuario.email }}
+      </option>
+    </select>
+
+    <div class="busca-wrap">
+      <input
+        type="text"
+        [(ngModel)]="busca"
+        name="buscaResponsavel"
+        placeholder="Digite o nome como aparece no PAT..."
+        (ngModelChange)="onBuscaChange()"
+        autocomplete="off" />
+
+      <div class="busca-panel" *ngIf="sugestoes.length > 0">
+        <button
+          type="button"
+          class="busca-option"
+          *ngFor="let nome of sugestoes"
+          (click)="selecionarSugestao(nome)">
+          {{ nome }}
+        </button>
+      </div>
+
+      <p class="busca-hint" *ngIf="buscando">Buscando...</p>
+      <p class="busca-hint" *ngIf="!buscando && busca.trim().length >= 2 && sugestoes.length === 0 && !nomeSelecionado">
+        Nenhum nome encontrado no PAT com esse termo.
+      </p>
+    </div>
+
+    <button class="btn btn-primary btn-sm" type="submit" [disabled]="!usuarioId || !nomeSelecionado || salvando">
+      Adicionar
+    </button>
+  </form>
+
+  <div class="table">
+    <div class="table-row table-head responsaveis-head">
+      <div>Usuario</div>
+      <div>Responsavel no PAT</div>
+      <div style="text-align: right;">Acoes</div>
+    </div>
+
+    <div class="table-row responsaveis-row" *ngFor="let r of responsaveis">
+      <div class="person-cell">
+        <span class="avatar">{{ (r.usuarioNome || r.usuarioId).toString().slice(0, 1) | uppercase }}</span>
+        <div>
+          <strong>{{ r.usuarioNome || ('Usuario ' + r.usuarioId) }}</strong>
+          <span>{{ r.usuarioEmail || 'Sem e-mail encontrado' }}</span>
+        </div>
+      </div>
+      <div>{{ r.nomeResponsavel }}</div>
+      <div class="actions-col">
+        <button class="btn-icon btn-danger-icon" type="button" title="Remover" (click)="remover(r)" [disabled]="salvando">
+          Remover
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="responsaveis.length === 0" class="empty-state">
+      Nenhum responsavel vinculado.
+    </div>
+  </div>
+</section>

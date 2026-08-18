@@ -2,7 +2,7 @@ package com.bicentral.bicentral_backend.dto.relatorio;
 
 import dev.langchain4j.model.output.structured.Description;
 
-public record JustificativaAcao(
+public record JustificativaAcaoDTO(
         @Description("O mesmo texto da ação recebida, exatamente como fornecido")
         String acao,
 
