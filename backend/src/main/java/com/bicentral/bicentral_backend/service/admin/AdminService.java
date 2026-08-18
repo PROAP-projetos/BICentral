@@ -15,6 +15,8 @@ import com.bicentral.bicentral_backend.dto.admin.AdminUsuarioRequestDTO;
 import com.bicentral.bicentral_backend.dto.admin.ConfiguracaoNotificacaoRequestDTO;
 import com.bicentral.bicentral_backend.dto.admin.GerenteDepartamentoDTO;
 import com.bicentral.bicentral_backend.dto.admin.GerenteDepartamentoRequestDTO;
+import com.bicentral.bicentral_backend.dto.admin.UsuarioResponsavelDTO;
+import com.bicentral.bicentral_backend.dto.admin.UsuarioResponsavelRequestDTO;
 import com.bicentral.bicentral_backend.dto.admin.UsuarioResumoDTO;
 
 import java.math.BigDecimal;
@@ -41,6 +43,22 @@ public class AdminService {
     public AdminService(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
         garantirTabelaAdmins();
+        garantirTabelaResponsaveis();
+    }
+
+    private void garantirTabelaResponsaveis() {
+        jdbcTemplate.execute("""
+            CREATE TABLE IF NOT EXISTS usuario_responsavel (
+                id BIGSERIAL PRIMARY KEY,
+                usuario_id BIGINT NOT NULL,
+                nome_responsavel TEXT NOT NULL
+            )
+            """);
+        // A tabela já existia em produção sem "id" nem "created_at" (só usuario_id e
+        // nome_responsavel) — o CREATE TABLE acima foi ignorado nela, então garante
+        // essas colunas separadamente, direto com ALTER, que funciona mesmo já existindo.
+        jdbcTemplate.execute("ALTER TABLE usuario_responsavel ADD COLUMN IF NOT EXISTS id BIGSERIAL");
+        jdbcTemplate.execute("ALTER TABLE usuario_responsavel ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now()");
     }
 
     private void garantirTabelaAdmins() {
@@ -163,6 +181,84 @@ public class AdminService {
         if (removidos == 0) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Vinculo de gerente nao encontrado");
         }
+    }
+
+    public List<UsuarioResponsavelDTO> listarResponsaveis(Long usuarioLogadoId) {
+        exigirAdmin(usuarioLogadoId);
+        return jdbcTemplate.query("""
+            SELECT ur.id, ur.usuario_id, u.username AS usuario_nome, u.email AS usuario_email,
+                   ur.nome_responsavel, ur.created_at
+            FROM usuario_responsavel ur
+            LEFT JOIN usuario u ON u.id = ur.usuario_id
+            ORDER BY ur.nome_responsavel
+            """, (rs, rowNum) -> new UsuarioResponsavelDTO(
+                rs.getLong("id"),
+                rs.getLong("usuario_id"),
+                rs.getString("usuario_nome"),
+                rs.getString("usuario_email"),
+                rs.getString("nome_responsavel"),
+                rs.getObject("created_at", OffsetDateTime.class)
+        ));
+    }
+
+    @Transactional
+    public UsuarioResponsavelDTO adicionarResponsavel(Long usuarioLogadoId, UsuarioResponsavelRequestDTO request) {
+        exigirAdmin(usuarioLogadoId);
+        validarUsuarioExistente(request.usuarioId());
+        if (request.nomeResponsavel() == null || request.nomeResponsavel().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe o nome do responsavel");
+        }
+
+        // Cada usuario so pode ter um responsavel vinculado; um novo vinculo substitui o anterior.
+        jdbcTemplate.update("DELETE FROM usuario_responsavel WHERE usuario_id = ?", request.usuarioId());
+
+        Long id = jdbcTemplate.queryForObject("""
+            INSERT INTO usuario_responsavel (usuario_id, nome_responsavel)
+            VALUES (?, ?)
+            RETURNING id
+            """, Long.class, request.usuarioId(), request.nomeResponsavel().trim());
+
+        return buscarResponsavelPorId(id);
+    }
+
+    @Transactional
+    public void removerResponsavel(Long usuarioLogadoId, Long id) {
+        exigirAdmin(usuarioLogadoId);
+        int removidos = jdbcTemplate.update("DELETE FROM usuario_responsavel WHERE id = ?", id);
+        if (removidos == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Vinculo de responsavel nao encontrado");
+        }
+    }
+
+    public List<String> buscarResponsaveisPat(Long usuarioLogadoId, String busca) {
+        exigirAdmin(usuarioLogadoId);
+        if (busca == null || busca.isBlank()) {
+            return List.of();
+        }
+        return jdbcTemplate.queryForList("""
+            SELECT DISTINCT dados_completos->>'Responsável' AS nome
+            FROM pat_tarefas
+            WHERE dados_completos->>'Responsável' ILIKE ?
+            ORDER BY nome
+            LIMIT 15
+            """, String.class, "%" + busca.trim() + "%");
+    }
+
+    private UsuarioResponsavelDTO buscarResponsavelPorId(Long id) {
+        return jdbcTemplate.queryForObject("""
+            SELECT ur.id, ur.usuario_id, u.username AS usuario_nome, u.email AS usuario_email,
+                   ur.nome_responsavel, ur.created_at
+            FROM usuario_responsavel ur
+            LEFT JOIN usuario u ON u.id = ur.usuario_id
+            WHERE ur.id = ?
+            """, (rs, rowNum) -> new UsuarioResponsavelDTO(
+                rs.getLong("id"),
+                rs.getLong("usuario_id"),
+                rs.getString("usuario_nome"),
+                rs.getString("usuario_email"),
+                rs.getString("nome_responsavel"),
+                rs.getObject("created_at", OffsetDateTime.class)
+        ), id);
     }
 
     public ConfiguracaoNotificacaoDTO buscarConfiguracoesNotificacao(Long usuarioLogadoId) {

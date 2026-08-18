@@ -6,10 +6,12 @@ import {
   AdminService,
   AdminSistema,
   GerenteDepartamento,
+  UsuarioResponsavel,
   UsuarioResumo
 } from '../services/admin.service';
 import { GestaoAdminsComponent } from './gestao-admins.component';
 import { GestaoGerentesComponent } from './gestao-gerentes.component';
+import { GestaoResponsaveisComponent } from './gestao-responsaveis.component';
 import { ConfiguracoesNotificacaoComponent } from './configuracoes-notificacao.component';
 import { GestaoApisComponent } from './gestao-apis.component';
 
@@ -21,6 +23,7 @@ import { GestaoApisComponent } from './gestao-apis.component';
     RouterModule,
     GestaoAdminsComponent,
     GestaoGerentesComponent,
+    GestaoResponsaveisComponent,
     ConfiguracoesNotificacaoComponent,
     GestaoApisComponent
   ],
@@ -31,6 +34,7 @@ export class PainelAdminComponent implements OnInit {
   usuarios: UsuarioResumo[] = [];
   admins: AdminSistema[] = [];
   gerentes: GerenteDepartamento[] = [];
+  responsaveis: UsuarioResponsavel[] = [];
 
   carregando = true;
   mensagemFeedback = '';
@@ -47,12 +51,14 @@ export class PainelAdminComponent implements OnInit {
     forkJoin({
       usuarios: this.adminService.listarUsuarios(),
       admins: this.adminService.listarAdmins(),
-      gerentes: this.adminService.listarGerentes()
+      gerentes: this.adminService.listarGerentes(),
+      responsaveis: this.adminService.listarResponsaveis()
     }).subscribe({
-      next: ({ usuarios, admins, gerentes }) => {
+      next: ({ usuarios, admins, gerentes, responsaveis }) => {
         this.usuarios = usuarios;
         this.admins = admins;
         this.gerentes = gerentes;
+        this.responsaveis = responsaveis;
         this.carregando = false;
       },
       error: () => {

@@ -8,12 +8,6 @@ import { AgentService, Notificacao, PainelAtrasos, RelatorioHistoricoItem } from
 import { AdminService } from '../services/admin.service';
 import { SafeUrlPipe } from '../pipes/safe-url.pipe';
 
-interface FonteDisponivel {
-  nome: string;
-  acesso: 'publico' | 'privado';
-  tipo: 'planilha' | 'pdf' | 'relatorio' | 'documento';
-}
-
 interface ChatSession {
   id: number;
   titulo: string;
@@ -37,7 +31,6 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   usuarioLogado = 'dallyla.moraes';
   equipeSelecionada = 'Orçamento';
   equipeId?: number;
-  fontesDisponiveis: FonteDisponivel[] = [];
 
   modelos = ['Llama 3 (Groq)', 'Gemini 2.5 Flash', 'Ollama Local'];
   modeloAtivoIndex = 0;
@@ -49,13 +42,27 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
 
   input = '';
   carregando = false;
-  carregandoFontes = false;
   erro = '';
   mensagemCopiadaId = '';
   private mensagemCopiadaTimer?: number;
 
   mensagemBoasVindas = '';
   isAdminSistema = false;
+
+  // ==========================================
+  // SIDEBAR
+  // ==========================================
+  private static readonly SIDEBAR_KEY = 'bicentral_sidebar_colapsada';
+  sidebarColapsada = false;
+
+  // ==========================================
+  // CONFIGURAÇÕES (aparência)
+  // ==========================================
+  private static readonly FONT_SIZE_KEY = 'bicentral_font_size';
+  private static readonly FONT_FAMILY_KEY = 'bicentral_font_family';
+  mostrarSettings = false;
+  fontSize: 'small' | 'medium' | 'large' = 'medium';
+  fontFamily: 'default' | 'serif' | 'mono' = 'default';
 
   // ==========================================
   // NOTIFICAÇÕES
@@ -81,12 +88,25 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   constructor(private agentService: AgentService, private adminService: AdminService) {
     this.carregarUsuario();
     this.carregarEquipeSelecionada();
-    this.carregarFontes();
     this.carregarNotificacoes();
     this.verificarAdminSistema();
 
     if (localStorage.getItem('theme') === 'dark') {
       this.isDarkMode = true;
+    }
+
+    if (localStorage.getItem(AgentComponent.SIDEBAR_KEY) === '1') {
+      this.sidebarColapsada = true;
+    }
+
+    const tamanhoSalvo = localStorage.getItem(AgentComponent.FONT_SIZE_KEY);
+    if (tamanhoSalvo === 'small' || tamanhoSalvo === 'medium' || tamanhoSalvo === 'large') {
+      this.fontSize = tamanhoSalvo;
+    }
+
+    const tipoSalvo = localStorage.getItem(AgentComponent.FONT_FAMILY_KEY);
+    if (tipoSalvo === 'default' || tipoSalvo === 'serif' || tipoSalvo === 'mono') {
+      this.fontFamily = tipoSalvo;
     }
   }
 
@@ -281,28 +301,33 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     } catch { }
   }
 
-  private carregarFontes(): void {
-    if (!this.equipeId) return;
-    this.carregandoFontes = true;
-    this.agentService.listarFontes(this.equipeId)
-      .pipe(finalize(() => this.carregandoFontes = false))
-      .subscribe({
-        next: (response) => {
-          this.fontesDisponiveis = (response.fontes || []).map((fonte) => ({
-            ...fonte,
-            tipo: this.getTipoFonte(fonte.nome)
-          }));
-        },
-        error: () => this.fontesDisponiveis = []
-      });
+  // ==========================================
+  // SIDEBAR
+  // ==========================================
+  toggleSidebar(): void {
+    this.sidebarColapsada = !this.sidebarColapsada;
+    localStorage.setItem(AgentComponent.SIDEBAR_KEY, this.sidebarColapsada ? '1' : '0');
   }
 
-  private getTipoFonte(nome: string): FonteDisponivel['tipo'] {
-    const ext = nome.split('.').pop()?.toLowerCase();
-    if (ext === 'xlsx') return 'planilha';
-    if (ext === 'pdf') return 'pdf';
-    if (nome.toLowerCase().includes('relatorio')) return 'relatorio';
-    return 'documento';
+  // ==========================================
+  // CONFIGURAÇÕES (aparência)
+  // ==========================================
+  toggleSettings(): void {
+    this.mostrarSettings = !this.mostrarSettings;
+    if (this.mostrarSettings) {
+      this.mostrarPainelNotificacoes = false;
+      this.mostrarPainelRelatorio = false;
+    }
+  }
+
+  setFontSize(tamanho: 'small' | 'medium' | 'large'): void {
+    this.fontSize = tamanho;
+    localStorage.setItem(AgentComponent.FONT_SIZE_KEY, tamanho);
+  }
+
+  setFontFamily(tipo: 'default' | 'serif' | 'mono'): void {
+    this.fontFamily = tipo;
+    localStorage.setItem(AgentComponent.FONT_FAMILY_KEY, tipo);
   }
 
   // ==========================================
@@ -320,8 +345,9 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
 
   toggleNotificacoes(): void {
     this.mostrarPainelNotificacoes = !this.mostrarPainelNotificacoes;
-    if (this.mostrarPainelNotificacoes && this.mostrarPainelRelatorio) {
+    if (this.mostrarPainelNotificacoes) {
       this.mostrarPainelRelatorio = false;
+      this.mostrarSettings = false;
     }
   }
 
@@ -357,9 +383,9 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   // ==========================================
   toggleRelatorio(): void {
     this.mostrarPainelRelatorio = !this.mostrarPainelRelatorio;
-    if (this.mostrarPainelNotificacoes) this.mostrarPainelNotificacoes = false;
-
     if (this.mostrarPainelRelatorio) {
+      this.mostrarPainelNotificacoes = false;
+      this.mostrarSettings = false;
       this.carregarMeusRelatorios();
       this.iniciarPollingHistorico();
     } else {

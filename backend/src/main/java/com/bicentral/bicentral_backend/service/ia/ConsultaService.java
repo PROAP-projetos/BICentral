@@ -2,9 +2,6 @@ package com.bicentral.bicentral_backend.service.ia;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.EmbeddingModel;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -29,76 +26,10 @@ public class ConsultaService {
     @Value("${supabase.key}")
     private String supabaseKey;
 
-    private final EmbeddingModel embeddingModel; 
-    private final EmbeddingModel ollamaEmbeddingModel;
-
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final HttpClient HTTP = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .build();
-
-    public ConsultaService(
-            EmbeddingModel embeddingModel, 
-            @Qualifier("ollamaEmbeddingModel") EmbeddingModel ollamaEmbeddingModel) {
-        this.embeddingModel = embeddingModel;
-        this.ollamaEmbeddingModel = ollamaEmbeddingModel;
-    }
-
-    public List<String> buscar(String pergunta, Long equipeId) {
-        try {
-            List<Float> vetor = embeddingModel
-                    .embed(TextSegment.from(pergunta))
-                    .content()
-                    .vectorAsList();
-
-            return chamarFuncaoSupabase("buscar_por_local", vetor, equipeId);
-
-        } catch (Exception e) {
-            System.err.println("Modelo de embedding principal indisponível, usando Ollama: " + e.getMessage());
-
-            try {
-                List<Float> vetor = ollamaEmbeddingModel
-                        .embed(TextSegment.from(pergunta))
-                        .content()
-                        .vectorAsList();
-
-                return chamarFuncaoSupabase("buscar_por_ollama", vetor, equipeId);
-
-            } catch (Exception ex) {
-                throw new RuntimeException("Ambos os provedores de embedding falharam: " + ex.getMessage());
-            }
-        }
-    }
-
-    private List<String> chamarFuncaoSupabase(String funcao, List<Float> vetor, Long equipeId) throws Exception {
-        Map<String, Object> body = Map.of(
-                "query_embedding", vetor,
-                "equipe_id_usuario", equipeId
-        );
-
-        String json = MAPPER.writeValueAsString(body);
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(supabaseUrl + "/rest/v1/rpc/" + funcao))
-                .timeout(Duration.ofSeconds(30))
-                .header("apikey", supabaseKey)
-                .header("Authorization", "Bearer " + supabaseKey)
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(json))
-                .build();
-
-        HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
-
-        if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new RuntimeException("Falha na busca: " + response.body());
-        }
-
-        JsonNode resultados = MAPPER.readTree(response.body());
-        return MAPPER.convertValue(
-                resultados.findValuesAsText("content"),
-                List.class
-        );
-    }
 
     public List<Map<String, String>> listarFontes(Long equipeId) {
         try {

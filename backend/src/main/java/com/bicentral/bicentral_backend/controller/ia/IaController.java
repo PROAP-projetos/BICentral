@@ -6,17 +6,14 @@ import com.bicentral.bicentral_backend.model.Usuario;
 import com.bicentral.bicentral_backend.repository.EquipeRepository;
 import com.bicentral.bicentral_backend.repository.MembroEquipeRepository;
 import com.bicentral.bicentral_backend.service.auth.UsuarioService;
-import com.bicentral.bicentral_backend.service.ia.AgenteProiap;
 import com.bicentral.bicentral_backend.service.ia.ConsultaService;
 import com.bicentral.bicentral_backend.service.ia.IngestaoService;
 
-import dev.langchain4j.model.chat.ChatLanguageModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -38,24 +35,18 @@ public class IaController {
     private final MembroEquipeRepository membroEquipeRepository;
     private final UsuarioService usuarioService;
     private final ConsultaService consultaService;
-    private final ChatLanguageModel chatModel;
-    private final AgenteProiap agenteProiap;
 
     public IaController(
             IngestaoService ingestaoService,
             EquipeRepository equipeRepository,
             MembroEquipeRepository membroEquipeRepository,
             UsuarioService usuarioService,
-            ConsultaService consultaService,
-            ChatLanguageModel chatModel,
-            AgenteProiap agenteProiap) {
+            ConsultaService consultaService) {
         this.ingestaoService = ingestaoService;
         this.equipeRepository = equipeRepository;
         this.membroEquipeRepository = membroEquipeRepository;
         this.usuarioService = usuarioService;
         this.consultaService = consultaService;
-        this.chatModel = chatModel;
-        this.agenteProiap = agenteProiap;
     }
 
     @PostMapping("/ingestao")
@@ -132,53 +123,6 @@ public class IaController {
         }
     }
 
-    @PostMapping("/consulta")
-    public ResponseEntity<?> consultar(@RequestBody Map<String, Object> body) {
-        try {
-            String pregunta = String.valueOf(body.getOrDefault("pergunta", "")).trim();
-            Long equipeId = obterLong(body.get("equipeId"));
-
-            if (pregunta.isBlank()) {
-                return ResponseEntity.badRequest().body(Map.of("mensagem", "Informe a pergunta."));
-            }
-
-            Equipe equipe = validarAcessoEquipe(equipeId);
-            List<String> contextos = consultaService.buscar(pregunta, equipe.getId());
-            String resposta = gerarResposta(pregunta, contextos, equipe.getNome());
-
-            // --- BLOCO DE FILTRO SIMPLIFICADO E ATUALIZADO ---
-            String textoPergunta = pregunta.toLowerCase();
-
-            // Verifica se a mensagem se parece com uma saudação comum de até 30 caracteres
-            boolean ehSaudacao = (textoPergunta.contains("oi") || textoPergunta.contains("olá") ||
-                    textoPergunta.contains("ola") || textoPergunta.contains("bom dia") ||
-                    textoPergunta.contains("boa tarde") || textoPergunta.contains("tudo bem"))
-                    && pregunta.length() < 30;
-
-            // Verifica se a resposta disparou a Regra de Ouro (Frase padrão de erro)
-            boolean ehRespostaPadrao = resposta.contains("Desculpe, não encontrei");
-
-            // Se for saudação OU se o documento não tinha a resposta, limpa as fontes da
-            // tela
-            if (ehSaudacao || ehRespostaPadrao) {
-                contextos.clear();
-            }
-            // -------------------------------------------------
-
-            return ResponseEntity.ok(Map.of(
-                    "pergunta", pregunta,
-                    "resposta", resposta,
-                    "contextos", contextos,
-                    "modelo", "Llama 3 (via Groq)",
-                    "equipe", equipe.getNome()));
-        } catch (ResponseStatusException e) {
-            return ResponseEntity.status(e.getStatusCode()).body(Map.of("mensagem", e.getReason()));
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError()
-                    .body(Map.of("mensagem", "Erro ao consultar agente: " + e.getMessage()));
-        }
-    }
-
     @GetMapping("/fontes")
     public ResponseEntity<?> listarFontes(@RequestParam Long equipeId) {
         try {
@@ -218,22 +162,6 @@ public class IaController {
         return nomeArquivo.substring(nomeArquivo.lastIndexOf(".")).toLowerCase(Locale.ROOT);
     }
 
-    private Long obterLong(Object valor) {
-        if (valor == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe a equipe.");
-        }
-
-        if (valor instanceof Number numero) {
-            return numero.longValue();
-        }
-
-        try {
-            return Long.parseLong(String.valueOf(valor));
-        } catch (NumberFormatException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Equipe inválida.");
-        }
-    }
-
     private Equipe validarAcessoEquipe(Long equipeId) {
         String emailUsuarioLogado = SecurityContextHolder.getContext().getAuthentication().getName();
         Usuario usuarioLogado = usuarioService.buscarPorEmail(emailUsuarioLogado);
@@ -250,15 +178,5 @@ public class IaController {
         }
 
         return equipe;
-    }
-
-    private String gerarResposta(String pergunta, List<String> contextos, String equipe) {
-        if (contextos == null || contextos.isEmpty()) {
-            return "Desculpe, não encontrei essa informação nos documentos institucionais acessíveis no momento.";
-        }
-
-        String contextoUnido = String.join("\n\n---\n\n", contextos);
-
-        return agenteProiap.responderDuvida(pergunta, contextoUnido);
     }
 }

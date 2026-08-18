@@ -1,4 +1,4 @@
-package com.bicentral.bicentral_backend.service.ia;
+package com.bicentral.bicentral_backend.service.ia.tools;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.P;
@@ -48,7 +48,7 @@ public class ConsultaAcoesTool {
         if (resultado.isEmpty()) {
             return "Nenhum item encontrado com o código " + codigo;
         }
-        return formatarResultado(resultado);
+        return formatarItemUnico(resultado.get(0));
     }
 
     @Tool("Lista todos os itens filhos diretos de um código pai no PDI. Ex: código pai 1.1.1 retorna as ações 1.1.1.1, 1.1.1.2 etc")
@@ -60,7 +60,12 @@ public class ConsultaAcoesTool {
         if (resultado.isEmpty()) {
             return "Nenhum item filho encontrado para o código " + codigoPai;
         }
-        return formatarResultado(resultado);
+        StringBuilder sb = new StringBuilder();
+        for (Map<String, Object> item : resultado) {
+            sb.append("- [").append(item.get("codigo")).append("] ").append(item.get("titulo"))
+              .append(" (").append(item.get("estrutura")).append(")\n");
+        }
+        return sb.toString();
     }
 
     @Tool("Busca ações do PDI cuja data final seja um ano específico. Use para perguntas tipo 'existe ação que termina em [ano]?'")
@@ -73,7 +78,12 @@ public class ConsultaAcoesTool {
         if (resultado.isEmpty()) {
             return "Nenhuma ação com data final em " + ano + ". Isso não significa erro: pode ser que todas as ações do PDI atual compartilhem o mesmo período.";
         }
-        return formatarResultado(resultado);
+        StringBuilder sb = new StringBuilder();
+        for (Map<String, Object> item : resultado) {
+            sb.append("- [").append(item.get("codigo")).append("] ").append(item.get("titulo"))
+              .append(" — período: ").append(item.get("data_inicial")).append(" a ").append(item.get("data_final")).append("\n");
+        }
+        return sb.toString();
     }
 
     @Tool("Conta ações do PDI filtrando por marcador (ex: 'CPA', 'Plano de Governo', 'AUDIN') e, opcionalmente, percentual mínimo de execução")
@@ -99,7 +109,13 @@ public class ConsultaAcoesTool {
         if (resultado.isEmpty()) {
             return "Nenhuma ação encontrada com o termo '" + palavraChave + "'";
         }
-        return formatarResultado(resultado);
+        StringBuilder sb = new StringBuilder();
+        for (Map<String, Object> item : resultado) {
+            sb.append("- [").append(item.get("codigo")).append("] ").append(item.get("titulo"))
+              .append(" — depto: ").append(item.get("departamentos"))
+              .append(" — ").append(item.get("percentual_pdi")).append("% no PDI\n");
+        }
+        return sb.toString();
     }
 
     @Tool("Ranqueia departamentos pela média de execução do PAT (ano corrente). Use para perguntas sobre quais unidades estão melhores ou piores no PAT. Pode filtrar por UG ou UA.")
@@ -127,7 +143,17 @@ public class ConsultaAcoesTool {
         if (resultado.isEmpty()) {
             return "Nenhum departamento encontrado no PAT do ano corrente.";
         }
-        return "Ranking de departamentos por execução média do PAT (ano corrente):\n" + formatarResultado(resultado);
+        StringBuilder sb = new StringBuilder();
+        sb.append("Ranking de departamentos por execução média do PAT (ano corrente):\n\n");
+        sb.append("| Departamento | % Execução | Qtd Ações |\n");
+        sb.append("|---|---|---|\n");
+        for (Map<String, Object> item : resultado) {
+            sb.append("| ").append(item.get("departamento"))
+              .append(" | ").append(item.get("media_execucao_pct")).append("%")
+              .append(" | ").append(item.get("qtd_acoes"))
+              .append(" |\n");
+        }
+        return sb.toString();
     }
 
     @Tool("Busca as ações com MENOR execução do PAT (ano corrente) de um departamento específico, até 15 ações. Use para perguntas pontuais tipo 'quais ações estão mais atrasadas na PROEST'. Para pedidos de RELATÓRIO ou PANORAMA completo de uma unidade, use buscarDetalhamentoDesempenhoDepartamento em vez desta.")
@@ -143,9 +169,20 @@ public class ConsultaAcoesTool {
         if (resultado.isEmpty()) {
             return "Nenhum registro de PAT encontrado para o departamento '" + nomeDepartamento + "'";
         }
-        return resultado.size() >= 15
-            ? "Mostrando as 15 ações com menor execução (pode haver mais). Para um panorama completo com resumo, use a ferramenta de relatório.\n" + formatarResultado(resultado)
-            : formatarResultado(resultado);
+        StringBuilder sb = new StringBuilder();
+        if (resultado.size() >= 15) {
+            sb.append("Mostrando as 15 ações com menor execução (pode haver mais). Para um panorama completo com resumo, use a ferramenta de relatório.\n\n");
+        }
+        sb.append("| Ação | Título | Unidade | % |\n");
+        sb.append("|---|---|---|---|\n");
+        for (Map<String, Object> item : resultado) {
+            sb.append("| ").append(item.get("codigo_acao"))
+              .append(" | ").append(item.get("titulo_acao"))
+              .append(" | ").append(item.get("tipo_unidade"))
+              .append(" | ").append(item.get("percentual_pct")).append("%")
+              .append(" |\n");
+        }
+        return sb.toString();
     }
 
     @Tool("Busca um RESUMO/RELATÓRIO/PANORAMA do desempenho do PAT (ano corrente) de um departamento: contagem de ações por faixa de execução (zeradas, em andamento, concluídas), média geral, e as ações nos extremos (mais atrasadas e mais adiantadas). Use esta ferramenta sempre que o usuário pedir 'relatório', 'panorama' ou 'análise' de uma unidade. NÃO tire conclusões de 'bom' ou 'ruim' sozinho a partir do número bruto, a interpretação cabe a você considerando a natureza de cada ação.")
@@ -202,10 +239,14 @@ public class ConsultaAcoesTool {
           .append(resumo.get("concluidas")).append(" concluídas (100%).\n\n");
 
         sb.append("AÇÕES COM MENOR EXECUÇÃO (até 8):\n");
-        sb.append(formatarResultado(piores));
+        for (Map<String, Object> item : piores) {
+            sb.append("- ").append(item.get("titulo_acao")).append(" — ").append(item.get("percentual_pat")).append("%\n");
+        }
 
         sb.append("\nAÇÕES COM MAIOR EXECUÇÃO (até 8):\n");
-        sb.append(formatarResultado(melhores));
+        for (Map<String, Object> item : melhores) {
+            sb.append("- ").append(item.get("titulo_acao")).append(" — ").append(item.get("percentual_pat")).append("%\n");
+        }
 
         return sb.toString();
     }
@@ -246,7 +287,19 @@ public class ConsultaAcoesTool {
         if (resultado.isEmpty()) {
             return "Nenhum departamento encontrado nas ações do PDI.";
         }
-        return "Contagem de ações do PDI por departamento" + (filtrarTipo ? " (filtrado por " + tipoUnidade.toUpperCase() + ")" : ", tipo pode vir nulo se o departamento não aparecer no PAT") + ":\n" + formatarResultado(resultado);
+        StringBuilder sb = new StringBuilder();
+        sb.append("Contagem de ações do PDI por departamento")
+          .append(filtrarTipo ? " (filtrado por " + tipoUnidade.toUpperCase() + ")" : ", tipo pode vir nulo se o departamento não aparecer no PAT")
+          .append(":\n\n");
+        sb.append("| Departamento | Tipo | Qtd Ações |\n");
+        sb.append("|---|---|---|\n");
+        for (Map<String, Object> item : resultado) {
+            sb.append("| ").append(item.get("departamento"))
+              .append(" | ").append(item.get("tipo_unidade"))
+              .append(" | ").append(item.get("qtd_acoes"))
+              .append(" |\n");
+        }
+        return sb.toString();
     }
 
     @Tool("Conta quantas ações do PAT (ano corrente) cada departamento tem, ranqueando por quantidade. Use para perguntas tipo 'qual UG tem menos/mais ações no PAT'. Permite filtrar só por UG ou só por UA.")
@@ -275,7 +328,19 @@ public class ConsultaAcoesTool {
         if (resultado.isEmpty()) {
             return "Nenhum departamento encontrado no PAT.";
         }
-        return "Contagem de ações do PAT por departamento" + (filtrarTipo ? " (filtrado por " + tipoUnidade.toUpperCase() + ")" : "") + ":\n" + formatarResultado(resultado);
+        StringBuilder sb = new StringBuilder();
+        sb.append("Contagem de ações do PAT por departamento")
+          .append(filtrarTipo ? " (filtrado por " + tipoUnidade.toUpperCase() + ")" : "")
+          .append(":\n\n");
+        sb.append("| Departamento | Tipo | Qtd Ações |\n");
+        sb.append("|---|---|---|\n");
+        for (Map<String, Object> item : resultado) {
+            sb.append("| ").append(item.get("departamento"))
+              .append(" | ").append(item.get("tipo_unidade"))
+              .append(" | ").append(item.get("qtd_acoes"))
+              .append(" |\n");
+        }
+        return sb.toString();
     }
 
     @Tool("Compara a execução de uma mesma ação entre o PDI (acumulado dos 5 anos) e o PAT (ano corrente), usando o código da ação. Use quando o usuário quiser entender se uma ação está adiantada ou atrasada em relação ao plano de longo prazo.")
@@ -321,11 +386,17 @@ public class ConsultaAcoesTool {
         return sb.toString();
     }
 
-    private String formatarResultado(List<Map<String, Object>> resultado) {
+    private String formatarItemUnico(Map<String, Object> item) {
         StringBuilder sb = new StringBuilder();
-        for (Map<String, Object> row : resultado) {
-            row.forEach((k, v) -> sb.append(k).append(": ").append(v).append(", "));
-            sb.append("\n");
+        sb.append(item.get("estrutura")).append(" ").append(item.get("codigo")).append(": ").append(item.get("titulo")).append(".\n");
+        if (item.get("departamentos") != null) {
+            sb.append("Departamento(s): ").append(item.get("departamentos")).append(".\n");
+        }
+        if (item.get("percentual_pdi") != null) {
+            sb.append("Execução no PDI: ").append(item.get("percentual_pdi")).append("%.\n");
+        }
+        if (item.get("data_inicial") != null || item.get("data_final") != null) {
+            sb.append("Período: ").append(item.get("data_inicial")).append(" a ").append(item.get("data_final")).append(".\n");
         }
         return sb.toString();
     }

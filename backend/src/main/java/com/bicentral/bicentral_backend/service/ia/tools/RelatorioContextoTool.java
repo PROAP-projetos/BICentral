@@ -1,4 +1,4 @@
-package com.bicentral.bicentral_backend.service.ia;
+package com.bicentral.bicentral_backend.service.ia.tools;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 import com.bicentral.bicentral_backend.dto.relatorio.RelatorioEstruturadoDTO;
 import com.bicentral.bicentral_backend.service.auth.UsuarioService;
+import com.bicentral.bicentral_backend.service.ia.RelatorioService;
 import com.bicentral.bicentral_backend.state.EstadoSessao;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
