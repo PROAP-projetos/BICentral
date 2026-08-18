@@ -103,17 +103,17 @@ public class NotificacaoService {
 
                     if (diferenca > 3.0) {
                         notificacoes.add(new NotificacaoDTO("📈", depto,
-                                "está melhorando: subiu de " + mediaAnterior + "% para " + mediaAtual + "% no PAT.",
+                                "está melhorando: subiu de " + formatarPct(mediaAnterior) + "% para " + formatarPct(mediaAtual) + "% no PAT.",
                                 mediaAtual, List.of()));
                         continue;
                     } else if (diferenca < -3.0) {
                         notificacoes.add(new NotificacaoDTO("📉", depto,
-                                "caiu de " + mediaAnterior + "% para " + mediaAtual + "% no PAT.",
+                                "caiu de " + formatarPct(mediaAnterior) + "% para " + formatarPct(mediaAtual) + "% no PAT.",
                                 mediaAtual, buscarTarefasCriticas(depto, 3)));
                         continue;
                     } else if (mediaAtual < limiteBaixo) {
                         notificacoes.add(new NotificacaoDTO("⏸️", depto,
-                                "segue estagnada em torno de " + mediaAtual + "% no PAT, sem variação recente.",
+                                "segue estagnada em torno de " + formatarPct(mediaAtual) + "% no PAT, sem variação recente.",
                                 mediaAtual, buscarTarefasCriticas(depto, 3)));
                         continue;
                     }
@@ -123,11 +123,11 @@ public class NotificacaoService {
             // Fallback: sem histórico suficiente, usa o alerta "cru" por faixa absoluta
             if (mediaAtual < limiteBaixo) {
                 notificacoes.add(new NotificacaoDTO("⚠️", depto,
-                        "está com execução baixa no PAT (" + mediaAtual + "%).",
+                        "está com execução baixa no PAT (" + formatarPct(mediaAtual) + "%).",
                         mediaAtual, buscarTarefasCriticas(depto, 3)));
             } else if (mediaAtual > limiteBom) {
                 notificacoes.add(new NotificacaoDTO("✅", depto,
-                        "está com ótima execução no PAT (" + mediaAtual + "%). Parabéns à equipe!",
+                        "está com ótima execução no PAT (" + formatarPct(mediaAtual) + "%). Parabéns à equipe!",
                         mediaAtual, List.of()));
             }
         }
@@ -174,6 +174,13 @@ public class NotificacaoService {
 
     private static String formatarPrazo(java.sql.Date data) {
         return data != null ? data.toLocalDate().format(FORMATO_PRAZO) : null;
+    }
+
+    private static String formatarPct(double valor) {
+        if (valor == (long) valor) {
+            return String.format("%d", (long) valor);
+        }
+        return String.format("%.1f", valor);
     }
 
     /**

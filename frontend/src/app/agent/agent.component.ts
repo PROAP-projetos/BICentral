@@ -320,6 +320,9 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
 
   toggleNotificacoes(): void {
     this.mostrarPainelNotificacoes = !this.mostrarPainelNotificacoes;
+    if (this.mostrarPainelNotificacoes && this.mostrarPainelRelatorio) {
+      this.mostrarPainelRelatorio = false;
+    }
   }
 
   get temAlertaNegativo(): boolean {
@@ -335,6 +338,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   }
 
   abrirPainelAtrasos(departamento: string): void {
+    this.mostrarPainelNotificacoes = false;
     this.carregandoPainelAtrasos = true;
     this.agentService.buscarPainelAtrasos(departamento)
       .pipe(finalize(() => this.carregandoPainelAtrasos = false))
