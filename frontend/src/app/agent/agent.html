@@ -152,31 +152,6 @@
           </div>
         </div>
 
-        <!-- BOTÃO DE RANKING DE UGS (TROFÉU 🏆) -->
-        <div class="notif-wrapper">
-          <button class="notif-bell" type="button" (click)="toggleRankingUg()" aria-label="Ranking de UGs" title="Ranking de UGs (LIVE)">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
-              <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
-              <path d="M4 22h16"></path>
-              <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path>
-              <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path>
-              <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"></path>
-            </svg>
-          </button>
-
-          <div class="notif-panel ranking-panel" *ngIf="mostrarPainelRankingUg">
-            <div class="notif-panel-header">
-              <span>🏆 Ranking de Desempenho das UGs</span>
-              <button type="button" class="panel-close-btn" (click)="toggleRankingUg()">×</button>
-            </div>
-            <div class="notif-panel-body ranking-panel-body">
-              <app-leaderboard-ug></app-leaderboard-ug>
-            </div>
-          </div>
-        </div>
-
         <!-- BOTÃO DE NOTIFICAÇÕES -->
         <div class="notif-wrapper">
           <button class="notif-bell" type="button" (click)="toggleNotificacoes()" aria-label="Notificações" title="Notificações">
@@ -231,7 +206,7 @@
             class="portal-tab-btn" 
             [class.active]="abaEntradaAtiva === 'leaderboard'"
             (click)="abaEntradaAtiva = 'leaderboard'">
-            🏆 Leaderboard de UGs (Desempenho Geral)
+            ⚡ Hub de Inteligência & Ranking
           </button>
           <button 
             type="button" 

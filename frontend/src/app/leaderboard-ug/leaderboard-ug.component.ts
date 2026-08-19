@@ -18,6 +18,24 @@ export interface UgRankingItem {
   destaqueAnimacao: boolean;
 }
 
+export interface AtividadeRecenteItem {
+  id: string;
+  titulo: string;
+  ugSigla: string;
+  ugNome: string;
+  responsavel: string;
+  tempoRelativo: string;
+  status: 'concluida' | 'atencao' | 'em_andamento';
+  tag: string;
+}
+
+export interface InsightIaItem {
+  icone: string;
+  titulo: string;
+  prompt: string;
+  badge: string;
+}
+
 @Component({
   selector: 'app-leaderboard-ug',
   standalone: true,
@@ -143,7 +161,89 @@ export class LeaderboardUgComponent implements OnInit, OnDestroy {
     }
   ];
 
-  // Opções do ECharts para o modo de comparação visual alternativa
+  // Feed em tempo real de acontecimentos recentes do PAT
+  atividadesRecentes: AtividadeRecenteItem[] = [
+    {
+      id: 'atv-1',
+      titulo: 'Publicação do Edital do Programa de Permanência Estudantil 2026',
+      ugSigla: 'PROEST',
+      ugNome: 'Assistência Estudantil',
+      responsavel: 'Mariana Silva',
+      tempoRelativo: 'há 1h',
+      status: 'concluida',
+      tag: 'Meta PAT 1.2'
+    },
+    {
+      id: 'atv-2',
+      titulo: 'Homologação do Pregão Eletrônico de Servidores em Nuvem',
+      ugSigla: 'DTI',
+      ugNome: 'Tecnologia da Informação',
+      responsavel: 'Carlos Mendes',
+      tempoRelativo: 'há 3h',
+      status: 'concluida',
+      tag: 'Infraestrutura'
+    },
+    {
+      id: 'atv-3',
+      titulo: 'Consolidação da Prestação de Contas Orçamentárias',
+      ugSigla: 'PROAD',
+      ugNome: 'Administração e Finanças',
+      responsavel: 'Roberto Lima',
+      tempoRelativo: 'hoje',
+      status: 'concluida',
+      tag: 'Orçamento'
+    },
+    {
+      id: 'atv-4',
+      titulo: 'Homologação das Novas Matrizes Curriculares',
+      ugSigla: 'PROGRAD',
+      ugNome: 'Graduação',
+      responsavel: 'Felipe Santos',
+      tempoRelativo: 'ontem',
+      status: 'concluida',
+      tag: 'Ensino'
+    },
+    {
+      id: 'atv-5',
+      titulo: 'Aquisição de Insumos para Laboratórios de Pesquisa',
+      ugSigla: 'PROPESQ',
+      ugNome: 'Pesquisa',
+      responsavel: 'Dra. Helena Costa',
+      tempoRelativo: 'Prazo: 3 dias',
+      status: 'atencao',
+      tag: 'Atenção'
+    }
+  ];
+
+  // Perguntas rápidas com IA (Chips interativos)
+  insightsSugeridos: InsightIaItem[] = [
+    {
+      icone: '🎯',
+      titulo: 'Diagnóstico da PROAD',
+      prompt: 'Faça um diagnóstico detalhado do desempenho, gargalos e projeção de metas da PROAD.',
+      badge: 'Análise Crítica'
+    },
+    {
+      icone: '📊',
+      titulo: 'Comparativo PROEST vs DTI',
+      prompt: 'Compare a evolução de entregas do PAT entre a PROEST e a DTI.',
+      badge: 'Comparativo'
+    },
+    {
+      icone: '⚠️',
+      titulo: 'Alertas de Atraso Global',
+      prompt: 'Quais atividades e departamentos apresentam maior risco de atraso no PAT 2026?',
+      badge: 'Risco'
+    },
+    {
+      icone: '📄',
+      titulo: 'Resumo Executivo do PAT',
+      prompt: 'Gere um relatório executivo consolidado com o status de todas as UGs do PROAP.',
+      badge: 'Relatório'
+    }
+  ];
+
+  // Opções do ECharts para o modo alternativo
   echartsOptions: any;
 
   ngOnInit(): void {
@@ -154,12 +254,26 @@ export class LeaderboardUgComponent implements OnInit, OnDestroy {
     this.pararAutoSimulacao();
   }
 
-  /**
-   * Simula uma nova carga de dados com alteração aleatória do desempenho das UGs.
-   * Recalcula o ranking e aciona a animação fluida de troca de posição dos cards.
-   */
+  // Getters para KPIs no topo
+  get percentualGlobal(): number {
+    if (!this.ugs.length) return 0;
+    const soma = this.ugs.reduce((acc, ug) => acc + ug.percentual, 0);
+    return Math.round((soma / this.ugs.length) * 10) / 10;
+  }
+
+  get totalTarefasGlobal(): number {
+    return this.ugs.reduce((acc, ug) => acc + ug.totalTarefas, 0);
+  }
+
+  get totalConcluidasGlobal(): number {
+    return this.ugs.reduce((acc, ug) => acc + ug.tarefasConcluidas, 0);
+  }
+
+  get totalUgsEmAtencao(): number {
+    return this.ugs.filter(u => u.percentual < 60).length;
+  }
+
   simularReordenacao(): void {
-    // 1. Guarda as posições anteriores
     const posicoesAnterioresMap = new Map<string, number>();
     this.ugs.forEach((ug, idx) => {
       ug.posicaoAnterior = idx + 1;
@@ -167,29 +281,24 @@ export class LeaderboardUgComponent implements OnInit, OnDestroy {
       ug.percentualAnterior = ug.percentual;
     });
 
-    // 2. Altera percentuais de forma realista
     this.ugs.forEach((ug) => {
-      // Variação entre -12% e +18%
       const delta = Math.floor(Math.random() * 30) - 12;
       let novoPct = Math.min(100, Math.max(20, Math.round((ug.percentual + delta) * 10) / 10));
       ug.percentual = novoPct;
       ug.tarefasConcluidas = Math.min(ug.totalTarefas, Math.round((novoPct / 100) * ug.totalTarefas));
     });
 
-    // 3. Reordena do maior para o menor percentual
     this.ugs.sort((a, b) => b.percentual - a.percentual);
 
-    // 4. Recalcula variações de posição e sinalizadores de animação
     this.ugs.forEach((ug, idx) => {
       const novaPosicao = idx + 1;
       const antigaPosicao = posicoesAnterioresMap.get(ug.id) || novaPosicao;
       
       ug.posicao = novaPosicao;
-      ug.variacaoPosicao = antigaPosicao - novaPosicao; // Positivo = subiu de posição!
+      ug.variacaoPosicao = antigaPosicao - novaPosicao;
       ug.subiu = ug.variacaoPosicao > 0;
       ug.caiu = ug.variacaoPosicao < 0;
 
-      // Ativa classe de brilho/glow na UG que subiu
       if (ug.subiu) {
         ug.destaqueAnimacao = true;
         setTimeout(() => ug.destaqueAnimacao = false, 2500);
@@ -233,9 +342,18 @@ export class LeaderboardUgComponent implements OnInit, OnDestroy {
     return 'pct-baixo';
   }
 
-  /**
-   * Atualiza a configuração do ECharts para o modo de visualização alternativa
-   */
+  clicarUg(ug: UgRankingItem): void {
+    this.selecionarUg.emit(`Faça uma análise detalhada do desempenho e metas da ${ug.sigla} (${ug.nome}).`);
+  }
+
+  clicarAtividade(atv: AtividadeRecenteItem): void {
+    this.selecionarUg.emit(`Explique o status e o impacto da entrega da ${atv.ugSigla}: "${atv.titulo}".`);
+  }
+
+  clicarInsight(insight: InsightIaItem): void {
+    this.selecionarUg.emit(insight.prompt);
+  }
+
   private atualizarEchartsOptions(): void {
     const sorted = [...this.ugs].reverse();
     const categorias = sorted.map(u => u.sigla);
@@ -299,11 +417,6 @@ export class LeaderboardUgComponent implements OnInit, OnDestroy {
     };
   }
 
-  clicarUg(ug: UgRankingItem): void {
-    this.selecionarUg.emit(`Faça uma análise detalhada do desempenho e metas da ${ug.sigla} (${ug.nome}).`);
-  }
-
-  // TrackBy por ID da UG garante que o Angular aplique a transição FLIP no DOM
   trackByUgId(index: number, item: UgRankingItem): string {
     return item.id;
   }

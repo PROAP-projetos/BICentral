@@ -340,21 +340,10 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
       });
   }
 
-  mostrarPainelRankingUg = false;
-
-  toggleRankingUg(): void {
-    this.mostrarPainelRankingUg = !this.mostrarPainelRankingUg;
-    if (this.mostrarPainelRankingUg) {
-      if (this.mostrarPainelNotificacoes) this.mostrarPainelNotificacoes = false;
-      if (this.mostrarPainelRelatorio) this.mostrarPainelRelatorio = false;
-    }
-  }
-
   toggleNotificacoes(): void {
     this.mostrarPainelNotificacoes = !this.mostrarPainelNotificacoes;
     if (this.mostrarPainelNotificacoes) {
       if (this.mostrarPainelRelatorio) this.mostrarPainelRelatorio = false;
-      if (this.mostrarPainelRankingUg) this.mostrarPainelRankingUg = false;
     }
   }
 
@@ -372,7 +361,6 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
 
   abrirPainelAtrasos(departamento: string): void {
     this.mostrarPainelNotificacoes = false;
-    this.mostrarPainelRankingUg = false;
     this.carregandoPainelAtrasos = true;
     this.agentService.buscarPainelAtrasos(departamento)
       .pipe(finalize(() => this.carregandoPainelAtrasos = false))
@@ -393,7 +381,6 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.mostrarPainelRelatorio = !this.mostrarPainelRelatorio;
     if (this.mostrarPainelRelatorio) {
       if (this.mostrarPainelNotificacoes) this.mostrarPainelNotificacoes = false;
-      if (this.mostrarPainelRankingUg) this.mostrarPainelRankingUg = false;
     }
 
     if (this.mostrarPainelRelatorio) {
