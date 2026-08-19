@@ -1,0 +1,94 @@
+<div class="grafo-container">
+
+  <!-- CABEÇALHO DE FILTROS & CONTROLES -->
+  <header class="grafo-header">
+    <div class="header-info">
+      <div class="grafo-badge">
+        <span class="live-dot"></span>
+        <span class="badge-text">VISÃO GERAL DO ECOSSISTEMA</span>
+      </div>
+      <h2 class="header-title">Grafo de Conexões e Atividades</h2>
+      <p class="header-sub">Mapeamento interativo de processos e dependências por Unidade Gestora (PAT)</p>
+    </div>
+
+    <!-- SELETOR MULTI-SELECT DE UGS POR CORES -->
+    <div class="ug-filters-bar">
+      <span class="filters-label">Filtrar UGs:</span>
+      <div class="filters-list">
+        <button 
+          type="button"
+          class="ug-pill-btn"
+          *ngFor="let ug of ugsFiltro"
+          [class.ativa]="ug.ativa"
+          (click)="toggleUgFiltro(ug)"
+          [style.--ug-color]="ug.cor"
+          [title]="'Alternar exibição da ' + ug.nome">
+          <span class="ug-color-dot" [style.background-color]="ug.cor"></span>
+          <span class="ug-sigla-text">{{ ug.sigla }}</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- CONTROLES DE LAYOUT -->
+    <div class="layout-controls">
+      <button 
+        type="button" 
+        class="control-btn" 
+        [class.active]="layoutGrafo === 'force'"
+        (click)="alternarLayout('force')">
+        Layout Orgânico
+      </button>
+      <button 
+        type="button" 
+        class="control-btn" 
+        [class.active]="layoutGrafo === 'circular'"
+        (click)="alternarLayout('circular')">
+        Layout Circular
+      </button>
+    </div>
+  </header>
+
+  <!-- ÁREA PRINCIPAL DO CANVAS DO GRAFO -->
+  <div class="grafo-canvas-wrapper">
+    <div 
+      echarts 
+      [options]="echartsOptions" 
+      class="echarts-graph"
+      (chartClick)="onChartClick($event)">
+    </div>
+
+    <!-- MINI CARD DE INSTRUÇÃO INTERATIVA -->
+    <div class="interactive-hint">
+      💡 <span>Arraste os nós, dê zoom ou clique em qualquer atividade para perguntar no chat</span>
+    </div>
+  </div>
+
+  <!-- RODAPÉ DE LEGENDA DO GRAFO COM CORES DESTACADAS -->
+  <footer class="grafo-footer">
+    <div class="legend-item">
+      <span class="legend-circle ug-hub-sample"></span>
+      <span>Nó Central (UG)</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-circle act-sample"></span>
+      <span>Atividade do PAT</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-circle status-ok-sample"></span>
+      <span>🟢 Concluída</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-circle status-atraso-sample"></span>
+      <span>🔴 Atrasada</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-line solid-line"></span>
+      <span>Vínculo Direto</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-line dashed-line"></span>
+      <span>Parceria Institucional</span>
+    </div>
+  </footer>
+
+</div>

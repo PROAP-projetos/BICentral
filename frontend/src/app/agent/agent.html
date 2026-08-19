@@ -3,16 +3,24 @@
   <!-- BARRA LATERAL (Sidebar) -->
   <aside class="sidebar">
     <div class="sidebar-header">
-      <a class="logo" routerLink="/">proIAp</a>
+      <a class="logo" (click)="voltarAoGrafo()" style="cursor: pointer;" title="Ir para o Grafo de Atividades">proIAp</a>
       <button class="new-chat-btn" (click)="iniciarNovoChat()">
-        Novo Chat
+        + Novo Chat
+      </button>
+    </div>
+
+    <!-- BOTÃO NAVEGAÇÃO GRAFO NA SIDEBAR -->
+    <div class="sidebar-nav">
+      <button class="nav-view-btn" [class.active]="!emModoChat" (click)="voltarAoGrafo()">
+        <span class="nav-icon">🕸️</span>
+        <span class="nav-label">Grafo do Ecossistema</span>
       </button>
     </div>
 
     <div class="chat-history">
-      <p class="section-title">Hoje</p>
+      <p class="section-title">Conversas</p>
       <ul>
-        <li *ngFor="let sessao of sessoes" [class.active]="sessao.id === sessaoAtual.id"
+        <li *ngFor="let sessao of sessoes" [class.active]="emModoChat && sessao.id === sessaoAtual.id"
           (click)="selecionarChat(sessao)">
           {{ sessao.titulo }}
         </li>
@@ -38,19 +46,31 @@
     </div>
   </aside>
 
-  <!-- ÁREA PRINCIPAL DO CHAT -->
+  <!-- ÁREA PRINCIPAL -->
   <main class="chat-area">
 
     <header class="chat-header">
-      <div class="model-selector" (click)="mudarModelo()">
-        <span class="model-name">{{ modeloAtivo }}</span>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="6 9 12 15 18 9"></polyline>
-        </svg>
+      <div class="header-left">
+        <button class="back-dashboard-btn" *ngIf="emModoChat" (click)="voltarAoGrafo()" title="Voltar ao Grafo de Atividades">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+          <span>Grafo de Atividades</span>
+        </button>
+        
+        <!-- SELETOR DE MODELO SÓ APARECE EM MODO CHAT -->
+        <div class="model-selector" *ngIf="emModoChat" (click)="mudarModelo()">
+          <span class="model-name">{{ modeloAtivo }}</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </div>
       </div>
 
       <div class="top-nav-links">
+        <!-- BOTÃO DE MEUS RELATÓRIOS -->
         <div class="notif-wrapper">
           <button class="notif-bell" type="button" (click)="toggleRelatorio()" aria-label="Gerar relatório" title="Gerar relatório">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -122,8 +142,34 @@
           </div>
         </div>
 
+        <!-- BOTÃO DE RANKING DE UGS (TROFÉU 🏆) -->
         <div class="notif-wrapper">
-          <button class="notif-bell" type="button" (click)="toggleNotificacoes()" aria-label="Notificações">
+          <button class="notif-bell" type="button" (click)="toggleRankingUg()" aria-label="Ranking de UGs" title="Ranking de UGs (LIVE)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+              <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+              <path d="M4 22h16"></path>
+              <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path>
+              <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path>
+              <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"></path>
+            </svg>
+          </button>
+
+          <div class="notif-panel ranking-panel" *ngIf="mostrarPainelRankingUg">
+            <div class="notif-panel-header">
+              <span>🏆 Ranking de Desempenho das UGs</span>
+              <button type="button" class="panel-close-btn" (click)="toggleRankingUg()">×</button>
+            </div>
+            <div class="notif-panel-body ranking-panel-body">
+              <app-leaderboard-ug></app-leaderboard-ug>
+            </div>
+          </div>
+        </div>
+
+        <!-- BOTÃO DE NOTIFICAÇÕES -->
+        <div class="notif-wrapper">
+          <button class="notif-bell" type="button" (click)="toggleNotificacoes()" aria-label="Notificações" title="Notificações">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round">
               <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
@@ -150,7 +196,7 @@
                   {{ tarefasExpandidas.has(i) ? 'ocultar tarefas' : 'ver tarefas (' + n.tarefas.length + ')' }}
                 </button>
                 <ul class="notif-tarefas" *ngIf="n.tarefas.length && tarefasExpandidas.has(i)">
-                  <li *ngFor="let t of n.tarefas">{{ t.titulo }} — {{ t.responsavel }} — prazo {{ t.prazo }}</li>
+                  <li *ngFor="let t of n.tarefas">{{ t.titulo }} — {{ t.responsavel || 'Sem responsável' }}<span *ngIf="t.prazo"> — prazo {{ t.prazo }}</span></li>
                 </ul>
                 <button class="notif-ver-painel" type="button" *ngIf="n.tarefas.length && tarefasExpandidas.has(i)"
                   (click)="abrirPainelAtrasos(n.departamento)">
@@ -165,107 +211,150 @@
       </div>
     </header>
 
-    <!-- O CORPO DA CONVERSA -->
-    <div class="chat-body" [class.is-empty]="messages.length === 0">
-
-      <!-- Título Dinâmico de Boas Vindas -->
-      <div class="empty-title" *ngIf="messages.length === 0">
-        <h2>{{ mensagemBoasVindas }}</h2>
-      </div>
-
-      <!-- Histórico de Mensagens -->
-      <div class="messages" #messagesContainer *ngIf="messages.length > 0">
-        <div *ngFor="let m of messages; let i = index" class="msg" [ngClass]="m.from">
-
-          <div class="avatar bot-avatar" *ngIf="m.from === 'bot'" title="proIAp">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <path
-                d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z">
-              </path>
-            </svg>
-          </div>
-
-          <div class="bubble" [class.has-chart]="m.spec">
-            <div class="message-actions" *ngIf="m.text">
-              <button
-                type="button"
-                class="message-action"
-                [class.copied]="mensagemCopiadaId === getMensagemId(i, m.text)"
-                (click)="copiarMensagem(m.text, i)"
-                [attr.aria-label]="m.from === 'user' ? 'Copiar prompt' : 'Copiar resposta'"
-                [attr.title]="mensagemCopiadaId === getMensagemId(i, m.text) ? 'Copiado' : (m.from === 'user' ? 'Copiar prompt' : 'Copiar resposta')">
-                <svg *ngIf="mensagemCopiadaId !== getMensagemId(i, m.text)" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
-                  <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
-                </svg>
-                <svg *ngIf="mensagemCopiadaId === getMensagemId(i, m.text)" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                  aria-hidden="true">
-                  <path d="M20 6 9 17l-5-5"></path>
-                </svg>
-              </button>
-              <button
-                type="button"
-                class="message-action"
-                *ngIf="m.from === 'user'"
-                (click)="editarPrompt(m.text)"
-                aria-label="Editar prompt"
-                title="Editar prompt">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M12 20h9"></path>
-                  <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
-                </svg>
-              </button>
-            </div>
-
-            <div *ngIf="m.text" class="message-text" [innerHTML]="formatarMensagem(m.text)"></div>
-
-            <div *ngIf="m.spec" class="chart-message">
-              <app-grafico-ia [spec]="m.spec"></app-grafico-ia>
-            </div>
-
-            <div *ngIf="m.fontes && m.fontes.length > 0" class="bubble-fontes">
-              <span class="fontes-label">📖 Baseado em:</span>
-              <div class="fontes-list">
-                <span class="fonte-badge" *ngFor="let f of m.fontes" (click)="abrirDocumento(f)"
-                  style="cursor: pointer;">
-                  {{ f }}
-                </span>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </div>
-
-      <!-- Área do Input de Texto -->
-      <div class="composer">
-        <p class="agent-error" *ngIf="erro">{{ erro }}</p>
-
-        <div class="agent-input-container">
-          <textarea
-            #promptInput
-            [(ngModel)]="input"
-            placeholder="Pergunte ao proIAp sobre os dados da PROAP..."
-            (input)="ajustarAlturaPrompt($event)"
-            (keydown)="aoPressionarPrompt($event)"
-            [disabled]="carregando"
-            rows="1"
-            autofocus></textarea>
-          <button class="send" [disabled]="carregando || input.length === 0" (click)="send()">
-            <svg *ngIf="!carregando" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 4l-8 8h6v8h4v-8h6z" />
-            </svg>
-            <span *ngIf="carregando" class="loading-dot">...</span>
+    <!-- VISÃO 1: TELA DE ENTRADA — PORTAL VISUAL PROIAP (LEADERBOARD DE UGS E GRAFO) -->
+    <div class="portal-home-wrapper" *ngIf="!emModoChat">
+      <!-- Barra Superior de Navegação do Portal -->
+      <div class="portal-nav-bar">
+        <div class="portal-tabs">
+          <button 
+            type="button" 
+            class="portal-tab-btn" 
+            [class.active]="abaEntradaAtiva === 'leaderboard'"
+            (click)="abaEntradaAtiva = 'leaderboard'">
+            🏆 Leaderboard de UGs (Desempenho Geral)
+          </button>
+          <button 
+            type="button" 
+            class="portal-tab-btn" 
+            [class.active]="abaEntradaAtiva === 'grafo'"
+            (click)="abaEntradaAtiva = 'grafo'">
+            🕸️ Grafo de Atividades
           </button>
         </div>
-        <p class="disclaimer">O proIAp pode cometer erros. Verifique as informações importantes no sistema.</p>
+
+        <button type="button" class="portal-iniciar-chat-btn" (click)="iniciarNovoChat()">
+          💬 Abrir Chat com proIAp
+        </button>
       </div>
 
+      <!-- ABA 1: LEADERBOARD DE UGS FUTURISTA (PRIMEIRA COISA QUE O USUÁRIO VÊ) -->
+      <div class="portal-tab-content leaderboard-scroll-area" *ngIf="abaEntradaAtiva === 'leaderboard'">
+        <app-leaderboard-ug (selecionarUg)="aoSelecionarNoGrafo($event)"></app-leaderboard-ug>
+      </div>
+
+      <!-- ABA 2: GRAFO DE ATIVIDADES CONECTADAS -->
+      <div class="portal-tab-content" *ngIf="abaEntradaAtiva === 'grafo'">
+        <app-grafo-atividades (selecionarAtividade)="aoSelecionarNoGrafo($event)"></app-grafo-atividades>
+      </div>
     </div>
+
+    <!-- VISÃO 2: MODO CHAT GEMINI/GPT (SÓ QUANDO O USUÁRIO CLICAR EM NOVO CHAT) -->
+    <div class="chat-mode-view" *ngIf="emModoChat">
+
+      <!-- O CORPO DA CONVERSA -->
+      <div class="chat-body" [class.is-empty]="messages.length === 0">
+
+        <!-- Título Dinâmico de Boas Vindas no Chat -->
+        <div class="empty-title" *ngIf="messages.length === 0">
+          <h2>{{ mensagemBoasVindas }}</h2>
+        </div>
+
+        <!-- Histórico de Mensagens -->
+        <div class="messages" #messagesContainer *ngIf="messages.length > 0">
+          <div *ngFor="let m of messages; let i = index" class="msg" [ngClass]="m.from">
+
+            <div class="avatar bot-avatar" *ngIf="m.from === 'bot'" title="proIAp">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path
+                  d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z">
+                </path>
+              </svg>
+            </div>
+
+            <div class="bubble" [class.has-chart]="m.spec">
+              <div class="message-actions" *ngIf="m.text">
+                <button
+                  type="button"
+                  class="message-action"
+                  [class.copied]="mensagemCopiadaId === getMensagemId(i, m.text)"
+                  (click)="copiarMensagem(m.text, i)"
+                  [attr.aria-label]="m.from === 'user' ? 'Copiar prompt' : 'Copiar resposta'"
+                  [attr.title]="mensagemCopiadaId === getMensagemId(i, m.text) ? 'Copiado' : (m.from === 'user' ? 'Copiar prompt' : 'Copiar resposta')">
+                  <svg *ngIf="mensagemCopiadaId !== getMensagemId(i, m.text)" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
+                    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                  </svg>
+                  <svg *ngIf="mensagemCopiadaId === getMensagemId(i, m.text)" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    aria-hidden="true">
+                    <path d="M20 6 9 17l-5-5"></path>
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="message-action"
+                  *ngIf="m.from === 'user'"
+                  (click)="editarPrompt(m.text)"
+                  aria-label="Editar prompt"
+                  title="Editar prompt">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 20h9"></path>
+                    <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+                  </svg>
+                </button>
+              </div>
+
+              <div *ngIf="m.text" class="message-text" [innerHTML]="formatarMensagem(m.text)"></div>
+
+              <div *ngIf="m.spec" class="chart-message">
+                <app-grafico-ia [spec]="m.spec"></app-grafico-ia>
+              </div>
+
+              <div *ngIf="m.fontes && m.fontes.length > 0" class="bubble-fontes">
+                <span class="fontes-label">📖 Baseado em:</span>
+                <div class="fontes-list">
+                  <span class="fonte-badge" *ngFor="let f of m.fontes" (click)="abrirDocumento(f)"
+                    style="cursor: pointer;">
+                    {{ f }}
+                  </span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Área do Input de Texto (Composer só no modo Chat) -->
+        <div class="composer">
+          <p class="agent-error" *ngIf="erro">{{ erro }}</p>
+
+          <div class="agent-input-container">
+            <textarea
+              #promptInput
+              [(ngModel)]="input"
+              placeholder="Pergunte ao proIAp sobre os dados da PROAP..."
+              (input)="ajustarAlturaPrompt($event)"
+              (keydown)="aoPressionarPrompt($event)"
+              [disabled]="carregando"
+              rows="1"
+              autofocus></textarea>
+            <button class="send" [disabled]="carregando || input.length === 0" (click)="send()">
+              <svg *ngIf="!carregando" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 4l-8 8h6v8h4v-8h6z" />
+              </svg>
+              <span *ngIf="carregando" class="loading-dot">...</span>
+            </button>
+          </div>
+          <p class="disclaimer">O proIAp pode cometer erros. Verifique as informações importantes no sistema.</p>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- MODAIS DE OVERLAY -->
     <div class="pdf-viewer-overlay" *ngIf="arquivoAberto" (click)="fecharViewer()">
       <div class="pdf-viewer-content" (click)="$event.stopPropagation()">
         <div class="viewer-header">
@@ -304,5 +393,6 @@
         </div>
       </div>
     </div>
+
   </main>
 </div>

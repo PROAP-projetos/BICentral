@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { GraficoIaComponent } from '../grafico-ia/grafico-ia';
+import { LeaderboardUgComponent } from '../leaderboard-ug/leaderboard-ug.component';
+import { GrafoAtividadesComponent } from '../grafo-atividades/grafo-atividades.component';
 import { AgentService, Notificacao, PainelAtrasos, RelatorioHistoricoItem } from '../services/agent.service';
 import { AdminService } from '../services/admin.service';
 import { SafeUrlPipe } from '../pipes/safe-url.pipe';
@@ -23,7 +25,7 @@ interface ChatSession {
 @Component({
   selector: 'app-agent',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, GraficoIaComponent, SafeUrlPipe],
+  imports: [CommonModule, FormsModule, RouterLink, GraficoIaComponent, LeaderboardUgComponent, GrafoAtividadesComponent, SafeUrlPipe],
   templateUrl: './agent.html',
   styleUrls: ['./agent.css']
 })
@@ -160,7 +162,14 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.modeloAtivoIndex = (this.modeloAtivoIndex + 1) % this.modelos.length;
   }
 
-  iniciarNovoChat() {
+  emModoChat = false;
+  abaEntradaAtiva: 'leaderboard' | 'grafo' = 'leaderboard';
+
+  voltarAoGrafo(): void {
+    this.emModoChat = false;
+  }
+
+  iniciarNovoChat(): void {
     const novaSessao: ChatSession = {
       id: Date.now(),
       titulo: 'Nova Conversa',
@@ -169,20 +178,33 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.sessoes.unshift(novaSessao);
     this.sessaoAtual = novaSessao;
     this.erro = '';
+    this.emModoChat = true;
     this.gerarMensagemBoasVindas();
+  }
+
+  aoSelecionarNoGrafo(promptText: string): void {
+    this.iniciarNovoChat();
+    this.input = promptText;
+    setTimeout(() => {
+      if (this.promptInput && this.promptInput.nativeElement) {
+        this.promptInput.nativeElement.focus();
+      }
+    }, 100);
   }
 
   encodeURIComponent(url: string | null): string {
     return url ? encodeURIComponent(url) : '';
   }
 
-  selecionarChat(sessao: ChatSession) {
+  selecionarChat(sessao: ChatSession): void {
     this.sessaoAtual = sessao;
     this.erro = '';
+    this.emModoChat = true;
     this.agendarScrollParaFim();
   }
 
-  send() {
+  send(): void {
+    this.emModoChat = true;
     const text = (this.input || '').trim();
     if (!text || this.carregando) return;
 
@@ -318,8 +340,22 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
       });
   }
 
+  mostrarPainelRankingUg = false;
+
+  toggleRankingUg(): void {
+    this.mostrarPainelRankingUg = !this.mostrarPainelRankingUg;
+    if (this.mostrarPainelRankingUg) {
+      if (this.mostrarPainelNotificacoes) this.mostrarPainelNotificacoes = false;
+      if (this.mostrarPainelRelatorio) this.mostrarPainelRelatorio = false;
+    }
+  }
+
   toggleNotificacoes(): void {
     this.mostrarPainelNotificacoes = !this.mostrarPainelNotificacoes;
+    if (this.mostrarPainelNotificacoes) {
+      if (this.mostrarPainelRelatorio) this.mostrarPainelRelatorio = false;
+      if (this.mostrarPainelRankingUg) this.mostrarPainelRankingUg = false;
+    }
   }
 
   get temAlertaNegativo(): boolean {
@@ -335,6 +371,8 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   }
 
   abrirPainelAtrasos(departamento: string): void {
+    this.mostrarPainelNotificacoes = false;
+    this.mostrarPainelRankingUg = false;
     this.carregandoPainelAtrasos = true;
     this.agentService.buscarPainelAtrasos(departamento)
       .pipe(finalize(() => this.carregandoPainelAtrasos = false))
@@ -353,7 +391,10 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   // ==========================================
   toggleRelatorio(): void {
     this.mostrarPainelRelatorio = !this.mostrarPainelRelatorio;
-    if (this.mostrarPainelNotificacoes) this.mostrarPainelNotificacoes = false;
+    if (this.mostrarPainelRelatorio) {
+      if (this.mostrarPainelNotificacoes) this.mostrarPainelNotificacoes = false;
+      if (this.mostrarPainelRankingUg) this.mostrarPainelRankingUg = false;
+    }
 
     if (this.mostrarPainelRelatorio) {
       this.carregarMeusRelatorios();

@@ -1,0 +1,302 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.leaderboard-container {
+  background: var(--bg-main, #ffffff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 12px;
+  padding: 1.15rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+  color: var(--text-primary, #0d0d0d);
+}
+
+/* ==========================================
+   HEADER COMPACTO
+   ========================================== */
+
+.leaderboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.live-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #0284c7;
+  margin-bottom: 0.2rem;
+}
+
+.pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #0284c7;
+  box-shadow: 0 0 8px #0284c7;
+  animation: pulse-glow 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.3); }
+}
+
+.header-main-title h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary, #0d0d0d);
+}
+
+.subtitle {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  color: var(--text-secondary, #6b7280);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  background: var(--bg-sidebar-hover, #ececec);
+  color: var(--text-primary, #0d0d0d);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+  border-color: #0284c7;
+  color: #0284c7;
+}
+
+.auto-btn.active {
+  background: rgba(234, 179, 8, 0.15);
+  border-color: #eab308;
+  color: #ca8a04;
+}
+
+.mode-switch {
+  display: flex;
+  background: var(--bg-input, #f4f4f4);
+  padding: 2px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #e5e7eb);
+}
+
+.switch-btn {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary, #6b7280);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.switch-btn.active {
+  background: #0284c7;
+  color: #ffffff;
+}
+
+/* ==========================================
+   GRID DE CARDS COMPACTOS (ANIMAÇÃO FLIP)
+   ========================================== */
+
+.leaderboard-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ug-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  background: var(--bg-input, #f4f4f4);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1),
+              background 0.3s ease,
+              border-color 0.3s ease,
+              box-shadow 0.3s ease;
+}
+
+.ug-card:hover {
+  border-color: #0284c7;
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.15);
+}
+
+/* TOP 3 RANKING DESTAQUES */
+.ug-card.rank-top1 {
+  background: linear-gradient(90deg, rgba(234, 179, 8, 0.1) 0%, var(--bg-input) 100%);
+  border-color: rgba(234, 179, 8, 0.4);
+}
+
+.ug-card.rank-top2 {
+  background: linear-gradient(90deg, rgba(148, 163, 184, 0.1) 0%, var(--bg-input) 100%);
+  border-color: rgba(148, 163, 184, 0.4);
+}
+
+.ug-card.rank-top3 {
+  background: linear-gradient(90deg, rgba(217, 119, 6, 0.1) 0%, var(--bg-input) 100%);
+  border-color: rgba(217, 119, 6, 0.4);
+}
+
+.ug-card.subiu-destaque {
+  animation: glow-pulse 2s ease-in-out;
+}
+
+@keyframes glow-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.8); border-color: #10b981; }
+  50% { box-shadow: 0 0 15px 3px rgba(16, 185, 129, 0.5); border-color: #10b981; }
+  100% { box-shadow: none; }
+}
+
+.ug-rank-badge {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.rank-number {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.ug-trend-indicator {
+  min-width: 40px;
+  flex-shrink: 0;
+}
+
+.trend-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.trend-badge.subiu {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+}
+
+.trend-badge.caiu {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+.trend-badge.neutro {
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--text-secondary);
+}
+
+.ug-info {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.ug-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  overflow: hidden;
+}
+
+.ug-sigla {
+  font-weight: 800;
+  font-size: 0.88rem;
+  color: var(--text-primary);
+}
+
+.ug-nome {
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.progress-track {
+  width: 100%;
+  height: 5px;
+  background: var(--border-color);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.progress-fill.pct-alto { background: #10b981; }
+.progress-fill.pct-medio { background: #0284c7; }
+.progress-fill.pct-baixo { background: #f97316; }
+
+.ug-metrics {
+  text-align: right;
+  flex-shrink: 0;
+  min-width: 80px;
+}
+
+.metric-pct {
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.metric-pct.pct-alto { color: #10b981; }
+.metric-pct.pct-medio { color: #0284c7; }
+.metric-pct.pct-baixo { color: #f97316; }
+
+.metric-sub {
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  margin-top: 0.2rem;
+}
+
+.echarts-wrap {
+  height: 280px;
+  width: 100%;
+}
+
+.echarts-chart {
+  width: 100%;
+  height: 100%;
+}

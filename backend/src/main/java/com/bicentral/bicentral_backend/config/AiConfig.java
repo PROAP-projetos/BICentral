@@ -93,7 +93,16 @@ public class AiConfig {
     @Bean("localEmbeddingModel")
     @Primary
     public EmbeddingModel localEmbeddingModel() {
-        return new AllMiniLmL6V2EmbeddingModel();
+        try {
+            System.setProperty("ai.djl.onnx.disable_cuda", "true");
+            return new AllMiniLmL6V2EmbeddingModel();
+        } catch (Throwable t) {
+            System.err.println(">>> AVISO: Não foi possível carregar AllMiniLmL6V2EmbeddingModel local (" + t.getMessage() + "). Utilizando Gemini Embedding como fallback.");
+            return GoogleAiEmbeddingModel.builder()
+                    .apiKey(geminiApiKey)
+                    .modelName("gemini-embedding-001")
+                    .build();
+        }
     }
 
     @Bean("geminiEmbeddingModel")

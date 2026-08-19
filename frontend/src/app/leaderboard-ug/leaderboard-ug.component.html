@@ -1,0 +1,120 @@
+<div class="leaderboard-container">
+  
+  <!-- CABEÇALHO DO PAINEL FUTURISTA -->
+  <header class="leaderboard-header">
+    <div class="header-main-title">
+      <div class="live-indicator">
+        <span class="pulse-dot"></span>
+        <span class="live-text">PROAP · LIVE RANKING</span>
+      </div>
+      <h2>Painel de Desempenho das UGs</h2>
+      <p class="subtitle">Ranking em tempo real das Pró-Reitorias e Diretorias (PAT / PROAP)</p>
+    </div>
+
+    <div class="header-actions">
+      <!-- BOTÃO SIMULAR REORDENAÇÃO -->
+      <button 
+        type="button" 
+        class="action-btn simular-btn" 
+        (click)="simularReordenacao()" 
+        title="Simular alteração de notas e ver a animação de troca de posições">
+        ⚡ Simular Reordenação
+      </button>
+
+      <!-- BOTÃO AUTO SIMULAÇÃO -->
+      <button 
+        type="button" 
+        class="action-btn auto-btn" 
+        [class.active]="autoSimulacaoAtiva" 
+        (click)="toggleAutoSimulacao()">
+        {{ autoSimulacaoAtiva ? '⏸️ Pausar Animação' : '▶️ Loop Automático' }}
+      </button>
+
+      <!-- SELETOR DE MODO (CARDS FLIP VS ECHARTS) -->
+      <div class="mode-switch">
+        <button 
+          type="button" 
+          class="switch-btn" 
+          [class.active]="modoVisualizacao === 'cards'"
+          (click)="alternarModo('cards')">
+          Cards Animados
+        </button>
+        <button 
+          type="button" 
+          class="switch-btn" 
+          [class.active]="modoVisualizacao === 'echarts'"
+          (click)="alternarModo('echarts')">
+          ECharts Bar
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MODO 1: CARDS FUTURISTAS REORDENÁVEIS (FLIP ANIMATION) -->
+  <div class="leaderboard-grid" *ngIf="modoVisualizacao === 'cards'">
+    
+    <div 
+      class="ug-card" 
+      *ngFor="let ug of ugs; let i = index; trackBy: trackByUgId"
+      [class.rank-top1]="ug.posicao === 1"
+      [class.rank-top2]="ug.posicao === 2"
+      [class.rank-top3]="ug.posicao === 3"
+      [class.subiu-destaque]="ug.destaqueAnimacao"
+      (click)="clicarUg(ug)"
+      title="Clique para abrir chat e analisar {{ ug.sigla }} com o proIAp">
+      
+      <!-- POSIÇÃO / MEDALHA -->
+      <div class="ug-rank-badge">
+        <span class="rank-icon" *ngIf="ug.posicao <= 3">{{ getMedalhaEmoji(ug.posicao) }}</span>
+        <span class="rank-number" *ngIf="ug.posicao > 3">#{{ ug.posicao }}</span>
+      </div>
+
+      <!-- TENDÊNCIA E VARIAÇÃO DE POSIÇÃO -->
+      <div class="ug-trend-indicator">
+        <span class="trend-badge subiu" *ngIf="ug.variacaoPosicao > 0" title="Subiu {{ ug.variacaoPosicao }} posições">
+          ▲ +{{ ug.variacaoPosicao }}
+        </span>
+        <span class="trend-badge caiu" *ngIf="ug.variacaoPosicao < 0" title="Caiu {{ -ug.variacaoPosicao }} posições">
+          ▼ {{ ug.variacaoPosicao }}
+        </span>
+        <span class="trend-badge neutro" *ngIf="ug.variacaoPosicao === 0">
+          • 0
+        </span>
+      </div>
+
+      <!-- DADOS PRINCIPAIS DA UG -->
+      <div class="ug-info">
+        <div class="ug-title-row">
+          <span class="ug-sigla">{{ ug.sigla }}</span>
+          <span class="ug-nome">{{ ug.nome }}</span>
+        </div>
+
+        <!-- BARRA DE PROGRESSO REATIVA -->
+        <div class="progress-track">
+          <div 
+            class="progress-fill" 
+            [ngClass]="getClasseCorPct(ug.percentual)"
+            [style.width.%]="ug.percentual">
+          </div>
+        </div>
+      </div>
+
+      <!-- MÉTRICAS DE EXECUÇÃO -->
+      <div class="ug-metrics">
+        <div class="metric-pct" [ngClass]="getClasseCorPct(ug.percentual)">
+          {{ ug.percentual }}%
+        </div>
+        <div class="metric-sub">
+          {{ ug.tarefasConcluidas }}/{{ ug.totalTarefas }} tarefas
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODO 2: COMPARAÇÃO ECHARTS REALTIME SORT -->
+  <div class="echarts-wrap" *ngIf="modoVisualizacao === 'echarts'">
+    <div echarts [options]="echartsOptions" class="echarts-chart"></div>
+  </div>
+
+</div>
