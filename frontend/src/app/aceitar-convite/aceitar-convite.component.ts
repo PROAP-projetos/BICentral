@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { EquipeService } from '../services/equipe.services';
+import { EquipeService } from '../services/equipe.service';
 
 @Component({
   selector: 'app-aceitar-convite',

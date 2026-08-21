@@ -12,19 +12,25 @@
       </option>
     </select>
 
-    <input
-      type="text"
-      [(ngModel)]="departamento"
-      name="departamento"
-      placeholder="Departamento"
-      required />
+    <div class="multi-select-wrap">
+      <button type="button" class="multi-select-toggle" (click)="dropdownAberto = !dropdownAberto">
+        <span>{{ departamentosSelecionados.length === 0 ? 'Selecione departamentos' : departamentosSelecionados.length + ' selecionado(s)' }}</span>
+        <span class="chevron">▾</span>
+      </button>
+      <div class="multi-select-panel" *ngIf="dropdownAberto">
+        <label class="multi-select-option" *ngFor="let dep of departamentosDisponiveis">
+          <input type="checkbox" [checked]="departamentosSelecionados.includes(dep)" (change)="toggleDepartamento(dep)" />
+          <span>{{ dep }}</span>
+        </label>
+      </div>
+    </div>
 
     <select [(ngModel)]="tipoUnidade" name="tipoUnidade">
       <option value="UA">UA</option>
       <option value="UG">UG</option>
     </select>
 
-    <button class="btn btn-primary btn-sm" type="submit" [disabled]="!usuarioId || !departamento.trim() || salvando">
+    <button class="btn btn-primary btn-sm" type="submit" [disabled]="!usuarioId || departamentosSelecionados.length === 0 || salvando">
       Adicionar
     </button>
   </form>

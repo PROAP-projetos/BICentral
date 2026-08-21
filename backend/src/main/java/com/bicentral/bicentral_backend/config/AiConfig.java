@@ -47,7 +47,7 @@ public class AiConfig {
         return OpenAiChatModel.builder()
                 .apiKey(groqApiKey)
                 .baseUrl("https://api.groq.com/openai/v1")
-                .modelName("llama-3.3-70b-versatile")
+                .modelName("openai/gpt-oss-120b")
                 .temperature(0.0)
                 .build();
     }
@@ -100,7 +100,7 @@ public class AiConfig {
             System.err.println(">>> AVISO: Não foi possível carregar AllMiniLmL6V2EmbeddingModel local (" + t.getMessage() + "). Utilizando Gemini Embedding como fallback.");
             return GoogleAiEmbeddingModel.builder()
                     .apiKey(geminiApiKey)
-                    .modelName("gemini-embedding-001")
+                    .modelName("text-embedding-004")
                     .build();
         }
     }

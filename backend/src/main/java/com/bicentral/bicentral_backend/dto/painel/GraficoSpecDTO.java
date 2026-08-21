@@ -3,7 +3,7 @@ package com.bicentral.bicentral_backend.dto.painel;
 import java.util.List;
 import dev.langchain4j.model.output.structured.Description;
 
-public record GraficoSpec(
+public record GraficoSpecDTO(
     
     @Description("Crie uma mensagem natural, amigável e SEMPRE VARIADA. Informe os dados principais que você encontrou de forma resumida e pergunte se o usuário confirma a geração do gráfico. Termine SEMPRE com um ponto de interrogação (?). NUNCA use dois pontos (:) no final. Exemplo de tom: 'Encontrei os dados de X e Y no documento. Posso gerar o gráfico com esses números?'")
     String mensagemContexto,
@@ -21,7 +21,7 @@ public record GraficoSpec(
     List<String> eixoX,
     
     @Description("A lista de séries de dados reais extraídos do contexto para popular o gráfico")
-    List<SerieGrafico> series,
+    List<SerieGraficoDTO> series,
     
     @Description("true se ainda está aguardando confirmação do usuário, false se já pode renderizar o gráfico")
     Boolean aguardandoConfirmacao

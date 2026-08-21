@@ -24,6 +24,15 @@ export interface GerenteDepartamento {
   createdAt: string;
 }
 
+export interface UsuarioResponsavel {
+  id: number;
+  usuarioId: number;
+  usuarioNome: string | null;
+  usuarioEmail: string | null;
+  nomeResponsavel: string;
+  createdAt: string;
+}
+
 export interface ConfiguracaoNotificacao {
   id: number;
   limiteBaixoPct: number;
@@ -94,6 +103,25 @@ export class AdminService {
 
   removerGerente(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiURL}/gerentes/${id}`);
+  }
+
+  listarResponsaveis(): Observable<UsuarioResponsavel[]> {
+    return this.http.get<UsuarioResponsavel[]>(`${this.apiURL}/responsaveis`);
+  }
+
+  adicionarResponsavel(usuarioId: number, nomeResponsavel: string): Observable<UsuarioResponsavel> {
+    return this.http.post<UsuarioResponsavel>(`${this.apiURL}/responsaveis`, {
+      usuarioId,
+      nomeResponsavel
+    });
+  }
+
+  removerResponsavel(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiURL}/responsaveis/${id}`);
+  }
+
+  buscarResponsaveisPat(busca: string): Observable<string[]> {
+    return this.http.get<string[]>(`${this.apiURL}/responsaveis-pat`, { params: { busca } });
   }
 
   buscarConfiguracoesNotificacao(): Observable<ConfiguracaoNotificacao> {

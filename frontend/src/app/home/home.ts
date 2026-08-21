@@ -6,7 +6,7 @@ import { interval, Subscription, of } from 'rxjs';
 import { switchMap, catchError } from 'rxjs/operators';
 import { FormBuilder, ReactiveFormsModule, Validators, FormGroup } from '@angular/forms';
 import { AdminService } from '../services/admin.service';
-import { EquipeService, Equipe } from '../services/equipe.services';
+import { EquipeService, Equipe } from '../services/equipe.service';
 
 // ✅ ajuste o path real do seu projeto
 import { AddPainelComponent } from '../add-painel/add-painel.component';

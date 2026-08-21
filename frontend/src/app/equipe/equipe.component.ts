@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { EquipeService, Equipe, MembroEquipe } from '../services/equipe.services';
+import { EquipeService, Equipe, MembroEquipe } from '../services/equipe.service';
 
 export type UserRole = 'VIEWER' | 'EDITOR' | 'ADMIN';
 
