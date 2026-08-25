@@ -69,6 +69,7 @@
 .agent-input-container textarea,
 .notif-panel-body,
 .painel-atrasos-body,
+.ranking-panel-view,
 :host ::ng-deep .message-table-wrap {
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
@@ -80,6 +81,7 @@
 .agent-input-container textarea:hover,
 .notif-panel-body:hover,
 .painel-atrasos-body:hover,
+.ranking-panel-view:hover,
 :host ::ng-deep .message-table-wrap:hover {
   scrollbar-color: var(--text-secondary) transparent;
 }
@@ -90,6 +92,7 @@
 .agent-input-container textarea::-webkit-scrollbar,
 .notif-panel-body::-webkit-scrollbar,
 .painel-atrasos-body::-webkit-scrollbar,
+.ranking-panel-view::-webkit-scrollbar,
 :host ::ng-deep .message-table-wrap::-webkit-scrollbar {
   width: 4px;
   height: 4px;
@@ -101,6 +104,7 @@
 .agent-input-container textarea::-webkit-scrollbar-button,
 .notif-panel-body::-webkit-scrollbar-button,
 .painel-atrasos-body::-webkit-scrollbar-button,
+.ranking-panel-view::-webkit-scrollbar-button,
 :host ::ng-deep .message-table-wrap::-webkit-scrollbar-button {
   display: none;
   width: 0;
@@ -113,6 +117,7 @@
 .agent-input-container textarea::-webkit-scrollbar-track,
 .notif-panel-body::-webkit-scrollbar-track,
 .painel-atrasos-body::-webkit-scrollbar-track,
+.ranking-panel-view::-webkit-scrollbar-track,
 :host ::ng-deep .message-table-wrap::-webkit-scrollbar-track {
   background: transparent;
 }
@@ -123,6 +128,7 @@
 .agent-input-container textarea::-webkit-scrollbar-thumb,
 .notif-panel-body::-webkit-scrollbar-thumb,
 .painel-atrasos-body::-webkit-scrollbar-thumb,
+.ranking-panel-view::-webkit-scrollbar-thumb,
 :host ::ng-deep .message-table-wrap::-webkit-scrollbar-thumb {
   background: transparent;
   border-radius: 999px;
@@ -134,6 +140,7 @@
 .agent-input-container textarea:hover::-webkit-scrollbar-thumb,
 .notif-panel-body:hover::-webkit-scrollbar-thumb,
 .painel-atrasos-body:hover::-webkit-scrollbar-thumb,
+.ranking-panel-view:hover::-webkit-scrollbar-thumb,
 :host ::ng-deep .message-table-wrap:hover::-webkit-scrollbar-thumb {
   background: var(--text-secondary);
   opacity: 0.4;
@@ -145,6 +152,7 @@
 .agent-input-container textarea::-webkit-scrollbar-thumb:hover,
 .notif-panel-body::-webkit-scrollbar-thumb:hover,
 .painel-atrasos-body::-webkit-scrollbar-thumb:hover,
+.ranking-panel-view::-webkit-scrollbar-thumb:hover,
 :host ::ng-deep .message-table-wrap::-webkit-scrollbar-thumb:hover {
   background: var(--text-secondary);
 }
@@ -219,6 +227,36 @@
 }
 .sidebar-reopen-btn:hover { background: var(--bg-sidebar-hover); color: var(--text-primary); }
 
+.sidebar-nav {
+  margin-bottom: 0.75rem;
+}
+
+.nav-ranking-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.3rem 0.75rem 0.1rem;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: none;
+  opacity: 0.75;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.nav-ranking-link:hover {
+  opacity: 1;
+  color: var(--text-primary);
+}
+
+.nav-ranking-icon {
+  flex-shrink: 0;
+}
+
 .new-chat-btn {
   width: 100%; padding: 0.75rem; background: transparent;
   border: none; border-radius: 8px; color: var(--text-primary);
@@ -284,6 +322,81 @@
 .chat-body {
   flex-grow: 1; display: flex; flex-direction: column;
   overflow: hidden; align-items: center; width: 100%;
+}
+
+.ranking-panel-view {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  width: 100%;
+  padding: 0 1.5rem 1.5rem;
+  box-sizing: border-box;
+}
+
+.ranking-panel-view app-leaderboard-ug,
+.ranking-panel-view app-grafo-atividades {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+}
+
+.painel-topo-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1.25rem 0 0.75rem -0.35rem;
+}
+
+.voltar-chat-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: #0284c7;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+
+.voltar-chat-btn:hover {
+  background: rgba(2, 132, 199, 0.1);
+  border-color: rgba(2, 132, 199, 0.25);
+}
+
+.painel-abas {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.painel-aba-btn {
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-color, rgba(148, 163, 184, 0.25));
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+}
+
+.painel-aba-btn:hover {
+  border-color: #0284c7;
+  color: #0284c7;
+}
+
+.painel-aba-btn.active {
+  background: #0284c7;
+  border-color: #0284c7;
+  color: #ffffff;
 }
 
 .chat-body.is-empty { justify-content: center; }

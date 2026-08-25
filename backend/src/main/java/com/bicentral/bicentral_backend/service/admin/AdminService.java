@@ -44,6 +44,16 @@ public class AdminService {
         this.jdbcTemplate = jdbcTemplate;
         garantirTabelaAdmins();
         garantirTabelaResponsaveis();
+        garantirIndiceGerentes();
+    }
+
+    // gerentes_departamento foi criada direto no banco (não tem CREATE TABLE aqui no código),
+    // e nunca teve proteção contra duplicata — foi exatamente essa tabela que duplicou de
+    // verdade quando um cadastro foi enviado duas vezes seguidas. Um usuário pode legitimamente
+    // gerenciar mais de um departamento, então a chave única é o PAR (usuario_id, departamento),
+    // não usuario_id sozinho.
+    private void garantirIndiceGerentes() {
+        jdbcTemplate.execute("CREATE UNIQUE INDEX IF NOT EXISTS gerentes_departamento_usuario_depto_key ON gerentes_departamento (usuario_id, departamento)");
     }
 
     private void garantirTabelaResponsaveis() {
@@ -59,6 +69,12 @@ public class AdminService {
         // essas colunas separadamente, direto com ALTER, que funciona mesmo já existindo.
         jdbcTemplate.execute("ALTER TABLE usuario_responsavel ADD COLUMN IF NOT EXISTS id BIGSERIAL");
         jdbcTemplate.execute("ALTER TABLE usuario_responsavel ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now()");
+        // Sem isso, dois cliques seguidos em "adicionar responsável" (ou duas requisições quase
+        // simultâneas) podem criar duas linhas pro mesmo usuário — e buscarMinhasTarefas() espera
+        // exatamente uma linha por usuario_id, quebrando "minhas tarefas" pra essa pessoa. Índice
+        // único (não constraint) porque Postgres não tem "ADD CONSTRAINT IF NOT EXISTS", mas index
+        // único tem o IF NOT EXISTS e serve pro mesmo propósito, inclusive pro ON CONFLICT abaixo.
+        jdbcTemplate.execute("CREATE UNIQUE INDEX IF NOT EXISTS usuario_responsavel_usuario_id_key ON usuario_responsavel (usuario_id)");
     }
 
     private void garantirTabelaAdmins() {
@@ -68,14 +84,15 @@ public class AdminService {
             )
             """);
 
-        Integer total = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM admins_sistema", Integer.class);
-        if (total == null || total == 0) {
-            jdbcTemplate.update("""
-                INSERT INTO admins_sistema (usuario_id)
-                VALUES (?)
-                ON CONFLICT (usuario_id) DO NOTHING
-                """, BOOTSTRAP_ADMIN_ID);
-        }
+        // Sempre garante o admin de bootstrap, não só quando a tabela está totalmente vazia — do
+        // jeito que era antes. Só rodar quando vazia mudava o comportamento sem isso ter sido
+        // combinado: se o admin de bootstrap fosse removido e outro colocado no lugar, ele não
+        // voltava mais sozinho a cada restart. ON CONFLICT DO NOTHING já é idempotente por si só.
+        jdbcTemplate.update("""
+            INSERT INTO admins_sistema (usuario_id)
+            VALUES (?)
+            ON CONFLICT (usuario_id) DO NOTHING
+            """, BOOTSTRAP_ADMIN_ID);
     }
 
     public boolean isAdmin(Long usuarioId) {
@@ -165,9 +182,12 @@ public class AdminService {
         validarUsuarioExistente(request.usuarioId());
         validarGerenteRequest(request);
 
+        // ON CONFLICT em vez de INSERT simples: clique duplo/requisição repetida atualiza o
+        // vínculo existente em vez de criar uma segunda linha pro mesmo usuário+departamento.
         Long id = jdbcTemplate.queryForObject("""
             INSERT INTO gerentes_departamento (usuario_id, departamento, tipo_unidade)
             VALUES (?, ?, ?)
+            ON CONFLICT (usuario_id, departamento) DO UPDATE SET tipo_unidade = EXCLUDED.tipo_unidade
             RETURNING id
             """, Long.class, request.usuarioId(), request.departamento().trim(), request.tipoUnidade());
 
@@ -210,11 +230,12 @@ public class AdminService {
         }
 
         // Cada usuario so pode ter um responsavel vinculado; um novo vinculo substitui o anterior.
-        jdbcTemplate.update("DELETE FROM usuario_responsavel WHERE usuario_id = ?", request.usuarioId());
-
+        // Upsert atômico (em vez de DELETE + INSERT em dois passos) pra não deixar janela de corrida
+        // em cliques duplos/requisições simultâneas — o índice único acima é o que garante isso.
         Long id = jdbcTemplate.queryForObject("""
             INSERT INTO usuario_responsavel (usuario_id, nome_responsavel)
             VALUES (?, ?)
+            ON CONFLICT (usuario_id) DO UPDATE SET nome_responsavel = EXCLUDED.nome_responsavel
             RETURNING id
             """, Long.class, request.usuarioId(), request.nomeResponsavel().trim());
 

@@ -253,13 +253,25 @@ public class RelatorioService {
      * tamanho em vez de quebrar.
      */
     private List<AcaoAnalisadaDTO> combinarAnaliseComJustificativas(String departamento, List<AcaoComCodigo> piores, List<JustificativaAcaoDTO> justificativas) {
-        List<AcaoAnalisadaDTO> resultado = new ArrayList<>();
         int total = Math.min(piores.size(), justificativas.size());
+
+        List<String> codigos = piores.stream()
+                .limit(total)
+                .map(AcaoComCodigo::codigo)
+                .filter(c -> c != null && !c.isBlank())
+                .toList();
+
+        // Antes: 1 query de tarefas + 1 query de departamentos parceiros POR ação (até 30 idas ao
+        // banco pras 15 piores ações). Agora: busca tudo de uma vez com IN (...) e agrupa em Java.
+        Map<String, List<TarefaResponsavelDTO>> tarefasPorCodigo = buscarTarefasPorAcoes(departamento, codigos);
+        Map<String, List<DepartamentoParceiroDTO>> parceirosPorCodigo = buscarOutrosDepartamentosPorAcoes(codigos, departamento);
+
+        List<AcaoAnalisadaDTO> resultado = new ArrayList<>();
         for (int i = 0; i < total; i++) {
             AcaoComCodigo acao = piores.get(i);
             JustificativaAcaoDTO justificativa = justificativas.get(i);
-            List<TarefaResponsavelDTO> tarefas = buscarTarefasDaAcao(departamento, acao.codigo());
-            List<DepartamentoParceiroDTO> outrosDepartamentos = buscarOutrosDepartamentos(acao.codigo(), departamento);
+            List<TarefaResponsavelDTO> tarefas = tarefasPorCodigo.getOrDefault(acao.codigo(), List.of());
+            List<DepartamentoParceiroDTO> outrosDepartamentos = parceirosPorCodigo.getOrDefault(acao.codigo(), List.of());
             resultado.add(new AcaoAnalisadaDTO(
                     acao.acao(),
                     acao.percentual(),
@@ -300,63 +312,80 @@ public class RelatorioService {
     }
 
     /**
-     * Tarefas operacionais do próprio departamento sob essa ação (pat_tarefas),
-     * com responsável e prazo — dá contexto de "quem" e "quando" à justificativa da IA.
+     * Tarefas operacionais do próprio departamento (pat_tarefas), com responsável e prazo, pra
+     * TODAS as ações recebidas de uma vez (1 query com IN, não 1 query por ação) — agrupadas por
+     * código da ação, no máximo 3 tarefas por código (mais recentes/próximas primeiro).
      */
-    private List<TarefaResponsavelDTO> buscarTarefasDaAcao(String departamento, String codigoAcao) {
-        if (codigoAcao == null || codigoAcao.isBlank()) {
-            return List.of();
+    private Map<String, List<TarefaResponsavelDTO>> buscarTarefasPorAcoes(String departamento, List<String> codigos) {
+        if (codigos.isEmpty()) {
+            return Map.of();
         }
         try {
-            List<Map<String, Object>> tarefas = jdbcTemplate.queryForList("""
-                SELECT
-                    dados_completos->>'TÍTULO DA TAREFA' AS titulo_tarefa,
-                    dados_completos->>'Responsável' AS responsavel,
-                    to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') AS data_final
-                FROM pat_tarefas
-                WHERE departamento ILIKE ?
-                    AND substring(dados_completos->>'ITEM DO PAT' from '[A-Z]+ [0-9]+(?:\\.[0-9]+)*') = ?
-                ORDER BY to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') ASC NULLS LAST
-                LIMIT 3
-                """, "%" + departamento.trim() + "%", codigoAcao);
+            String placeholders = String.join(",", java.util.Collections.nCopies(codigos.size(), "?"));
+            List<Object> params = new ArrayList<>();
+            params.add("%" + departamento.trim() + "%");
+            params.addAll(codigos);
 
-            List<TarefaResponsavelDTO> resultado = new ArrayList<>();
+            String sql = "SELECT " +
+                    "substring(dados_completos->>'ITEM DO PAT' from '[A-Z]+ [0-9]+(?:\\.[0-9]+)*') AS codigo_acao, " +
+                    "dados_completos->>'TÍTULO DA TAREFA' AS titulo_tarefa, " +
+                    "dados_completos->>'Responsável' AS responsavel, " +
+                    "to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') AS data_final " +
+                    "FROM pat_tarefas " +
+                    "WHERE departamento ILIKE ? " +
+                    "AND substring(dados_completos->>'ITEM DO PAT' from '[A-Z]+ [0-9]+(?:\\.[0-9]+)*') IN (" + placeholders + ") " +
+                    "ORDER BY to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') ASC NULLS LAST";
+
+            List<Map<String, Object>> tarefas = jdbcTemplate.queryForList(sql, params.toArray());
+
+            Map<String, List<TarefaResponsavelDTO>> porCodigo = new java.util.LinkedHashMap<>();
             for (Map<String, Object> t : tarefas) {
-                resultado.add(new TarefaResponsavelDTO(
-                        (String) t.get("titulo_tarefa"),
-                        (String) t.get("responsavel"),
-                        formatarPrazo((java.sql.Date) t.get("data_final"))));
+                String codigo = (String) t.get("codigo_acao");
+                List<TarefaResponsavelDTO> lista = porCodigo.computeIfAbsent(codigo, k -> new ArrayList<>());
+                if (lista.size() < 3) {
+                    lista.add(new TarefaResponsavelDTO(
+                            (String) t.get("titulo_tarefa"),
+                            (String) t.get("responsavel"),
+                            formatarPrazo((java.sql.Date) t.get("data_final"))));
+                }
             }
-            return resultado;
+            return porCodigo;
         } catch (Exception e) {
-            System.err.println(">>> AVISO: falha ao buscar tarefas da ação '" + codigoAcao + "': " + e.getMessage());
-            return List.of();
+            System.err.println(">>> AVISO: falha ao buscar tarefas em lote das ações: " + e.getMessage());
+            return Map.of();
         }
     }
 
     /**
-     * Outros departamentos que também respondem por essa mesma ação, com o percentual
-     * de execução de cada um (pat_execucao_departamento) — visibilidade cruzada sem a
-     * IA precisar (ou poder) apontar responsabilidade de outro setor.
+     * Outros departamentos que também respondem por cada ação, com o percentual de execução —
+     * pra TODAS as ações recebidas de uma vez (1 query com IN, não 1 query por ação).
      */
-    private List<DepartamentoParceiroDTO> buscarOutrosDepartamentos(String codigoAcao, String departamentoAtual) {
-        if (codigoAcao == null || codigoAcao.isBlank()) {
-            return List.of();
+    private Map<String, List<DepartamentoParceiroDTO>> buscarOutrosDepartamentosPorAcoes(List<String> codigos, String departamentoAtual) {
+        if (codigos.isEmpty()) {
+            return Map.of();
         }
         try {
-            List<Map<String, Object>> linhas = jdbcTemplate.queryForList("""
-                SELECT departamento, ROUND(percentual_execucao * 100, 2) AS percentual
-                FROM pat_execucao_departamento
-                WHERE codigo_acao = ? AND departamento NOT ILIKE ?
-                ORDER BY percentual_execucao DESC
-                """, codigoAcao, "%" + departamentoAtual.trim() + "%");
+            String placeholders = String.join(",", java.util.Collections.nCopies(codigos.size(), "?"));
+            List<Object> params = new ArrayList<>(codigos);
+            params.add("%" + departamentoAtual.trim() + "%");
 
-            return linhas.stream()
-                    .map(row -> new DepartamentoParceiroDTO((String) row.get("departamento"), toDouble(row.get("percentual"))))
-                    .toList();
+            String sql = "SELECT codigo_acao, departamento, ROUND(percentual_execucao * 100, 2) AS percentual " +
+                    "FROM pat_execucao_departamento " +
+                    "WHERE codigo_acao IN (" + placeholders + ") AND departamento NOT ILIKE ? " +
+                    "ORDER BY codigo_acao, percentual_execucao DESC";
+
+            List<Map<String, Object>> linhas = jdbcTemplate.queryForList(sql, params.toArray());
+
+            Map<String, List<DepartamentoParceiroDTO>> porCodigo = new java.util.LinkedHashMap<>();
+            for (Map<String, Object> row : linhas) {
+                String codigo = (String) row.get("codigo_acao");
+                porCodigo.computeIfAbsent(codigo, k -> new ArrayList<>())
+                        .add(new DepartamentoParceiroDTO((String) row.get("departamento"), toDouble(row.get("percentual"))));
+            }
+            return porCodigo;
         } catch (Exception e) {
-            System.err.println(">>> AVISO: falha ao buscar departamentos parceiros da ação '" + codigoAcao + "': " + e.getMessage());
-            return List.of();
+            System.err.println(">>> AVISO: falha ao buscar departamentos parceiros em lote: " + e.getMessage());
+            return Map.of();
         }
     }
 

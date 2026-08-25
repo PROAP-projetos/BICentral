@@ -28,8 +28,8 @@ public class RankingController {
             @RequestParam(required = false) String tipoUnidade) {
 
         String sql = "SELECT departamento, tipo_unidade, " +
-                "ROUND(AVG(percentual_execucao) * 100, 2) AS media_execucao_pct, " +
-                "COUNT(*) AS qtd_acoes " +
+                "ROUND(COALESCE(AVG(percentual_execucao), 0) * 100, 2) AS media_execucao_pct, " +
+                "COUNT(DISTINCT codigo_acao) AS qtd_acoes " +
                 "FROM pat_execucao_departamento " +
                 (tipoUnidade != null ? "WHERE tipo_unidade = ? " : "") +
                 "GROUP BY departamento, tipo_unidade " +

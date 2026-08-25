@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { GraficoIaComponent } from '../grafico-ia/grafico-ia';
+import { GrafoAtividadesComponent } from '../grafo-atividades/grafo-atividades.component';
+import { LeaderboardUgComponent } from '../leaderboard-ug/leaderboard-ug.component';
 import { AgentService, Notificacao, PainelAtrasos, RelatorioHistoricoItem } from '../services/agent.service';
 import { AdminService } from '../services/admin.service';
 import { SafeUrlPipe } from '../pipes/safe-url.pipe';
@@ -17,7 +19,7 @@ interface ChatSession {
 @Component({
   selector: 'app-agent',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, GraficoIaComponent, SafeUrlPipe],
+  imports: [CommonModule, FormsModule, RouterLink, GraficoIaComponent, SafeUrlPipe, LeaderboardUgComponent, GrafoAtividadesComponent],
   templateUrl: './agent.html',
   styleUrls: ['./agent.css']
 })
@@ -27,6 +29,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   @ViewChild('promptInput') private promptInput?: ElementRef<HTMLTextAreaElement>;
 
   isDarkMode = false;
+  painelAtivo: 'chat' | 'ranking' | 'grafo' = 'chat';
   private scrollPendente = true;
   usuarioLogado = 'dallyla.moraes';
   equipeSelecionada = 'Orçamento';

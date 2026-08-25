@@ -212,14 +212,14 @@ public class ConsultaAcoesTool {
         }
 
         String sqlPiores = """
-            SELECT titulo_acao, ROUND(percentual_execucao * 100, 2) AS percentual_pat
+            SELECT codigo_acao, titulo_acao, ROUND(percentual_execucao * 100, 2) AS percentual_pat
             FROM pat_execucao_departamento
             WHERE departamento ILIKE ?
             ORDER BY percentual_execucao ASC
             LIMIT 8
             """;
         String sqlMelhores = """
-            SELECT titulo_acao, ROUND(percentual_execucao * 100, 2) AS percentual_pat
+            SELECT codigo_acao, titulo_acao, ROUND(percentual_execucao * 100, 2) AS percentual_pat
             FROM pat_execucao_departamento
             WHERE departamento ILIKE ?
             ORDER BY percentual_execucao DESC
@@ -240,15 +240,24 @@ public class ConsultaAcoesTool {
 
         sb.append("AÇÕES COM MENOR EXECUÇÃO (até 8):\n");
         for (Map<String, Object> item : piores) {
-            sb.append("- ").append(item.get("titulo_acao")).append(" — ").append(item.get("percentual_pat")).append("%\n");
+            sb.append("- [").append(item.get("codigo_acao")).append("] ").append(truncarTitulo((String) item.get("titulo_acao"))).append(" — ").append(item.get("percentual_pat")).append("%\n");
         }
 
         sb.append("\nAÇÕES COM MAIOR EXECUÇÃO (até 8):\n");
         for (Map<String, Object> item : melhores) {
-            sb.append("- ").append(item.get("titulo_acao")).append(" — ").append(item.get("percentual_pat")).append("%\n");
+            sb.append("- [").append(item.get("codigo_acao")).append("] ").append(truncarTitulo((String) item.get("titulo_acao"))).append(" — ").append(item.get("percentual_pat")).append("%\n");
         }
 
         return sb.toString();
+    }
+
+    // titulo_acao vem do dado bruto e traz o nome completo do departamento colado após " | " —
+    // redundante aqui porque as duas listas já são de um único departamento (o parâmetro da busca),
+    // e repetir esse texto 16x infla desnecessariamente o tamanho da resposta (relevante pro TPM do Groq).
+    private String truncarTitulo(String tituloAcao) {
+        if (tituloAcao == null) return "";
+        int separador = tituloAcao.indexOf(" | ");
+        return separador >= 0 ? tituloAcao.substring(0, separador) : tituloAcao;
     }
 
     @Tool("Conta quantas ações do PDI cada departamento/UG é responsável, ranqueando por quantidade. Use para perguntas tipo 'qual UG tem menos/mais ações no PDI'. Uma ação pode ter vários departamentos responsáveis; esta ferramenta conta corretamente cada departamento separadamente. Permite filtrar só por UG ou só por UA, usando a classificação já conhecida do PAT.")

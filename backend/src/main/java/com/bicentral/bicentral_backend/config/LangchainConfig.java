@@ -20,7 +20,7 @@ import dev.langchain4j.service.AiServices;
 public class LangchainConfig {
 
     @Bean
-    public AgenteProiap agenteProiap(ChatLanguageModel chatLanguageModel) {
+    public AgenteProiap agenteProiap(@Qualifier("groqModel") ChatLanguageModel chatLanguageModel) {
         ChatMemoryProvider chatMemoryProvider = memoryId -> MessageWindowChatMemory.withMaxMessages(2);
         return AiServices.builder(AgenteProiap.class)
                 .chatLanguageModel(chatLanguageModel)

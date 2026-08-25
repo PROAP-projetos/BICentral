@@ -1,0 +1,253 @@
+<div class="intelligence-board-container">
+  
+  <!-- CABEÇALHO DO HUB DE INTELIGÊNCIA -->
+  <header class="board-header">
+    <div class="header-main-title">
+      <div class="live-indicator">
+        <span class="pulse-dot"></span>
+        <span class="live-text">PROIAP · EXECUTIVE COMMAND CENTER</span>
+      </div>
+      <h2>Painel Geral de Inteligência & Desempenho</h2>
+      <p class="subtitle">Monitoramento em tempo real das Pró-Reitorias, Diretorias e Metas do PAT</p>
+    </div>
+
+    <div class="header-actions">
+      <!-- BOTÃO SIMULAR REORDENAÇÃO -->
+      <button 
+        type="button" 
+        class="action-btn simular-btn" 
+        (click)="simularReordenacao()" 
+        title="Simular alteração de notas e ver a animação de troca de posições">
+        ⚡ Simular Reordenação
+      </button>
+
+      <!-- BOTÃO AUTO SIMULAÇÃO -->
+      <button 
+        type="button" 
+        class="action-btn auto-btn" 
+        [class.active]="autoSimulacaoAtiva" 
+        (click)="toggleAutoSimulacao()">
+        {{ autoSimulacaoAtiva ? '⏸️ Pausar Animação' : '▶️ Loop Automático' }}
+      </button>
+
+      <!-- SELETOR DE MODO (CARDS FLIP VS ECHARTS) -->
+      <div class="mode-switch">
+        <button 
+          type="button" 
+          class="switch-btn" 
+          [class.active]="modoVisualizacao === 'cards'"
+          (click)="alternarModo('cards')">
+          Cards Animados
+        </button>
+        <button 
+          type="button" 
+          class="switch-btn" 
+          [class.active]="modoVisualizacao === 'echarts'"
+          (click)="alternarModo('echarts')">
+          ECharts Bar
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- LINHA DE CARDS KPI (MÉTRICAS EXECUTIVAS GLOBAIS) -->
+  <section class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-icon-wrap kpi-blue">🎯</div>
+      <div class="kpi-details">
+        <span class="kpi-label">Execução Global PAT</span>
+        <div class="kpi-value-row">
+          <span class="kpi-value">{{ percentualGlobal }}%</span>
+          <span class="kpi-badge positive">+4.2% mês</span>
+        </div>
+        <div class="kpi-progress">
+          <div class="kpi-progress-bar" [style.width.%]="percentualGlobal"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-icon-wrap kpi-purple">🏢</div>
+      <div class="kpi-details">
+        <span class="kpi-label">UGs Monitoradas</span>
+        <div class="kpi-value-row">
+          <span class="kpi-value">{{ ugs.length }}</span>
+          <span class="kpi-badge neutral">100% ativas</span>
+        </div>
+        <span class="kpi-subtext">Pró-Reitorias & Diretorias</span>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-icon-wrap kpi-green">✅</div>
+      <div class="kpi-details">
+        <span class="kpi-label">Tarefas Concluídas</span>
+        <div class="kpi-value-row">
+          <span class="kpi-value">{{ totalConcluidasGlobal }}/{{ totalTarefasGlobal }}</span>
+          <span class="kpi-badge positive">{{ (totalConcluidasGlobal / totalTarefasGlobal * 100) | number:'1.0-0' }}%</span>
+        </div>
+        <span class="kpi-subtext">Metas e entregas registradas</span>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-icon-wrap" [ngClass]="totalUgsEmAtencao > 0 ? 'kpi-orange' : 'kpi-green'">
+        {{ totalUgsEmAtencao > 0 ? '⚠️' : '🛡️' }}
+      </div>
+      <div class="kpi-details">
+        <span class="kpi-label">UGs em Atenção</span>
+        <div class="kpi-value-row">
+          <span class="kpi-value">{{ totalUgsEmAtencao }}</span>
+          <span class="kpi-badge" [ngClass]="totalUgsEmAtencao > 0 ? 'warning' : 'positive'">
+            {{ totalUgsEmAtencao > 0 ? 'Atenção' : 'Regular' }}
+          </span>
+        </div>
+        <span class="kpi-subtext">{{ totalUgsEmAtencao > 0 ? 'Execução abaixo de 60%' : 'Todas UGs com boa tração' }}</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- COCKPIT PRINCIPAL EM 2 COLUNAS (60% LEADERBOARD | 40% LIVE FEED E IA) -->
+  <div class="cockpit-layout">
+
+    <!-- COLUNA 1: LEADERBOARD DE DESEMPENHO (RANKING ANIMADO) -->
+    <section class="cockpit-column leaderboard-column">
+      <div class="section-card-header">
+        <div class="section-title-wrap">
+          <span class="section-badge-icon">🏆</span>
+          <h3>Ranking de Desempenho das UGs</h3>
+        </div>
+        <span class="section-hint">Clique em uma UG para abrir diagnóstico no chat</span>
+      </div>
+
+      <!-- MODO CARDS COM FLIP ANIMATION -->
+      <div class="leaderboard-grid" *ngIf="modoVisualizacao === 'cards'">
+        <div 
+          class="ug-card" 
+          *ngFor="let ug of ugs; let i = index; trackBy: trackByUgId"
+          [class.rank-top1]="ug.posicao === 1"
+          [class.rank-top2]="ug.posicao === 2"
+          [class.rank-top3]="ug.posicao === 3"
+          [class.subiu-destaque]="ug.destaqueAnimacao"
+          (click)="clicarUg(ug)"
+          title="Clique para conversar com o proIAp sobre {{ ug.sigla }}">
+          
+          <!-- POSIÇÃO / MEDALHA -->
+          <div class="ug-rank-badge">
+            <span class="rank-icon" *ngIf="ug.posicao <= 3">{{ getMedalhaEmoji(ug.posicao) }}</span>
+            <span class="rank-number" *ngIf="ug.posicao > 3">#{{ ug.posicao }}</span>
+          </div>
+
+          <!-- TENDÊNCIA E VARIAÇÃO DE POSIÇÃO -->
+          <div class="ug-trend-indicator">
+            <span class="trend-badge subiu" *ngIf="ug.variacaoPosicao > 0" title="Subiu {{ ug.variacaoPosicao }} posições">
+              ▲ +{{ ug.variacaoPosicao }}
+            </span>
+            <span class="trend-badge caiu" *ngIf="ug.variacaoPosicao < 0" title="Caiu {{ -ug.variacaoPosicao }} posições">
+              ▼ {{ ug.variacaoPosicao }}
+            </span>
+            <span class="trend-badge neutro" *ngIf="ug.variacaoPosicao === 0">
+              • 0
+            </span>
+          </div>
+
+          <!-- DADOS PRINCIPAIS DA UG -->
+          <div class="ug-info">
+            <div class="ug-title-row">
+              <span class="ug-sigla">{{ ug.sigla }}</span>
+              <span class="ug-nome">{{ ug.nome }}</span>
+            </div>
+
+            <!-- BARRA DE PROGRESSO REATIVA -->
+            <div class="progress-track">
+              <div 
+                class="progress-fill" 
+                [ngClass]="getClasseCorPct(ug.percentual)"
+                [style.width.%]="ug.percentual">
+              </div>
+            </div>
+          </div>
+
+          <!-- MÉTRICAS DE EXECUÇÃO -->
+          <div class="ug-metrics">
+            <div class="metric-pct" [ngClass]="getClasseCorPct(ug.percentual)">
+              {{ ug.percentual }}%
+            </div>
+            <div class="metric-sub">
+              {{ ug.tarefasConcluidas }}/{{ ug.totalTarefas }} tarefas
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- MODO COMPARAÇÃO ECHARTS REALTIME SORT -->
+      <div class="echarts-wrap" *ngIf="modoVisualizacao === 'echarts'">
+        <div echarts [options]="echartsOptions" class="echarts-chart"></div>
+      </div>
+    </section>
+
+    <!-- COLUNA 2: ATIVIDADES RECENTES & SUGESTÕES DA IA -->
+    <aside class="cockpit-column feed-column">
+      
+      <!-- BLOCO A: ÚLTIMAS ATIVIDADES CONCLUÍDAS DO PAT -->
+      <div class="feed-section">
+        <div class="section-card-header">
+          <div class="section-title-wrap">
+            <span class="section-badge-icon">⚡</span>
+            <h3>Últimas Entregas Concluídas</h3>
+          </div>
+          <span class="section-hint">PAT 2026</span>
+        </div>
+
+        <div class="activity-list">
+          <div 
+            class="activity-item" 
+            *ngFor="let atv of atividadesRecentes"
+            (click)="clicarAtividade(atv)"
+            title="Clique para analisar esta entrega com a IA">
+            <div class="activity-status-dot" [ngClass]="atv.status"></div>
+            <div class="activity-content">
+              <div class="activity-header-row">
+                <span class="activity-ug-badge">{{ atv.ugSigla }}</span>
+                <span class="activity-time">{{ atv.tempoRelativo }}</span>
+              </div>
+              <p class="activity-title">{{ atv.titulo }}</p>
+              <div class="activity-meta">
+                <span class="activity-responsavel">👤 {{ atv.responsavel }}</span>
+                <span class="activity-tag">{{ atv.tag }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BLOCO B: SUGESTÕES DE PERGUNTAS / ANÁLISES RÁPIDAS COM PROIAP -->
+      <div class="insights-section">
+        <div class="section-card-header">
+          <div class="section-title-wrap">
+            <span class="section-badge-icon">💡</span>
+            <h3>Análises Rápidas com proIAp</h3>
+          </div>
+        </div>
+
+        <div class="insights-grid">
+          <div 
+            class="insight-chip" 
+            *ngFor="let item of insightsSugeridos"
+            (click)="clicarInsight(item)"
+            title="Enviar esta pergunta para o proIAp">
+            <div class="insight-chip-header">
+              <span class="insight-icon">{{ item.icone }}</span>
+              <span class="insight-badge">{{ item.badge }}</span>
+            </div>
+            <span class="insight-title">{{ item.titulo }}</span>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+
+  </div>
+
+</div>

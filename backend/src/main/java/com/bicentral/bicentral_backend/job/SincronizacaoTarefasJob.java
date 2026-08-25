@@ -97,8 +97,11 @@ public class SincronizacaoTarefasJob {
             System.out.println(">>> JOB TAREFAS: Concluído com sucesso.");
 
         } catch (Exception e) {
-            System.err.println(">>> JOB TAREFAS ERRO: " + e.getMessage());
-            registrarResultado("ERRO", e.getMessage());
+            String detalhe = e.getClass().getSimpleName() + ": " + e.getMessage()
+                    + (e.getCause() != null ? " | causa: " + e.getCause() : "");
+            System.err.println(">>> JOB TAREFAS ERRO: " + detalhe);
+            e.printStackTrace();
+            registrarResultado("ERRO", detalhe);
         }
     }
 

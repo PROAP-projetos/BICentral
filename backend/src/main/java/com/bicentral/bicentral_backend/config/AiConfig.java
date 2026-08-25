@@ -30,6 +30,9 @@ public class AiConfig {
     @Value("${sambanova.api.key:}")
     private String sambanovaApiKey;
 
+    @Value("${openrouter.api.key:}")
+    private String openrouterApiKey;
+
     @Value("${ollama.base.url:http://localhost:11434}")
     private String ollamaBaseUrl;
 
@@ -42,7 +45,6 @@ public class AiConfig {
     // --- CHAT MODELS (LLMs) ---
 
     @Bean("groqModel")
-    @Primary
     public ChatLanguageModel groqModel() {
         return OpenAiChatModel.builder()
                 .apiKey(groqApiKey)
@@ -71,11 +73,22 @@ public class AiConfig {
                 .build();
     }
 
+    @Bean("openrouterModel")
+    @Primary
+    public ChatLanguageModel openrouterModel() {
+        return OpenAiChatModel.builder()
+                .apiKey(openrouterApiKey)
+                .baseUrl("https://openrouter.ai/api/v1")
+                .modelName("openai/gpt-oss-20b:free")
+                .temperature(0.0)
+                .build();
+    }
+
     @Bean("geminiModel")
     public ChatLanguageModel geminiModel() {
         return GoogleAiGeminiChatModel.builder()
                 .apiKey(geminiApiKey)
-                .modelName("gemini-2.5-flash")
+                .modelName("gemini-3.7-flash")
                 .build();
     }
 
