@@ -12,22 +12,14 @@
     </div>
 
     <div class="header-actions">
-      <!-- BOTÃO SIMULAR REORDENAÇÃO -->
-      <button 
-        type="button" 
-        class="action-btn simular-btn" 
-        (click)="simularReordenacao()" 
-        title="Simular alteração de notas e ver a animação de troca de posições">
-        ⚡ Simular Reordenação
-      </button>
-
-      <!-- BOTÃO AUTO SIMULAÇÃO -->
-      <button 
-        type="button" 
-        class="action-btn auto-btn" 
-        [class.active]="autoSimulacaoAtiva" 
-        (click)="toggleAutoSimulacao()">
-        {{ autoSimulacaoAtiva ? '⏸️ Pausar Animação' : '▶️ Loop Automático' }}
+      <!-- BOTÃO ATUALIZAR (recarrega do /api/ranking) -->
+      <button
+        type="button"
+        class="action-btn simular-btn"
+        [disabled]="carregando"
+        (click)="carregarRanking()"
+        title="Recarregar ranking">
+        {{ carregando ? '⏳ Atualizando...' : '🔄 Atualizar' }}
       </button>
 
       <!-- SELETOR DE MODO (CARDS FLIP VS ECHARTS) -->
@@ -44,7 +36,7 @@
           class="switch-btn" 
           [class.active]="modoVisualizacao === 'echarts'"
           (click)="alternarModo('echarts')">
-          ECharts Bar
+          Gráfico de Barras
         </button>
       </div>
     </div>
@@ -69,24 +61,22 @@
     <div class="kpi-card">
       <div class="kpi-icon-wrap kpi-purple">🏢</div>
       <div class="kpi-details">
-        <span class="kpi-label">UGs Monitoradas</span>
+        <span class="kpi-label">Unidades Monitoradas</span>
         <div class="kpi-value-row">
           <span class="kpi-value">{{ ugs.length }}</span>
-          <span class="kpi-badge neutral">100% ativas</span>
         </div>
-        <span class="kpi-subtext">Pró-Reitorias & Diretorias</span>
+        <span class="kpi-subtext">{{ totalCampus }} campus · {{ totalCoordenacoes }} coordenações · {{ totalUg }} UG</span>
       </div>
     </div>
 
     <div class="kpi-card">
       <div class="kpi-icon-wrap kpi-green">✅</div>
       <div class="kpi-details">
-        <span class="kpi-label">Tarefas Concluídas</span>
+        <span class="kpi-label">Ações Monitoradas</span>
         <div class="kpi-value-row">
-          <span class="kpi-value">{{ totalConcluidasGlobal }}/{{ totalTarefasGlobal }}</span>
-          <span class="kpi-badge positive">{{ (totalConcluidasGlobal / totalTarefasGlobal * 100) | number:'1.0-0' }}%</span>
+          <span class="kpi-value">{{ totalAcoesUnicas }}</span>
         </div>
-        <span class="kpi-subtext">Metas e entregas registradas</span>
+        <span class="kpi-subtext">Ações distintas, sem repetir entre departamentos</span>
       </div>
     </div>
 
@@ -120,11 +110,30 @@
         <span class="section-hint">Clique em uma UG para abrir diagnóstico no chat</span>
       </div>
 
+      <!-- FILTRO POR TIPO DE UNIDADE -->
+      <div class="filtro-categoria-row">
+        <button type="button" class="filtro-pill" [class.active]="filtroCategoria === 'todos'" (click)="definirFiltro('todos')">Todos ({{ ugs.length }})</button>
+        <button type="button" class="filtro-pill" [class.active]="filtroCategoria === 'campus'" (click)="definirFiltro('campus')">Campus ({{ totalCampus }})</button>
+        <button type="button" class="filtro-pill" [class.active]="filtroCategoria === 'coordenacao'" (click)="definirFiltro('coordenacao')">Coordenação ({{ totalCoordenacoes }})</button>
+        <button type="button" class="filtro-pill" [class.active]="filtroCategoria === 'ug'" (click)="definirFiltro('ug')">UG ({{ totalUg }})</button>
+        <button type="button" class="filtro-pill" [class.active]="filtroCategoria === 'outro'" (click)="definirFiltro('outro')">Unidade Acadêmica ({{ ugs.length - totalCampus - totalCoordenacoes - totalUg }})</button>
+
+        <select class="filtro-campus-select" [value]="filtroCampus" (change)="definirFiltroCampus($any($event.target).value)">
+          <option value="todos">Todos os campus</option>
+          <option *ngFor="let campus of campiComDados" [value]="campus">{{ campus }}</option>
+        </select>
+      </div>
+
+      <p class="ranking-status-msg" *ngIf="carregando">Carregando ranking...</p>
+      <p class="ranking-status-msg ranking-status-erro" *ngIf="erro">{{ erro }}</p>
+      <p class="ranking-status-msg" *ngIf="!carregando && !erro && ugs.length === 0">Nenhum departamento encontrado.</p>
+      <p class="ranking-status-msg" *ngIf="!carregando && !erro && ugs.length > 0 && ugsFiltrados.length === 0">Nenhuma unidade nessa categoria.</p>
+
       <!-- MODO CARDS COM FLIP ANIMATION -->
-      <div class="leaderboard-grid" *ngIf="modoVisualizacao === 'cards'">
+      <div class="leaderboard-grid" *ngIf="modoVisualizacao === 'cards' && ugsFiltrados.length > 0">
         <div 
           class="ug-card" 
-          *ngFor="let ug of ugs; let i = index; trackBy: trackByUgId"
+          *ngFor="let ug of ugsFiltrados; let i = index; trackBy: trackByUgId"
           [class.rank-top1]="ug.posicao === 1"
           [class.rank-top2]="ug.posicao === 2"
           [class.rank-top3]="ug.posicao === 3"
@@ -155,8 +164,9 @@
           <div class="ug-info">
             <div class="ug-title-row">
               <span class="ug-sigla">{{ ug.sigla }}</span>
-              <span class="ug-nome">{{ ug.nome }}</span>
+              <span class="ug-categoria-badge" [ngClass]="'categoria-' + ug.categoria">{{ getCategoriaLabel(ug.categoria) }}</span>
             </div>
+            <span class="ug-nome">{{ ug.nome }}</span>
 
             <!-- BARRA DE PROGRESSO REATIVA -->
             <div class="progress-track">
@@ -174,7 +184,7 @@
               {{ ug.percentual }}%
             </div>
             <div class="metric-sub">
-              {{ ug.tarefasConcluidas }}/{{ ug.totalTarefas }} tarefas
+              {{ ug.qtdAcoes }} ações
             </div>
           </div>
 
@@ -182,47 +192,15 @@
       </div>
 
       <!-- MODO COMPARAÇÃO ECHARTS REALTIME SORT -->
-      <div class="echarts-wrap" *ngIf="modoVisualizacao === 'echarts'">
-        <div echarts [options]="echartsOptions" class="echarts-chart"></div>
+      <div class="echarts-wrap" *ngIf="modoVisualizacao === 'echarts' && ugsFiltrados.length > 0">
+        <div echarts [options]="echartsOptions" class="echarts-chart" [style.height.px]="echartsWrapHeight"></div>
       </div>
     </section>
 
-    <!-- COLUNA 2: ATIVIDADES RECENTES & SUGESTÕES DA IA -->
+    <!-- COLUNA 2: SUGESTÕES DE PERGUNTAS COM IA -->
     <aside class="cockpit-column feed-column">
-      
-      <!-- BLOCO A: ÚLTIMAS ATIVIDADES CONCLUÍDAS DO PAT -->
-      <div class="feed-section">
-        <div class="section-card-header">
-          <div class="section-title-wrap">
-            <span class="section-badge-icon">⚡</span>
-            <h3>Últimas Entregas Concluídas</h3>
-          </div>
-          <span class="section-hint">PAT 2026</span>
-        </div>
 
-        <div class="activity-list">
-          <div 
-            class="activity-item" 
-            *ngFor="let atv of atividadesRecentes"
-            (click)="clicarAtividade(atv)"
-            title="Clique para analisar esta entrega com a IA">
-            <div class="activity-status-dot" [ngClass]="atv.status"></div>
-            <div class="activity-content">
-              <div class="activity-header-row">
-                <span class="activity-ug-badge">{{ atv.ugSigla }}</span>
-                <span class="activity-time">{{ atv.tempoRelativo }}</span>
-              </div>
-              <p class="activity-title">{{ atv.titulo }}</p>
-              <div class="activity-meta">
-                <span class="activity-responsavel">👤 {{ atv.responsavel }}</span>
-                <span class="activity-tag">{{ atv.tag }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- BLOCO B: SUGESTÕES DE PERGUNTAS / ANÁLISES RÁPIDAS COM PROIAP -->
+      <!-- SUGESTÕES DE PERGUNTAS / ANÁLISES RÁPIDAS COM PROIAP -->
       <div class="insights-section">
         <div class="section-card-header">
           <div class="section-title-wrap">

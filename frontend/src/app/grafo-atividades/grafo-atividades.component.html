@@ -7,8 +7,8 @@
         <span class="live-dot"></span>
         <span class="badge-text">VISÃO GERAL DO ECOSSISTEMA</span>
       </div>
-      <h2 class="header-title">Grafo de Conexões e Atividades</h2>
-      <p class="header-sub">Mapeamento interativo de processos e dependências por Unidade Gestora (PAT)</p>
+      <h2 class="header-title">Grafo de Atividades</h2>
+      <p class="header-sub">Tarefas reais do PAT por Unidade Gestora</p>
     </div>
 
     <!-- SELETOR MULTI-SELECT DE UGS POR CORES -->
@@ -50,15 +50,20 @@
 
   <!-- ÁREA PRINCIPAL DO CANVAS DO GRAFO -->
   <div class="grafo-canvas-wrapper">
-    <div 
-      echarts 
-      [options]="echartsOptions" 
+    <p class="grafo-status-msg" *ngIf="carregando">Carregando tarefas...</p>
+    <p class="grafo-status-msg grafo-status-erro" *ngIf="erro">{{ erro }}</p>
+    <p class="grafo-status-msg" *ngIf="!carregando && !erro && ugsFiltro.length > 0 && !temUgAtiva">Selecione ao menos uma UG acima pra ver o grafo.</p>
+
+    <div
+      *ngIf="!carregando && !erro"
+      echarts
+      [options]="echartsOptions"
       class="echarts-graph"
       (chartClick)="onChartClick($event)">
     </div>
 
     <!-- MINI CARD DE INSTRUÇÃO INTERATIVA -->
-    <div class="interactive-hint">
+    <div class="interactive-hint" *ngIf="!carregando && !erro">
       💡 <span>Arraste os nós, dê zoom ou clique em qualquer atividade para perguntar no chat</span>
     </div>
   </div>
@@ -84,10 +89,6 @@
     <div class="legend-item">
       <span class="legend-line solid-line"></span>
       <span>Vínculo Direto</span>
-    </div>
-    <div class="legend-item">
-      <span class="legend-line dashed-line"></span>
-      <span>Parceria Institucional</span>
     </div>
   </footer>
 

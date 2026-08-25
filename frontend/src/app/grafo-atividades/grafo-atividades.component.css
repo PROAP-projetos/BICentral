@@ -177,6 +177,21 @@
   height: 100%;
 }
 
+.grafo-status-msg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--text-secondary, #6b7280);
+  font-size: 0.9rem;
+}
+
+.grafo-status-erro {
+  color: #dc2626;
+}
+
 .interactive-hint {
   position: absolute;
   bottom: 10px;

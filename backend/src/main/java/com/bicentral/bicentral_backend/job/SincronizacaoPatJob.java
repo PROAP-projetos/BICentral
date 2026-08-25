@@ -108,8 +108,11 @@ public class SincronizacaoPatJob {
             System.out.println(">>> JOB PAT: Concluído com sucesso.");
 
         } catch (Exception e) {
-            System.err.println(">>> JOB PAT ERRO: " + e.getMessage());
-            registrarResultado("ERRO", e.getMessage());
+            String detalhe = e.getClass().getSimpleName() + ": " + e.getMessage()
+                    + (e.getCause() != null ? " | causa: " + e.getCause() : "");
+            System.err.println(">>> JOB PAT ERRO: " + detalhe);
+            e.printStackTrace();
+            registrarResultado("ERRO", detalhe);
         }
     }
 

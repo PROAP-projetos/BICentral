@@ -1,7 +1,11 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, OnInit, Output } from '@angular/core';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import type { EChartsOption } from 'echarts';
 import { NgxEchartsDirective, provideEchartsCore } from 'ngx-echarts';
+import { RankingService } from '../services/ranking.service';
+import { TarefaGrafo, TarefasService } from '../services/tarefas.service';
 
 export interface UgFiltro {
   id: string;
@@ -24,8 +28,10 @@ export interface AtividadeNode {
 export interface ArestaLink {
   source: string;
   target: string;
-  relacao?: string;
 }
+
+const PALETA_CORES = ['#10b981', '#0284c7', '#8b5cf6', '#f59e0b', '#ec4899', '#14b8a6', '#f43f5e', '#6366f1'];
+const QTD_UGS_ATIVAS_POR_PADRAO = 5;
 
 @Component({
   selector: 'app-grafo-atividades',
@@ -40,90 +46,61 @@ export class GrafoAtividadesComponent implements OnInit {
 
   layoutGrafo: 'force' | 'circular' = 'force';
   noSelecionadoInfo: AtividadeNode | null = null;
+  carregando = false;
+  erro = '';
 
-  ugsFiltro: UgFiltro[] = [
-    { id: 'PROEST', sigla: 'PROEST', nome: 'Assistência Estudantil', cor: '#10b981', ativa: true },
-    { id: 'PROAD', sigla: 'PROAD', nome: 'Administração e Finanças', cor: '#0284c7', ativa: true },
-    { id: 'DTI', sigla: 'DTI', nome: 'Tecnologia da Informação', cor: '#8b5cf6', ativa: true },
-    { id: 'PROGRAD', sigla: 'PROGRAD', nome: 'Graduação', cor: '#f59e0b', ativa: true },
-    { id: 'PROEX', sigla: 'PROEX', nome: 'Extensão e Cultura', cor: '#ec4899', ativa: true }
-  ];
-
-  private readonly todosNoAtividades: AtividadeNode[] = [
-    // UGs Hubs
-    { id: 'UG_PROEST', label: 'PROEST', ugId: 'PROEST', tipo: 'ug' },
-    { id: 'UG_PROAD', label: 'PROAD', ugId: 'PROAD', tipo: 'ug' },
-    { id: 'UG_DTI', label: 'DTI', ugId: 'DTI', tipo: 'ug' },
-    { id: 'UG_PROGRAD', label: 'PROGRAD', ugId: 'PROGRAD', tipo: 'ug' },
-    { id: 'UG_PROEX', label: 'PROEX', ugId: 'PROEX', tipo: 'ug' },
-
-    // Atividades PROEST
-    { id: 'ACT_PROEST_1', label: 'Auxílio Permanência 2026', ugId: 'PROEST', tipo: 'atividade', status: 'em_andamento', responsavel: 'Dra. Márcia Silva', percentual: 88 },
-    { id: 'ACT_PROEST_2', label: 'Restaurante Universitário', ugId: 'PROEST', tipo: 'atividade', status: 'concluida', responsavel: 'Nutr. Carlos Eduardo', percentual: 100 },
-    { id: 'ACT_PROEST_3', label: 'Bolsa Atleta Estudantil', ugId: 'PROEST', tipo: 'atividade', status: 'em_andamento', responsavel: 'Prof. Roberto Nunes', percentual: 72 },
-
-    // Atividades PROAD
-    { id: 'ACT_PROAD_1', label: 'Pregão Eletrônico Laptops', ugId: 'PROAD', tipo: 'atividade', status: 'concluida', responsavel: 'Lic. Fernando Lima', percentual: 100 },
-    { id: 'ACT_PROAD_2', label: 'Reforma Bloco Reitoria', ugId: 'PROAD', tipo: 'atividade', status: 'atrasada', responsavel: 'Eng. Renato Souza', percentual: 45 },
-    { id: 'ACT_PROAD_3', label: 'Relatório Gestão Fiscal', ugId: 'PROAD', tipo: 'atividade', status: 'em_andamento', responsavel: 'Cont. Patricia Dias', percentual: 79 },
-
-    // Atividades DTI
-    { id: 'ACT_DTI_1', label: 'Integração API BICentral', ugId: 'DTI', tipo: 'atividade', status: 'em_andamento', responsavel: 'Dev. Lean & Dallyla', percentual: 82 },
-    { id: 'ACT_DTI_2', label: 'Migração Supabase Cloud', ugId: 'DTI', tipo: 'atividade', status: 'concluida', responsavel: 'SysAdmin Lucas', percentual: 100 },
-    { id: 'ACT_DTI_3', label: 'Expansão Wi-Fi Câmpus', ugId: 'DTI', tipo: 'atividade', status: 'em_andamento', responsavel: 'Redes Gabriel', percentual: 68 },
-
-    // Atividades PROGRAD
-    { id: 'ACT_PROGRAD_1', label: 'Revisão Projetos Pedagógicos', ugId: 'PROGRAD', tipo: 'atividade', status: 'em_andamento', responsavel: 'Prof. Ana Paula', percentual: 75 },
-    { id: 'ACT_PROGRAD_2', label: 'Matrícula Verão 2026', ugId: 'PROGRAD', tipo: 'atividade', status: 'concluida', responsavel: 'Coord. Sérgio', percentual: 100 },
-    { id: 'ACT_PROGRAD_3', label: 'Acompanhamento ENADE', ugId: 'PROGRAD', tipo: 'atividade', status: 'em_andamento', responsavel: 'Dra. Beatriz', percentual: 60 },
-
-    // Atividades PROEX
-    { id: 'ACT_PROEX_1', label: 'Edital Projetos Extensão', ugId: 'PROEX', tipo: 'atividade', status: 'concluida', responsavel: 'Coord. Mariana', percentual: 100 },
-    { id: 'ACT_PROEX_2', label: 'Feira de Ciências UFT', ugId: 'PROEX', tipo: 'atividade', status: 'em_andamento', responsavel: 'Prof. Thiago', percentual: 64 }
-  ];
-
-  private readonly todasArestas: ArestaLink[] = [
-    // Conexões UG -> Atividades
-    { source: 'UG_PROEST', target: 'ACT_PROEST_1' },
-    { source: 'UG_PROEST', target: 'ACT_PROEST_2' },
-    { source: 'UG_PROEST', target: 'ACT_PROEST_3' },
-
-    { source: 'UG_PROAD', target: 'ACT_PROAD_1' },
-    { source: 'UG_PROAD', target: 'ACT_PROAD_2' },
-    { source: 'UG_PROAD', target: 'ACT_PROAD_3' },
-
-    { source: 'UG_DTI', target: 'ACT_DTI_1' },
-    { source: 'UG_DTI', target: 'ACT_DTI_2' },
-    { source: 'UG_DTI', target: 'ACT_DTI_3' },
-
-    { source: 'UG_PROGRAD', target: 'ACT_PROGRAD_1' },
-    { source: 'UG_PROGRAD', target: 'ACT_PROGRAD_2' },
-    { source: 'UG_PROGRAD', target: 'ACT_PROGRAD_3' },
-
-    { source: 'UG_PROEX', target: 'ACT_PROEX_1' },
-    { source: 'UG_PROEX', target: 'ACT_PROEX_2' },
-
-    // Arestas de Parceria/Dependência Cruzada entre UGs
-    { source: 'ACT_DTI_1', target: 'ACT_PROAD_3', relacao: 'Integração de Dados Fiscais' },
-    { source: 'ACT_DTI_2', target: 'ACT_PROGRAD_2', relacao: 'Infraestrutura de Matrícula' },
-    { source: 'ACT_PROAD_1', target: 'ACT_DTI_3', relacao: 'Aquisição de Equipamentos' },
-    { source: 'ACT_PROEST_1', target: 'ACT_PROAD_3', relacao: 'Repasse Financeiro' }
-  ];
+  ugsFiltro: UgFiltro[] = [];
 
   echartsOptions: EChartsOption = {};
 
+  constructor(
+    private rankingService: RankingService,
+    private tarefasService: TarefasService
+  ) {}
+
   ngOnInit(): void {
-    this.atualizarOpcoesGrafo();
+    this.carregarUgs();
+  }
+
+  private carregarUgs(): void {
+    this.carregando = true;
+    this.erro = '';
+
+    this.rankingService.listarRanking('UG').subscribe({
+      next: (deptos) => {
+        this.ugsFiltro = deptos.map((d, i) => ({
+          id: d.departamento,
+          sigla: this.extrairSiglaUg(d.departamento),
+          nome: d.departamento,
+          cor: PALETA_CORES[i % PALETA_CORES.length],
+          ativa: i < QTD_UGS_ATIVAS_POR_PADRAO
+        }));
+        this.atualizarGrafo();
+      },
+      error: () => {
+        this.erro = 'Não foi possível carregar as unidades gestoras agora.';
+        this.carregando = false;
+      }
+    });
+  }
+
+  private extrairSiglaUg(nomeCompleto: string): string {
+    const partes = nomeCompleto.split(' - ');
+    return partes.length > 1 ? partes[partes.length - 1].trim() : nomeCompleto;
+  }
+
+  get temUgAtiva(): boolean {
+    return this.ugsFiltro.some(u => u.ativa);
   }
 
   toggleUgFiltro(ug: UgFiltro): void {
     ug.ativa = !ug.ativa;
-    this.atualizarOpcoesGrafo();
+    this.atualizarGrafo();
   }
 
   alternarLayout(layout: 'force' | 'circular'): void {
     this.layoutGrafo = layout;
-    this.atualizarOpcoesGrafo();
+    this.montarOpcoesEcharts();
   }
 
   onChartClick(params: any): void {
@@ -131,28 +108,71 @@ export class GrafoAtividadesComponent implements OnInit {
       const node: AtividadeNode = params.data.noOriginal;
       this.noSelecionadoInfo = node;
       if (node.tipo === 'atividade') {
-        this.selecionarAtividade.emit(`Quais são os detalhes da atividade "${node.label}" da ${node.ugId}?`);
+        this.selecionarAtividade.emit(`Quais são os detalhes da tarefa "${node.label}" da ${node.ugId}?`);
       } else {
         this.selecionarAtividade.emit(`Faça uma análise geral do desempenho e atividades da ${node.ugId}.`);
       }
     }
   }
 
-  private atualizarOpcoesGrafo(): void {
-    const ugsAtivasIds = new Set(this.ugsFiltro.filter(u => u.ativa).map(u => u.id));
-    const mapaCores = new Map<string, string>(this.ugsFiltro.map(u => [u.id, u.cor]));
+  private nosAtuais: AtividadeNode[] = [];
+  private arestasAtuais: ArestaLink[] = [];
 
-    // Filtra nós cujas UGs estão ativas
-    const nosFiltrados = this.todosNoAtividades.filter(n => ugsAtivasIds.has(n.ugId));
-    const idsNosFiltrados = new Set(nosFiltrados.map(n => n.id));
+  // Busca as tarefas reais de cada UG ativa e monta os nós/arestas do grafo — sem nenhuma relação
+  // inventada entre departamentos, porque esse dado não existe em lugar nenhum do banco hoje.
+  private atualizarGrafo(): void {
+    const ugsAtivas = this.ugsFiltro.filter(u => u.ativa);
 
-    // Filtra arestas cujos dois extremos estão ativos
-    const arestasFiltradas = this.todasArestas.filter(a => 
-      idsNosFiltrados.has(a.source) && idsNosFiltrados.has(a.target)
+    if (ugsAtivas.length === 0) {
+      this.nosAtuais = [];
+      this.arestasAtuais = [];
+      this.montarOpcoesEcharts();
+      this.carregando = false;
+      return;
+    }
+
+    this.carregando = true;
+
+    const chamadas = ugsAtivas.map(ug =>
+      this.tarefasService.listarPorDepartamento(ug.id).pipe(
+        catchError(() => of([] as TarefaGrafo[]))
+      )
     );
 
-    // Mapeia nós para o formato ECharts
-    const echartsNodes = nosFiltrados.map(n => {
+    forkJoin(chamadas).subscribe((resultadosPorUg) => {
+      const nos: AtividadeNode[] = [];
+      const arestas: ArestaLink[] = [];
+
+      ugsAtivas.forEach((ug, i) => {
+        const ugNodeId = `UG_${ug.id}`;
+        nos.push({ id: ugNodeId, label: ug.sigla, ugId: ug.id, tipo: 'ug' });
+
+        resultadosPorUg[i].forEach((tarefa, j) => {
+          const taskId = `ACT_${ug.id}_${j}`;
+          nos.push({
+            id: taskId,
+            label: tarefa.titulo,
+            ugId: ug.id,
+            tipo: 'atividade',
+            status: tarefa.status,
+            responsavel: tarefa.responsavel || undefined,
+            percentual: tarefa.percentual ?? undefined
+          });
+          arestas.push({ source: ugNodeId, target: taskId });
+        });
+      });
+
+      this.nosAtuais = nos;
+      this.arestasAtuais = arestas;
+      this.montarOpcoesEcharts();
+      this.carregando = false;
+    });
+  }
+
+  private montarOpcoesEcharts(): void {
+    const mapaCores = new Map<string, string>(this.ugsFiltro.map(u => [u.id, u.cor]));
+
+    const echartsNodes = this.nosAtuais.map(n => {
       const corUg = mapaCores.get(n.ugId) || '#38bdf8';
       const isUg = n.tipo === 'ug';
 
@@ -160,7 +180,7 @@ export class GrafoAtividadesComponent implements OnInit {
         id: n.id,
         name: n.label,
         symbolSize: isUg ? 46 : 24,
-        value: n.percentual || 100,
+        value: n.percentual ?? 100,
         noOriginal: n,
         itemStyle: {
           color: isUg ? corUg : this.ajustarOpacidadeCor(corUg, 0.85),
@@ -179,14 +199,13 @@ export class GrafoAtividadesComponent implements OnInit {
       };
     });
 
-    const echartsLinks = arestasFiltradas.map(a => ({
+    const echartsLinks = this.arestasAtuais.map(a => ({
       source: a.source,
       target: a.target,
       lineStyle: {
-        width: a.relacao ? 2 : 1,
-        type: a.relacao ? ('dashed' as const) : ('solid' as const),
-        color: a.relacao ? '#38bdf8' : 'rgba(148, 163, 184, 0.4)',
-        curveness: a.relacao ? 0.2 : 0.05
+        width: 1,
+        color: 'rgba(148, 163, 184, 0.4)',
+        curveness: 0.05
       }
     }));
 
@@ -201,7 +220,7 @@ export class GrafoAtividadesComponent implements OnInit {
           if (params.dataType === 'node' && params.data.noOriginal) {
             const no: AtividadeNode = params.data.noOriginal;
             if (no.tipo === 'ug') {
-              return `<strong>Pró-Reitoria / Diretoria</strong><br/>UG: ${no.ugId}`;
+              return `<strong>Unidade Gestora</strong><br/>${no.ugId}`;
             }
             const statusTexto = no.status === 'concluida' ? '🟢 Concluída' : no.status === 'atrasada' ? '🔴 Atrasada' : '🔵 Em Andamento';
             return `
@@ -209,14 +228,9 @@ export class GrafoAtividadesComponent implements OnInit {
                 <div style="font-weight: 700; color: #38bdf8; font-size: 13px;">${no.label}</div>
                 <div style="font-size: 11px; margin-top: 4px;">Departamento: <strong>${no.ugId}</strong></div>
                 <div style="font-size: 11px;">Responsável: <strong>${no.responsavel || 'N/A'}</strong></div>
-                <div style="font-size: 11px;">Status: <strong>${statusTexto}</strong> (${no.percentual}%)</div>
+                <div style="font-size: 11px;">Status: <strong>${statusTexto}</strong> (${no.percentual ?? '—'}%)</div>
               </div>
             `;
-          }
-          if (params.dataType === 'edge') {
-            return params.data.lineStyle.type === 'dashed' 
-              ? `<strong>Relação Institucional:</strong> ${params.data.lineStyle.color}`
-              : `Vínculo de Atividade`;
           }
           return '';
         }
