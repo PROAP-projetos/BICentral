@@ -282,53 +282,6 @@
   color: var(--text-secondary);
 }
 
-.filtro-categoria-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 0.9rem;
-}
-
-.filtro-pill {
-  padding: 0.35rem 0.85rem;
-  border-radius: 999px;
-  border: 1px solid var(--border-color, #e5e7eb);
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
-}
-
-.filtro-pill:hover {
-  border-color: #0284c7;
-  color: #0284c7;
-}
-
-.filtro-pill.active {
-  background: #0284c7;
-  border-color: #0284c7;
-  color: #ffffff;
-}
-
-.filtro-campus-select {
-  padding: 0.35rem 0.6rem;
-  border-radius: 999px;
-  border: 1px solid var(--border-color, #e5e7eb);
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  margin-left: auto;
-}
-
-.filtro-campus-select:hover {
-  border-color: #0284c7;
-  color: #0284c7;
-}
-
 /* ==========================================
    LEADERBOARD CARDS
    ========================================== */
@@ -337,17 +290,6 @@
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
-}
-
-.ranking-status-msg {
-  padding: 1.5rem;
-  text-align: center;
-  color: var(--text-secondary, #6b7280);
-  font-size: 0.9rem;
-}
-
-.ranking-status-erro {
-  color: #dc2626;
 }
 
 .ug-card {
@@ -441,16 +383,14 @@
 .ug-title-row {
   display: flex;
   align-items: baseline;
-  flex-wrap: wrap;
-  gap: 0.4rem 0.5rem;
+  gap: 0.5rem;
+  overflow: hidden;
 }
 
 .ug-sigla {
   font-weight: 800;
   font-size: 0.92rem;
   color: var(--text-primary);
-  min-width: 0;
-  overflow-wrap: break-word;
 }
 
 .ug-nome {
@@ -459,38 +399,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.ug-categoria-badge {
-  flex-shrink: 0;
-  align-self: center;
-  font-size: 0.62rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  padding: 0.1rem 0.45rem;
-  border-radius: 999px;
-  white-space: nowrap;
-}
-
-.ug-categoria-badge.categoria-campus {
-  background: rgba(2, 132, 199, 0.15);
-  color: #0284c7;
-}
-
-.ug-categoria-badge.categoria-coordenacao {
-  background: rgba(168, 85, 247, 0.15);
-  color: #a855f7;
-}
-
-.ug-categoria-badge.categoria-ug {
-  background: rgba(234, 88, 12, 0.15);
-  color: #ea580c;
-}
-
-.ug-categoria-badge.categoria-outro {
-  background: rgba(107, 114, 128, 0.15);
-  color: #6b7280;
 }
 
 .progress-track {
@@ -534,15 +442,13 @@
 }
 
 .echarts-wrap {
-  max-height: 65vh;
-  overflow-y: auto;
-  overflow-x: hidden;
+  height: 380px;
   width: 100%;
 }
 
 .echarts-chart {
   width: 100%;
-  min-height: 380px;
+  height: 100%;
 }
 
 /* ==========================================

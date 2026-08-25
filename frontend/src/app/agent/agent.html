@@ -237,17 +237,25 @@
       </div>
     </header>
 
-    <!-- PAINEL DE RANKING (em tela cheia dentro do agente) -->
-    <div class="ranking-panel-view" *ngIf="painelAtivo === 'ranking'">
-      <button class="voltar-chat-btn" type="button" (click)="painelAtivo = 'chat'">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="19" y1="12" x2="5" y2="12"></line>
-          <polyline points="12 19 5 12 12 5"></polyline>
-        </svg>
-        <span>Voltar para o chat</span>
-      </button>
+    <!-- PAINÉIS (ranking / grafo de atividades) em tela cheia dentro do agente -->
+    <div class="ranking-panel-view" *ngIf="painelAtivo === 'ranking' || painelAtivo === 'grafo'">
+      <div class="painel-topo-row">
+        <button class="voltar-chat-btn" type="button" (click)="painelAtivo = 'chat'">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+          <span>Voltar para o chat</span>
+        </button>
 
-      <app-leaderboard-ug></app-leaderboard-ug>
+        <div class="painel-abas">
+          <button type="button" class="painel-aba-btn" [class.active]="painelAtivo === 'ranking'" (click)="painelAtivo = 'ranking'">Ranking</button>
+          <button type="button" class="painel-aba-btn" [class.active]="painelAtivo === 'grafo'" (click)="painelAtivo = 'grafo'">Grafo de Atividades</button>
+        </div>
+      </div>
+
+      <app-leaderboard-ug *ngIf="painelAtivo === 'ranking'"></app-leaderboard-ug>
+      <app-grafo-atividades *ngIf="painelAtivo === 'grafo'"></app-grafo-atividades>
     </div>
 
     <!-- O CORPO DA CONVERSA -->

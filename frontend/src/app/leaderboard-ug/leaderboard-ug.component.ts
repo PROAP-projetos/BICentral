@@ -1,24 +1,32 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, OnDestroy, OnInit, Output } from '@angular/core';
 import { NgxEchartsDirective, provideEchartsCore } from 'ngx-echarts';
-import { RankingDepartamento, RankingService } from '../services/ranking.service';
-
-export type CategoriaUnidade = 'campus' | 'coordenacao' | 'ug' | 'outro';
 
 export interface UgRankingItem {
   id: string;
   sigla: string;
   nome: string;
-  categoria: CategoriaUnidade;
-  campus: string | null;
   posicao: number;
-  posicaoAnterior: number | null;
+  posicaoAnterior: number;
   percentual: number;
-  qtdAcoes: number;
+  percentualAnterior: number;
+  totalTarefas: number;
+  tarefasConcluidas: number;
   variacaoPosicao: number; // Ex: +2 (subiu 2 posições), -1 (caiu 1), 0 (manteve)
   subiu: boolean;
   caiu: boolean;
   destaqueAnimacao: boolean;
+}
+
+export interface AtividadeRecenteItem {
+  id: string;
+  titulo: string;
+  ugSigla: string;
+  ugNome: string;
+  responsavel: string;
+  tempoRelativo: string;
+  status: 'concluida' | 'atencao' | 'em_andamento';
+  tag: string;
 }
 
 export interface InsightIaItem {
@@ -36,18 +44,176 @@ export interface InsightIaItem {
   templateUrl: './leaderboard-ug.component.html',
   styleUrls: ['./leaderboard-ug.component.css']
 })
-export class LeaderboardUgComponent implements OnInit {
+export class LeaderboardUgComponent implements OnInit, OnDestroy {
 
   @Output() selecionarUg = new EventEmitter<string>();
 
   modoVisualizacao: 'cards' | 'echarts' = 'cards';
-  carregando = false;
-  erro = '';
+  autoSimulacaoAtiva = false;
+  private timerAutoSimulacao?: number;
 
-  ugs: UgRankingItem[] = [];
-  filtroCategoria: CategoriaUnidade | 'todos' = 'todos';
-  filtroCampus: string | 'todos' = 'todos';
-  totalAcoesUnicas = 0;
+  // Lista inicial de UGs (Unidades Gestoras/Departamentos)
+  ugs: UgRankingItem[] = [
+    {
+      id: 'PROEST',
+      sigla: 'PROEST',
+      nome: 'Pró-Reitoria de Assistência Estudantil',
+      posicao: 1,
+      posicaoAnterior: 1,
+      percentual: 88.5,
+      percentualAnterior: 88.5,
+      totalTarefas: 42,
+      tarefasConcluidas: 37,
+      variacaoPosicao: 0,
+      subiu: false,
+      caiu: false,
+      destaqueAnimacao: false
+    },
+    {
+      id: 'PROAD',
+      sigla: 'PROAD',
+      nome: 'Pró-Reitoria de Administração e Finanças',
+      posicao: 2,
+      posicaoAnterior: 2,
+      percentual: 79.2,
+      percentualAnterior: 79.2,
+      totalTarefas: 55,
+      tarefasConcluidas: 43,
+      variacaoPosicao: 0,
+      subiu: false,
+      caiu: false,
+      destaqueAnimacao: false
+    },
+    {
+      id: 'PROEX',
+      sigla: 'PROEX',
+      nome: 'Pró-Reitoria de Extensão e Cultura',
+      posicao: 3,
+      posicaoAnterior: 3,
+      percentual: 74.0,
+      percentualAnterior: 74.0,
+      totalTarefas: 38,
+      tarefasConcluidas: 28,
+      variacaoPosicao: 0,
+      subiu: false,
+      caiu: false,
+      destaqueAnimacao: false
+    },
+    {
+      id: 'DTI',
+      sigla: 'DTI',
+      nome: 'Diretoria de Tecnologia da Informação',
+      posicao: 4,
+      posicaoAnterior: 4,
+      percentual: 68.4,
+      percentualAnterior: 68.4,
+      totalTarefas: 60,
+      tarefasConcluidas: 41,
+      variacaoPosicao: 0,
+      subiu: false,
+      caiu: false,
+      destaqueAnimacao: false
+    },
+    {
+      id: 'PROGRAD',
+      sigla: 'PROGRAD',
+      nome: 'Pró-Reitoria de Graduação',
+      posicao: 5,
+      posicaoAnterior: 5,
+      percentual: 62.1,
+      percentualAnterior: 62.1,
+      totalTarefas: 50,
+      tarefasConcluidas: 31,
+      variacaoPosicao: 0,
+      subiu: false,
+      caiu: false,
+      destaqueAnimacao: false
+    },
+    {
+      id: 'PROPESQ',
+      sigla: 'PROPESQ',
+      nome: 'Pró-Reitoria de Pesquisa e Pós-Graduação',
+      posicao: 6,
+      posicaoAnterior: 6,
+      percentual: 55.8,
+      percentualAnterior: 55.8,
+      totalTarefas: 35,
+      tarefasConcluidas: 19,
+      variacaoPosicao: 0,
+      subiu: false,
+      caiu: false,
+      destaqueAnimacao: false
+    },
+    {
+      id: 'ASCOM',
+      sigla: 'ASCOM',
+      nome: 'Assessoria de Comunicação Social',
+      posicao: 7,
+      posicaoAnterior: 7,
+      percentual: 42.3,
+      percentualAnterior: 42.3,
+      totalTarefas: 24,
+      tarefasConcluidas: 10,
+      variacaoPosicao: 0,
+      subiu: false,
+      caiu: false,
+      destaqueAnimacao: false
+    }
+  ];
+
+  // Feed em tempo real de acontecimentos recentes do PAT
+  atividadesRecentes: AtividadeRecenteItem[] = [
+    {
+      id: 'atv-1',
+      titulo: 'Publicação do Edital do Programa de Permanência Estudantil 2026',
+      ugSigla: 'PROEST',
+      ugNome: 'Assistência Estudantil',
+      responsavel: 'Mariana Silva',
+      tempoRelativo: 'há 1h',
+      status: 'concluida',
+      tag: 'Meta PAT 1.2'
+    },
+    {
+      id: 'atv-2',
+      titulo: 'Homologação do Pregão Eletrônico de Servidores em Nuvem',
+      ugSigla: 'DTI',
+      ugNome: 'Tecnologia da Informação',
+      responsavel: 'Carlos Mendes',
+      tempoRelativo: 'há 3h',
+      status: 'concluida',
+      tag: 'Infraestrutura'
+    },
+    {
+      id: 'atv-3',
+      titulo: 'Consolidação da Prestação de Contas Orçamentárias',
+      ugSigla: 'PROAD',
+      ugNome: 'Administração e Finanças',
+      responsavel: 'Roberto Lima',
+      tempoRelativo: 'hoje',
+      status: 'concluida',
+      tag: 'Orçamento'
+    },
+    {
+      id: 'atv-4',
+      titulo: 'Homologação das Novas Matrizes Curriculares',
+      ugSigla: 'PROGRAD',
+      ugNome: 'Graduação',
+      responsavel: 'Felipe Santos',
+      tempoRelativo: 'ontem',
+      status: 'concluida',
+      tag: 'Ensino'
+    },
+    {
+      id: 'atv-5',
+      titulo: 'Aquisição de Insumos para Laboratórios de Pesquisa',
+      ugSigla: 'PROPESQ',
+      ugNome: 'Pesquisa',
+      responsavel: 'Dra. Helena Costa',
+      tempoRelativo: 'Prazo: 3 dias',
+      status: 'atencao',
+      tag: 'Atenção'
+    }
+  ];
 
   // Perguntas rápidas com IA (Chips interativos)
   insightsSugeridos: InsightIaItem[] = [
@@ -80,151 +246,12 @@ export class LeaderboardUgComponent implements OnInit {
   // Opções do ECharts para o modo alternativo
   echartsOptions: any;
 
-  constructor(private rankingService: RankingService) {}
-
   ngOnInit(): void {
-    this.carregarRanking();
-    this.rankingService.buscarResumo().subscribe({
-      next: (r) => this.totalAcoesUnicas = r.totalAcoesUnicas,
-      error: () => {} // KPI secundário — se falhar, mantém 0 e não bloqueia o resto da tela
-    });
+    this.atualizarEchartsOptions();
   }
 
-  carregarRanking(): void {
-    this.carregando = true;
-    this.erro = '';
-
-    this.rankingService.listarRanking().subscribe({
-      next: (dados) => {
-        this.ugs = dados.map((d) => this.mapearParaUgRankingItem(d));
-        this.atualizarEchartsOptions();
-        this.carregando = false;
-      },
-      error: () => {
-        this.erro = 'Não foi possível carregar o ranking agora.';
-        this.carregando = false;
-      }
-    });
-  }
-
-  // Cidades dos campi da UFT — usado pra identificar a qual campus uma coordenação de curso pertence,
-  // já que isso não vem como campo separado do backend, só embutido no texto do nome.
-  private static readonly CAMPI_CONHECIDOS = ['Palmas', 'Gurupi', 'Arraias', 'Miracema', 'Porto Nacional'];
-
-  private identificarCampus(textoOriginal: string): string | null {
-    for (const campus of LeaderboardUgComponent.CAMPI_CONHECIDOS) {
-      if (textoOriginal.includes(campus)) return campus;
-    }
-    return null;
-  }
-
-  private mapearParaUgRankingItem(d: RankingDepartamento): UgRankingItem {
-    const variacaoPosicao = d.posicaoAnterior != null ? d.posicaoAnterior - d.posicaoAtual : 0;
-    const { sigla, nome, categoria } = this.classificarDepartamento(d.departamento, d.tipoUnidade);
-
-    return {
-      id: d.departamento,
-      sigla,
-      nome,
-      categoria,
-      campus: this.identificarCampus(d.departamento),
-      posicao: d.posicaoAtual,
-      posicaoAnterior: d.posicaoAnterior,
-      percentual: d.mediaExecucaoPct,
-      qtdAcoes: d.qtdAcoes,
-      variacaoPosicao,
-      subiu: variacaoPosicao > 0,
-      caiu: variacaoPosicao < 0,
-      destaqueAnimacao: variacaoPosicao > 0
-    };
-  }
-
-  // Prefixos conhecidos de coordenação de curso/programa, do mais específico pro mais genérico —
-  // usa o primeiro que bater pra tirar o "rótulo" e sobrar só o nome do curso/programa.
-  private static readonly PREFIXOS_COORDENACAO: RegExp[] = [
-    /^Coordenação do Curso de\s+/i,
-    /^Coordenação do Programa de Pós-graduação em\s+/i,
-    /^Coordenação da\s+/i,
-    /^Coordenação de\s+/i,
-    /^Coord\.?\s+/i, // cobre "COORD POS-GRAD..." e "COORD. CURSO..." (grafia abreviada usada por algumas coordenações)
-  ];
-
-  // "GAB" aparece como último segmento em vários nomes só pra indicar vínculo com o Gabinete do
-  // Reitor (ex: "Procuradoria Jurídica - PROJUR - GAB") — não é a sigla própria da unidade.
-  private static readonly SUFIXOS_VINCULO_CONHECIDOS = new Set(['GAB']);
-
-  // Classifica o departamento em campus / coordenação / UG a partir do padrão real do nome
-  // (confirmado nos 105 departamentos existentes hoje no banco) — o backend só distingue
-  // UA (acadêmica) de UG (gestora), então campus vs. coordenação precisa vir do texto:
-  // - "Coordenação... - Campus"          → o que vem depois do traço é o CAMPUS/vínculo, não sigla.
-  // - "Campus Universitário de X - SIGLA" → o que vem depois do traço É a sigla de verdade.
-  // - "Nome - SIGLA - GAB" (3+ partes)    → a sigla de verdade fica no MEIO, o último segmento é só
-  //                                          o vínculo hierárquico (ex: SITAI, não GAB).
-  // - "Nome - GAB" (2 partes, mas GAB)     → GAB não identifica a unidade, usa o nome inteiro.
-  // - "Nome - SIGLA" (caso normal)         → o que vem depois do traço É a sigla de verdade.
-  // Separador de segmento tolerante a espaçamento inconsistente na fonte (ex: "Saúde- CESAU" sem
-  // espaço antes do traço) — exige espaço em pelo menos um dos lados, senão junta palavra composta
-  // com hífen (ex: "Clínica-escola") sendo cortada por engano.
-  private static readonly SEPARADOR_SEGMENTO = /\s+-\s*|\s*-\s+/;
-
-  private dividirSegmentos(texto: string): string[] {
-    return texto.split(LeaderboardUgComponent.SEPARADOR_SEGMENTO).map(p => p.trim()).filter(p => p.length > 0);
-  }
-
-  private classificarDepartamento(
-    nomeCompleto: string,
-    tipoUnidade: 'UA' | 'UG' | null
-  ): { sigla: string; nome: string; categoria: CategoriaUnidade } {
-    if (/^Coord/i.test(nomeCompleto)) {
-      let semPrefixo = nomeCompleto;
-      for (const prefixo of LeaderboardUgComponent.PREFIXOS_COORDENACAO) {
-        if (prefixo.test(nomeCompleto)) {
-          semPrefixo = nomeCompleto.replace(prefixo, '');
-          break;
-        }
-      }
-      const partes = this.dividirSegmentos(semPrefixo);
-      const curso = partes[0];
-      const vinculo = partes.length > 1 ? partes[partes.length - 1] : '';
-      return {
-        sigla: curso,
-        nome: vinculo ? `Coordenação — ${vinculo}` : 'Coordenação de curso',
-        categoria: 'coordenacao'
-      };
-    }
-
-    const partes = this.dividirSegmentos(nomeCompleto);
-
-    if (/^Campus/i.test(nomeCompleto) && partes.length > 1) {
-      return {
-        sigla: partes[partes.length - 1],
-        nome: partes[0],
-        categoria: 'campus'
-      };
-    }
-
-    if (partes.length > 1) {
-      const ultimo = partes[partes.length - 1];
-      const categoria: CategoriaUnidade = tipoUnidade === 'UG' ? 'ug' : 'outro';
-
-      // 3+ segmentos: sigla de verdade fica no meio, o último é só vínculo hierárquico
-      if (partes.length >= 3) {
-        return { sigla: partes[1], nome: partes[0], categoria };
-      }
-
-      // 2 segmentos, mas o último é um rótulo de vínculo conhecido (não uma sigla própria)
-      if (LeaderboardUgComponent.SUFIXOS_VINCULO_CONHECIDOS.has(ultimo.toUpperCase())) {
-        return { sigla: partes[0], nome: partes[0], categoria };
-      }
-
-      return { sigla: ultimo, nome: partes[0], categoria };
-    }
-
-    return {
-      sigla: nomeCompleto,
-      nome: nomeCompleto,
-      categoria: tipoUnidade === 'UG' ? 'ug' : 'outro'
-    };
+  ngOnDestroy(): void {
+    this.pararAutoSimulacao();
   }
 
   // Getters para KPIs no topo
@@ -234,45 +261,68 @@ export class LeaderboardUgComponent implements OnInit {
     return Math.round((soma / this.ugs.length) * 10) / 10;
   }
 
+  get totalTarefasGlobal(): number {
+    return this.ugs.reduce((acc, ug) => acc + ug.totalTarefas, 0);
+  }
+
+  get totalConcluidasGlobal(): number {
+    return this.ugs.reduce((acc, ug) => acc + ug.tarefasConcluidas, 0);
+  }
+
   get totalUgsEmAtencao(): number {
     return this.ugs.filter(u => u.percentual < 60).length;
   }
 
-  get totalCampus(): number {
-    return this.ugs.filter(u => u.categoria === 'campus').length;
-  }
+  simularReordenacao(): void {
+    const posicoesAnterioresMap = new Map<string, number>();
+    this.ugs.forEach((ug, idx) => {
+      ug.posicaoAnterior = idx + 1;
+      posicoesAnterioresMap.set(ug.id, idx + 1);
+      ug.percentualAnterior = ug.percentual;
+    });
 
-  get totalCoordenacoes(): number {
-    return this.ugs.filter(u => u.categoria === 'coordenacao').length;
-  }
+    this.ugs.forEach((ug) => {
+      const delta = Math.floor(Math.random() * 30) - 12;
+      let novoPct = Math.min(100, Math.max(20, Math.round((ug.percentual + delta) * 10) / 10));
+      ug.percentual = novoPct;
+      ug.tarefasConcluidas = Math.min(ug.totalTarefas, Math.round((novoPct / 100) * ug.totalTarefas));
+    });
 
-  get totalUg(): number {
-    return this.ugs.filter(u => u.categoria === 'ug').length;
-  }
+    this.ugs.sort((a, b) => b.percentual - a.percentual);
 
-  get campiComDados(): string[] {
-    return LeaderboardUgComponent.CAMPI_CONHECIDOS.filter(c => this.ugs.some(u => u.campus === c));
-  }
+    this.ugs.forEach((ug, idx) => {
+      const novaPosicao = idx + 1;
+      const antigaPosicao = posicoesAnterioresMap.get(ug.id) || novaPosicao;
+      
+      ug.posicao = novaPosicao;
+      ug.variacaoPosicao = antigaPosicao - novaPosicao;
+      ug.subiu = ug.variacaoPosicao > 0;
+      ug.caiu = ug.variacaoPosicao < 0;
 
-  get ugsFiltrados(): UgRankingItem[] {
-    return this.ugs.filter(u =>
-      (this.filtroCategoria === 'todos' || u.categoria === this.filtroCategoria) &&
-      (this.filtroCampus === 'todos' || u.campus === this.filtroCampus)
-    );
-  }
+      if (ug.subiu) {
+        ug.destaqueAnimacao = true;
+        setTimeout(() => ug.destaqueAnimacao = false, 2500);
+      }
+    });
 
-  get echartsWrapHeight(): number {
-    return Math.max(380, this.ugsFiltrados.length * 28);
-  }
-
-  definirFiltro(categoria: CategoriaUnidade | 'todos'): void {
-    this.filtroCategoria = categoria;
     this.atualizarEchartsOptions();
   }
 
-  definirFiltroCampus(campus: string): void {
-    this.filtroCampus = campus;
-    this.atualizarEchartsOptions();
+  toggleAutoSimulacao(): void {
+    this.autoSimulacaoAtiva = !this.autoSimulacaoAtiva;
+    if (this.autoSimulacaoAtiva) {
+      this.simularReordenacao();
+      this.timerAutoSimulacao = window.setInterval(() => this.simularReordenacao(), 4000);
+    } else {
+      this.pararAutoSimulacao();
+    }
+  }
+
+  private pararAutoSimulacao(): void {
+    if (this.timerAutoSimulacao) {
+      window.clearInterval(this.timerAutoSimulacao);
+      this.timerAutoSimulacao = undefined;
+    }
   }
 
   alternarModo(modo: 'cards' | 'echarts'): void {
@@ -286,15 +336,6 @@ export class LeaderboardUgComponent implements OnInit {
     return `#${posicao}`;
   }
 
-  getCategoriaLabel(categoria: CategoriaUnidade): string {
-    switch (categoria) {
-      case 'campus': return 'Campus';
-      case 'coordenacao': return 'Coordenação de curso';
-      case 'ug': return 'Unidade Gestora';
-      default: return 'Unidade Acadêmica';
-    }
-  }
-
   getClasseCorPct(percentual: number): string {
     if (percentual >= 75) return 'pct-alto';
     if (percentual >= 50) return 'pct-medio';
@@ -305,12 +346,16 @@ export class LeaderboardUgComponent implements OnInit {
     this.selecionarUg.emit(`Faça uma análise detalhada do desempenho e metas da ${ug.sigla} (${ug.nome}).`);
   }
 
+  clicarAtividade(atv: AtividadeRecenteItem): void {
+    this.selecionarUg.emit(`Explique o status e o impacto da entrega da ${atv.ugSigla}: "${atv.titulo}".`);
+  }
+
   clicarInsight(insight: InsightIaItem): void {
     this.selecionarUg.emit(insight.prompt);
   }
 
   private atualizarEchartsOptions(): void {
-    const sorted = [...this.ugsFiltrados].reverse();
+    const sorted = [...this.ugs].reverse();
     const categorias = sorted.map(u => u.sigla);
     const valores = sorted.map(u => u.percentual);
 
@@ -322,20 +367,13 @@ export class LeaderboardUgComponent implements OnInit {
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
-        // {b} sozinho é só a sigla curta (ex: "Matemática"), que pode repetir em campus
-        // diferentes — mostra o nome completo (com contexto de campus/coordenação) junto.
-        formatter: (params: any) => {
-          const p = Array.isArray(params) ? params[0] : params;
-          const item = sorted[p.dataIndex];
-          if (!item) return '';
-          return `<strong>${item.sigla}</strong><br/>${item.nome}<br/>${item.percentual}% de execução`;
-        }
+        formatter: '{b}: {c}% de execução'
       },
       grid: {
         top: 20,
         bottom: 30,
-        left: 140,
-        right: 60
+        left: 80,
+        right: 40
       },
       xAxis: {
         type: 'value',
@@ -347,9 +385,7 @@ export class LeaderboardUgComponent implements OnInit {
         type: 'category',
         data: categorias,
         inverse: true,
-        axisLabel: { color: '#f8fafc', fontWeight: 'bold' },
-        // espaço entre barras proporcional ao total, senão com muitos departamentos fica tudo colado
-        boundaryGap: ['10%', '10%']
+        axisLabel: { color: '#f8fafc', fontWeight: 'bold' }
       },
       series: [
         {
@@ -357,7 +393,6 @@ export class LeaderboardUgComponent implements OnInit {
           type: 'bar',
           data: valores,
           realtimeSort: true,
-          barCategoryGap: '45%',
           label: {
             show: true,
             position: 'right',

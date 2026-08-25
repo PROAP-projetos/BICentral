@@ -21,8 +21,4 @@ export class RankingService {
       : 'http://localhost:8080/api/ranking';
     return this.http.get<RankingDepartamento[]>(url);
   }
-
-  buscarResumo(): Observable<{ totalAcoesUnicas: number }> {
-    return this.http.get<{ totalAcoesUnicas: number }>('http://localhost:8080/api/ranking/resumo');
-  }
 }

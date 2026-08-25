@@ -56,18 +56,6 @@ public class RankingController {
         return ResponseEntity.ok(resultado);
     }
 
-    // A contagem de "ações" por departamento (acima) soma linhas por departamento, então uma ação
-    // "geral" cadastrada em 90+ departamentos diferentes (comum no PAT) infla muito o total quando
-    // somado entre departamentos. Esse endpoint devolve a contagem de ações realmente distintas,
-    // sem repetir a mesma ação por aparecer em vários departamentos.
-    @GetMapping("/resumo")
-    public ResponseEntity<Map<String, Integer>> resumo() {
-        Integer totalAcoesUnicas = jdbcTemplate.queryForObject(
-                "SELECT COUNT(DISTINCT codigo_acao) FROM pat_execucao_departamento",
-                Integer.class);
-        return ResponseEntity.ok(Map.of("totalAcoesUnicas", totalAcoesUnicas));
-    }
-
     private Map<String, Integer> buscarPosicoesAnteriores(String tipoUnidade) {
         java.sql.Date dataAnterior = jdbcTemplate.queryForObject(
                 "SELECT MAX(data_snapshot) FROM ranking_pat_snapshots WHERE data_snapshot < CURRENT_DATE",

@@ -335,19 +335,26 @@
   box-sizing: border-box;
 }
 
-.ranking-panel-view app-leaderboard-ug {
+.ranking-panel-view app-leaderboard-ug,
+.ranking-panel-view app-grafo-atividades {
   display: flex;
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
 }
 
+.painel-topo-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1.25rem 0 0.75rem -0.35rem;
+}
+
 .voltar-chat-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  align-self: flex-start;
-  margin: 1.25rem 0 0.75rem -0.35rem;
   padding: 0.4rem 0.85rem;
   background: transparent;
   border: 1px solid transparent;
@@ -362,6 +369,34 @@
 .voltar-chat-btn:hover {
   background: rgba(2, 132, 199, 0.1);
   border-color: rgba(2, 132, 199, 0.25);
+}
+
+.painel-abas {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.painel-aba-btn {
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-color, rgba(148, 163, 184, 0.25));
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+}
+
+.painel-aba-btn:hover {
+  border-color: #0284c7;
+  color: #0284c7;
+}
+
+.painel-aba-btn.active {
+  background: #0284c7;
+  border-color: #0284c7;
+  color: #ffffff;
 }
 
 .chat-body.is-empty { justify-content: center; }
