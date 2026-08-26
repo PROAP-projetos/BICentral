@@ -4,26 +4,22 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { GraficoIaComponent } from '../grafico-ia/grafico-ia';
+import { GrafoAtividadesComponent } from '../grafo-atividades/grafo-atividades.component';
+import { LeaderboardUgComponent } from '../leaderboard-ug/leaderboard-ug.component';
 import { AgentService, Notificacao, PainelAtrasos, RelatorioHistoricoItem } from '../services/agent.service';
 import { AdminService } from '../services/admin.service';
 import { SafeUrlPipe } from '../pipes/safe-url.pipe';
 
-interface FonteDisponivel {
-  nome: string;
-  acesso: 'publico' | 'privado';
-  tipo: 'planilha' | 'pdf' | 'relatorio' | 'documento';
-}
-
 interface ChatSession {
   id: number;
   titulo: string;
-  messages: { from: 'bot' | 'user'; text?: string; spec?: any; fontes?: string[] }[];
+  messages: { from: 'bot' | 'user'; text?: string; spec?: any; fontes?: string[]; sugestoes?: string[] }[];
 }
 
 @Component({
   selector: 'app-agent',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, GraficoIaComponent, SafeUrlPipe],
+  imports: [CommonModule, FormsModule, RouterLink, GraficoIaComponent, SafeUrlPipe, LeaderboardUgComponent, GrafoAtividadesComponent],
   templateUrl: './agent.html',
   styleUrls: ['./agent.css']
 })
@@ -32,12 +28,15 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   @ViewChild('messagesContainer') private messagesContainer?: ElementRef<HTMLDivElement>;
   @ViewChild('promptInput') private promptInput?: ElementRef<HTMLTextAreaElement>;
 
+  private static readonly AVISO_API_DISPENSADO_KEY = 'bicentral_aviso_api_openai_dispensado';
+
   isDarkMode = false;
+  painelAtivo: 'chat' | 'ranking' | 'grafo' = 'chat';
+  avisoApiVisivel = localStorage.getItem(AgentComponent.AVISO_API_DISPENSADO_KEY) !== '1';
   private scrollPendente = true;
   usuarioLogado = 'dallyla.moraes';
   equipeSelecionada = 'Orçamento';
   equipeId?: number;
-  fontesDisponiveis: FonteDisponivel[] = [];
 
   modelos = ['Llama 3 (Groq)', 'Gemini 2.5 Flash', 'Ollama Local'];
   modeloAtivoIndex = 0;
@@ -49,13 +48,27 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
 
   input = '';
   carregando = false;
-  carregandoFontes = false;
   erro = '';
   mensagemCopiadaId = '';
   private mensagemCopiadaTimer?: number;
 
   mensagemBoasVindas = '';
   isAdminSistema = false;
+
+  // ==========================================
+  // SIDEBAR
+  // ==========================================
+  private static readonly SIDEBAR_KEY = 'bicentral_sidebar_colapsada';
+  sidebarColapsada = false;
+
+  // ==========================================
+  // CONFIGURAÇÕES (aparência)
+  // ==========================================
+  private static readonly FONT_SIZE_KEY = 'bicentral_font_size';
+  private static readonly FONT_FAMILY_KEY = 'bicentral_font_family';
+  mostrarSettings = false;
+  fontSize: 'small' | 'medium' | 'large' = 'medium';
+  fontFamily: 'default' | 'serif' | 'mono' = 'default';
 
   // ==========================================
   // NOTIFICAÇÕES
@@ -81,12 +94,25 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   constructor(private agentService: AgentService, private adminService: AdminService) {
     this.carregarUsuario();
     this.carregarEquipeSelecionada();
-    this.carregarFontes();
     this.carregarNotificacoes();
     this.verificarAdminSistema();
 
     if (localStorage.getItem('theme') === 'dark') {
       this.isDarkMode = true;
+    }
+
+    if (localStorage.getItem(AgentComponent.SIDEBAR_KEY) === '1') {
+      this.sidebarColapsada = true;
+    }
+
+    const tamanhoSalvo = localStorage.getItem(AgentComponent.FONT_SIZE_KEY);
+    if (tamanhoSalvo === 'small' || tamanhoSalvo === 'medium' || tamanhoSalvo === 'large') {
+      this.fontSize = tamanhoSalvo;
+    }
+
+    const tipoSalvo = localStorage.getItem(AgentComponent.FONT_FAMILY_KEY);
+    if (tipoSalvo === 'default' || tipoSalvo === 'serif' || tipoSalvo === 'mono') {
+      this.fontFamily = tipoSalvo;
     }
   }
 
@@ -225,7 +251,8 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
             this.sessaoAtual.messages.push({
               from: 'bot',
               text: resposta.texto,
-              fontes: resposta.fontes // Guarda as fontes lidas
+              fontes: resposta.fontes, // Guarda as fontes lidas
+              sugestoes: resposta.sugestoes
             });
 
             if (resposta.relatorioGerado) {
@@ -246,6 +273,23 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
           this.agendarScrollParaFim();
         }
       });
+  }
+
+  enviarSugestao(texto: string) {
+    this.input = texto;
+    this.send();
+  }
+
+  dispensarAvisoApi(): void {
+    this.avisoApiVisivel = false;
+    localStorage.setItem(AgentComponent.AVISO_API_DISPENSADO_KEY, '1');
+  }
+
+  get sugestoesAtuais(): string[] {
+    const msgs = this.sessaoAtual?.messages;
+    if (!msgs || msgs.length === 0) return [];
+    const ultima = msgs[msgs.length - 1];
+    return ultima.from === 'bot' && ultima.sugestoes ? ultima.sugestoes : [];
   }
 
   // ==========================================
@@ -281,28 +325,33 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     } catch { }
   }
 
-  private carregarFontes(): void {
-    if (!this.equipeId) return;
-    this.carregandoFontes = true;
-    this.agentService.listarFontes(this.equipeId)
-      .pipe(finalize(() => this.carregandoFontes = false))
-      .subscribe({
-        next: (response) => {
-          this.fontesDisponiveis = (response.fontes || []).map((fonte) => ({
-            ...fonte,
-            tipo: this.getTipoFonte(fonte.nome)
-          }));
-        },
-        error: () => this.fontesDisponiveis = []
-      });
+  // ==========================================
+  // SIDEBAR
+  // ==========================================
+  toggleSidebar(): void {
+    this.sidebarColapsada = !this.sidebarColapsada;
+    localStorage.setItem(AgentComponent.SIDEBAR_KEY, this.sidebarColapsada ? '1' : '0');
   }
 
-  private getTipoFonte(nome: string): FonteDisponivel['tipo'] {
-    const ext = nome.split('.').pop()?.toLowerCase();
-    if (ext === 'xlsx') return 'planilha';
-    if (ext === 'pdf') return 'pdf';
-    if (nome.toLowerCase().includes('relatorio')) return 'relatorio';
-    return 'documento';
+  // ==========================================
+  // CONFIGURAÇÕES (aparência)
+  // ==========================================
+  toggleSettings(): void {
+    this.mostrarSettings = !this.mostrarSettings;
+    if (this.mostrarSettings) {
+      this.mostrarPainelNotificacoes = false;
+      this.mostrarPainelRelatorio = false;
+    }
+  }
+
+  setFontSize(tamanho: 'small' | 'medium' | 'large'): void {
+    this.fontSize = tamanho;
+    localStorage.setItem(AgentComponent.FONT_SIZE_KEY, tamanho);
+  }
+
+  setFontFamily(tipo: 'default' | 'serif' | 'mono'): void {
+    this.fontFamily = tipo;
+    localStorage.setItem(AgentComponent.FONT_FAMILY_KEY, tipo);
   }
 
   // ==========================================
@@ -320,6 +369,10 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
 
   toggleNotificacoes(): void {
     this.mostrarPainelNotificacoes = !this.mostrarPainelNotificacoes;
+    if (this.mostrarPainelNotificacoes) {
+      this.mostrarPainelRelatorio = false;
+      this.mostrarSettings = false;
+    }
   }
 
   get temAlertaNegativo(): boolean {
@@ -335,6 +388,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   }
 
   abrirPainelAtrasos(departamento: string): void {
+    this.mostrarPainelNotificacoes = false;
     this.carregandoPainelAtrasos = true;
     this.agentService.buscarPainelAtrasos(departamento)
       .pipe(finalize(() => this.carregandoPainelAtrasos = false))
@@ -353,9 +407,9 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   // ==========================================
   toggleRelatorio(): void {
     this.mostrarPainelRelatorio = !this.mostrarPainelRelatorio;
-    if (this.mostrarPainelNotificacoes) this.mostrarPainelNotificacoes = false;
-
     if (this.mostrarPainelRelatorio) {
+      this.mostrarPainelNotificacoes = false;
+      this.mostrarSettings = false;
       this.carregarMeusRelatorios();
       this.iniciarPollingHistorico();
     } else {

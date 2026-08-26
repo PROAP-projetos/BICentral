@@ -9,6 +9,7 @@ import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,6 +31,12 @@ public class AiConfig {
     @Value("${sambanova.api.key:}")
     private String sambanovaApiKey;
 
+    @Value("${openrouter.api.key:}")
+    private String openrouterApiKey;
+
+    @Value("${openai.api.key:}")
+    private String openaiApiKey;
+
     @Value("${ollama.base.url:http://localhost:11434}")
     private String ollamaBaseUrl;
 
@@ -42,12 +49,11 @@ public class AiConfig {
     // --- CHAT MODELS (LLMs) ---
 
     @Bean("groqModel")
-
     public ChatLanguageModel groqModel() {
         return OpenAiChatModel.builder()
                 .apiKey(groqApiKey)
                 .baseUrl("https://api.groq.com/openai/v1")
-                .modelName("llama-3.3-70b-versatile")
+                .modelName("openai/gpt-oss-120b")
                 .temperature(0.0)
                 .build();
     }
@@ -71,12 +77,45 @@ public class AiConfig {
                 .build();
     }
 
+    @Bean("openrouterModel")
+    public ChatLanguageModel openrouterModel() {
+        return OpenAiChatModel.builder()
+                .apiKey(openrouterApiKey)
+                .baseUrl("https://openrouter.ai/api/v1")
+                .modelName("openai/gpt-oss-20b:free")
+                .temperature(0.0)
+                .build();
+    }
+
+    @Bean("openaiLunaModel")
+    @Primary
+    public ChatLanguageModel openaiLunaModel() {
+        return OpenAiChatModel.builder()
+                .apiKey(openaiApiKey)
+                .modelName("gpt-5.6-luna")
+                .defaultRequestParameters(OpenAiChatRequestParameters.builder()
+                        .reasoningEffort("none")
+                        .build())
+                .build();
+    }
+
+    @Bean("openaiTerraModel")
+    public ChatLanguageModel openaiTerraModel() {
+        return OpenAiChatModel.builder()
+                .apiKey(openaiApiKey)
+                .modelName("gpt-5.6-terra")
+                .defaultRequestParameters(OpenAiChatRequestParameters.builder()
+                        .reasoningEffort("none")
+                        .build())
+                .build();
+    }
+
     @Bean("geminiModel")
     @Primary
     public ChatLanguageModel geminiModel() {
         return GoogleAiGeminiChatModel.builder()
                 .apiKey(geminiApiKey)
-                .modelName("gemini-2.5-flash")
+                .modelName("gemini-3.7-flash")
                 .build();
     }
 
@@ -94,7 +133,16 @@ public class AiConfig {
     @Bean("localEmbeddingModel")
     @Primary
     public EmbeddingModel localEmbeddingModel() {
-        return new AllMiniLmL6V2EmbeddingModel();
+        try {
+            System.setProperty("ai.djl.onnx.disable_cuda", "true");
+            return new AllMiniLmL6V2EmbeddingModel();
+        } catch (Throwable t) {
+            System.err.println(">>> AVISO: Não foi possível carregar AllMiniLmL6V2EmbeddingModel local (" + t.getMessage() + "). Utilizando Gemini Embedding como fallback.");
+            return GoogleAiEmbeddingModel.builder()
+                    .apiKey(geminiApiKey)
+                    .modelName("text-embedding-004")
+                    .build();
+        }
     }
 
     @Bean("geminiEmbeddingModel")

@@ -33,7 +33,6 @@ public class SecurityConfig {
             "/api/usuarios/verify",
             "/auth/**", //removi api/convites/aceitar
             "/error",
-            "/ai/test/**",
             "/api/proiap/**",
             "/favicon.ico"
     };

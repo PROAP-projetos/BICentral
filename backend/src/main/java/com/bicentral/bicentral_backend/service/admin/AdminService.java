@@ -10,11 +10,14 @@ import com.bicentral.bicentral_backend.dto.uft.ConfiguracaoUftDTO;
 import com.bicentral.bicentral_backend.dto.uft.ConfiguracaoUftRequestDTO;
 import com.bicentral.bicentral_backend.dto.uft.ResultadoTesteUftDTO;
 import com.bicentral.bicentral_backend.dto.admin.AdminSistemaDTO;
+import com.bicentral.bicentral_backend.dto.admin.ClassificacaoDepartamentoRequestDTO;
 import com.bicentral.bicentral_backend.dto.admin.ConfiguracaoNotificacaoDTO;
 import com.bicentral.bicentral_backend.dto.admin.AdminUsuarioRequestDTO;
 import com.bicentral.bicentral_backend.dto.admin.ConfiguracaoNotificacaoRequestDTO;
 import com.bicentral.bicentral_backend.dto.admin.GerenteDepartamentoDTO;
 import com.bicentral.bicentral_backend.dto.admin.GerenteDepartamentoRequestDTO;
+import com.bicentral.bicentral_backend.dto.admin.UsuarioResponsavelDTO;
+import com.bicentral.bicentral_backend.dto.admin.UsuarioResponsavelRequestDTO;
 import com.bicentral.bicentral_backend.dto.admin.UsuarioResumoDTO;
 
 import java.math.BigDecimal;
@@ -41,6 +44,75 @@ public class AdminService {
     public AdminService(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
         garantirTabelaAdmins();
+        garantirTabelaResponsaveis();
+        garantirIndiceGerentes();
+        garantirTabelaDepartamentoTipo();
+    }
+
+    // Classificar o tipo (UA/UG) de um departamento estava amarrado a atribuir um gerente de
+    // verdade em gerentes_departamento (usuario_id é obrigatório lá) — por isso 77 coordenações
+    // de curso nunca foram classificadas, ninguém ia inventar um gerente falso só pra isso.
+    // Essa tabela separa as duas coisas: aqui só se classifica o tipo, sem precisar de usuário.
+    // IF NOT EXISTS também aparece em ConsultaAcoesTool (a view que lê essa tabela) — os dois
+    // lados garantem a tabela porque a ordem de inicialização dos beans não é garantida.
+    private void garantirTabelaDepartamentoTipo() {
+        jdbcTemplate.execute("""
+            CREATE TABLE IF NOT EXISTS departamento_tipo (
+                departamento TEXT PRIMARY KEY,
+                tipo_unidade VARCHAR(2) NOT NULL,
+                atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+            """);
+    }
+
+    @Transactional
+    public void classificarDepartamento(Long usuarioLogadoId, ClassificacaoDepartamentoRequestDTO request) {
+        exigirAdmin(usuarioLogadoId);
+        if (request.departamento() == null || request.departamento().trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe o departamento");
+        }
+        if (!"UA".equals(request.tipoUnidade()) && !"UG".equals(request.tipoUnidade())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tipo de unidade deve ser UA ou UG");
+        }
+        jdbcTemplate.update("""
+            INSERT INTO departamento_tipo (departamento, tipo_unidade)
+            VALUES (?, ?)
+            ON CONFLICT (departamento) DO UPDATE SET tipo_unidade = EXCLUDED.tipo_unidade, atualizado_em = NOW()
+            """, request.departamento().trim(), request.tipoUnidade());
+    }
+
+    // gerentes_departamento foi criada direto no banco (não tem CREATE TABLE aqui no código),
+    // e nunca teve proteção contra duplicata — foi exatamente essa tabela que duplicou de
+    // verdade quando um cadastro foi enviado duas vezes seguidas. Um usuário pode legitimamente
+    // gerenciar mais de um departamento, então a chave única é o PAR (usuario_id, departamento),
+    // não usuario_id sozinho.
+    private void garantirIndiceGerentes() {
+        jdbcTemplate.execute("CREATE UNIQUE INDEX IF NOT EXISTS gerentes_departamento_usuario_depto_key ON gerentes_departamento (usuario_id, departamento)");
+        // tipo_unidade aqui é legado — a classificação de tipo agora mora em departamento_tipo,
+        // sem depender de gerente nenhum (ver garantirTabelaDepartamentoTipo). Deixar de exigir
+        // NOT NULL permite adicionar um gerente sem precisar (mal) inventar um tipo pra ele.
+        jdbcTemplate.execute("ALTER TABLE gerentes_departamento ALTER COLUMN tipo_unidade DROP NOT NULL");
+    }
+
+    private void garantirTabelaResponsaveis() {
+        jdbcTemplate.execute("""
+            CREATE TABLE IF NOT EXISTS usuario_responsavel (
+                id BIGSERIAL PRIMARY KEY,
+                usuario_id BIGINT NOT NULL,
+                nome_responsavel TEXT NOT NULL
+            )
+            """);
+        // A tabela já existia em produção sem "id" nem "created_at" (só usuario_id e
+        // nome_responsavel) — o CREATE TABLE acima foi ignorado nela, então garante
+        // essas colunas separadamente, direto com ALTER, que funciona mesmo já existindo.
+        jdbcTemplate.execute("ALTER TABLE usuario_responsavel ADD COLUMN IF NOT EXISTS id BIGSERIAL");
+        jdbcTemplate.execute("ALTER TABLE usuario_responsavel ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now()");
+        // Sem isso, dois cliques seguidos em "adicionar responsável" (ou duas requisições quase
+        // simultâneas) podem criar duas linhas pro mesmo usuário — e buscarMinhasTarefas() espera
+        // exatamente uma linha por usuario_id, quebrando "minhas tarefas" pra essa pessoa. Índice
+        // único (não constraint) porque Postgres não tem "ADD CONSTRAINT IF NOT EXISTS", mas index
+        // único tem o IF NOT EXISTS e serve pro mesmo propósito, inclusive pro ON CONFLICT abaixo.
+        jdbcTemplate.execute("CREATE UNIQUE INDEX IF NOT EXISTS usuario_responsavel_usuario_id_key ON usuario_responsavel (usuario_id)");
     }
 
     private void garantirTabelaAdmins() {
@@ -50,14 +122,15 @@ public class AdminService {
             )
             """);
 
-        Integer total = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM admins_sistema", Integer.class);
-        if (total == null || total == 0) {
-            jdbcTemplate.update("""
-                INSERT INTO admins_sistema (usuario_id)
-                VALUES (?)
-                ON CONFLICT (usuario_id) DO NOTHING
-                """, BOOTSTRAP_ADMIN_ID);
-        }
+        // Sempre garante o admin de bootstrap, não só quando a tabela está totalmente vazia — do
+        // jeito que era antes. Só rodar quando vazia mudava o comportamento sem isso ter sido
+        // combinado: se o admin de bootstrap fosse removido e outro colocado no lugar, ele não
+        // voltava mais sozinho a cada restart. ON CONFLICT DO NOTHING já é idempotente por si só.
+        jdbcTemplate.update("""
+            INSERT INTO admins_sistema (usuario_id)
+            VALUES (?)
+            ON CONFLICT (usuario_id) DO NOTHING
+            """, BOOTSTRAP_ADMIN_ID);
     }
 
     public boolean isAdmin(Long usuarioId) {
@@ -147,9 +220,12 @@ public class AdminService {
         validarUsuarioExistente(request.usuarioId());
         validarGerenteRequest(request);
 
+        // ON CONFLICT em vez de INSERT simples: clique duplo/requisição repetida atualiza o
+        // vínculo existente em vez de criar uma segunda linha pro mesmo usuário+departamento.
         Long id = jdbcTemplate.queryForObject("""
             INSERT INTO gerentes_departamento (usuario_id, departamento, tipo_unidade)
             VALUES (?, ?, ?)
+            ON CONFLICT (usuario_id, departamento) DO UPDATE SET tipo_unidade = EXCLUDED.tipo_unidade
             RETURNING id
             """, Long.class, request.usuarioId(), request.departamento().trim(), request.tipoUnidade());
 
@@ -163,6 +239,85 @@ public class AdminService {
         if (removidos == 0) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Vinculo de gerente nao encontrado");
         }
+    }
+
+    public List<UsuarioResponsavelDTO> listarResponsaveis(Long usuarioLogadoId) {
+        exigirAdmin(usuarioLogadoId);
+        return jdbcTemplate.query("""
+            SELECT ur.id, ur.usuario_id, u.username AS usuario_nome, u.email AS usuario_email,
+                   ur.nome_responsavel, ur.created_at
+            FROM usuario_responsavel ur
+            LEFT JOIN usuario u ON u.id = ur.usuario_id
+            ORDER BY ur.nome_responsavel
+            """, (rs, rowNum) -> new UsuarioResponsavelDTO(
+                rs.getLong("id"),
+                rs.getLong("usuario_id"),
+                rs.getString("usuario_nome"),
+                rs.getString("usuario_email"),
+                rs.getString("nome_responsavel"),
+                rs.getObject("created_at", OffsetDateTime.class)
+        ));
+    }
+
+    @Transactional
+    public UsuarioResponsavelDTO adicionarResponsavel(Long usuarioLogadoId, UsuarioResponsavelRequestDTO request) {
+        exigirAdmin(usuarioLogadoId);
+        validarUsuarioExistente(request.usuarioId());
+        if (request.nomeResponsavel() == null || request.nomeResponsavel().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe o nome do responsavel");
+        }
+
+        // Cada usuario so pode ter um responsavel vinculado; um novo vinculo substitui o anterior.
+        // Upsert atômico (em vez de DELETE + INSERT em dois passos) pra não deixar janela de corrida
+        // em cliques duplos/requisições simultâneas — o índice único acima é o que garante isso.
+        Long id = jdbcTemplate.queryForObject("""
+            INSERT INTO usuario_responsavel (usuario_id, nome_responsavel)
+            VALUES (?, ?)
+            ON CONFLICT (usuario_id) DO UPDATE SET nome_responsavel = EXCLUDED.nome_responsavel
+            RETURNING id
+            """, Long.class, request.usuarioId(), request.nomeResponsavel().trim());
+
+        return buscarResponsavelPorId(id);
+    }
+
+    @Transactional
+    public void removerResponsavel(Long usuarioLogadoId, Long id) {
+        exigirAdmin(usuarioLogadoId);
+        int removidos = jdbcTemplate.update("DELETE FROM usuario_responsavel WHERE id = ?", id);
+        if (removidos == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Vinculo de responsavel nao encontrado");
+        }
+    }
+
+    public List<String> buscarResponsaveisPat(Long usuarioLogadoId, String busca) {
+        exigirAdmin(usuarioLogadoId);
+        if (busca == null || busca.isBlank()) {
+            return List.of();
+        }
+        return jdbcTemplate.queryForList("""
+            SELECT DISTINCT dados_completos->>'Responsável' AS nome
+            FROM pat_tarefas
+            WHERE dados_completos->>'Responsável' ILIKE ?
+            ORDER BY nome
+            LIMIT 15
+            """, String.class, "%" + busca.trim() + "%");
+    }
+
+    private UsuarioResponsavelDTO buscarResponsavelPorId(Long id) {
+        return jdbcTemplate.queryForObject("""
+            SELECT ur.id, ur.usuario_id, u.username AS usuario_nome, u.email AS usuario_email,
+                   ur.nome_responsavel, ur.created_at
+            FROM usuario_responsavel ur
+            LEFT JOIN usuario u ON u.id = ur.usuario_id
+            WHERE ur.id = ?
+            """, (rs, rowNum) -> new UsuarioResponsavelDTO(
+                rs.getLong("id"),
+                rs.getLong("usuario_id"),
+                rs.getString("usuario_nome"),
+                rs.getString("usuario_email"),
+                rs.getString("nome_responsavel"),
+                rs.getObject("created_at", OffsetDateTime.class)
+        ), id);
     }
 
     public ConfiguracaoNotificacaoDTO buscarConfiguracoesNotificacao(Long usuarioLogadoId) {
@@ -325,7 +480,9 @@ public class AdminService {
         if (request.departamento() == null || request.departamento().trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe o departamento");
         }
-        if (!"UA".equals(request.tipoUnidade()) && !"UG".equals(request.tipoUnidade())) {
+        // tipoUnidade agora é opcional aqui — quem classifica o tipo é /departamentos/classificar.
+        String tipo = request.tipoUnidade();
+        if (tipo != null && !tipo.isBlank() && !"UA".equals(tipo) && !"UG".equals(tipo)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tipo de unidade deve ser UA ou UG");
         }
     }

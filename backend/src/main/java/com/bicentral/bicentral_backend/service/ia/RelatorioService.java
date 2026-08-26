@@ -12,14 +12,14 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.bicentral.bicentral_backend.dto.relatorio.AcaoAnalisada;
-import com.bicentral.bicentral_backend.dto.relatorio.AcaoRelatorio;
-import com.bicentral.bicentral_backend.dto.relatorio.DepartamentoParceiro;
-import com.bicentral.bicentral_backend.dto.relatorio.IndicadorRelatorio;
-import com.bicentral.bicentral_backend.dto.relatorio.JustificativaAcao;
-import com.bicentral.bicentral_backend.dto.relatorio.RelatorioConteudoIA;
-import com.bicentral.bicentral_backend.dto.relatorio.RelatorioEstruturado;
-import com.bicentral.bicentral_backend.dto.relatorio.TarefaResponsavel;
+import com.bicentral.bicentral_backend.dto.relatorio.AcaoAnalisadaDTO;
+import com.bicentral.bicentral_backend.dto.relatorio.AcaoRelatorioDTO;
+import com.bicentral.bicentral_backend.dto.relatorio.DepartamentoParceiroDTO;
+import com.bicentral.bicentral_backend.dto.relatorio.IndicadorRelatorioDTO;
+import com.bicentral.bicentral_backend.dto.relatorio.JustificativaAcaoDTO;
+import com.bicentral.bicentral_backend.dto.relatorio.RelatorioConteudoIADTO;
+import com.bicentral.bicentral_backend.dto.relatorio.RelatorioEstruturadoDTO;
+import com.bicentral.bicentral_backend.dto.relatorio.TarefaResponsavelDTO;
 
 import jakarta.annotation.PostConstruct;
 import java.io.ByteArrayOutputStream;
@@ -179,7 +179,7 @@ public class RelatorioService {
 
         try {
             String departamento = (String) relatorio.get("departamento");
-            RelatorioEstruturado estruturado = MAPPER.readValue(textoRelatorio, RelatorioEstruturado.class);
+            RelatorioEstruturadoDTO estruturado = MAPPER.readValue(textoRelatorio, RelatorioEstruturadoDTO.class);
             byte[] pdfBytes = gerarPdf(estruturado);
             String novaPdfUrl = enviarParaBucket(pdfBytes, departamento, id, "pdf", "application/pdf");
 
@@ -197,9 +197,9 @@ public class RelatorioService {
 
             DadosQuantitativosRelatorio dados = montarDadosQuantitativos(departamento, tipo);
             String prompt = montarPromptParaIA(departamento, tipo, dados.piores());
-            RelatorioConteudoIA conteudo = agenteRelatorio.gerarConteudoRelatorio(prompt);
+            RelatorioConteudoIADTO conteudo = agenteRelatorio.gerarConteudoRelatorio(prompt);
 
-            RelatorioEstruturado estruturado = new RelatorioEstruturado(
+            RelatorioEstruturadoDTO estruturado = new RelatorioEstruturadoDTO(
                     departamento,
                     tipo,
                     LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")),
@@ -252,15 +252,27 @@ public class RelatorioService {
      * Se a IA devolver uma quantidade diferente da recebida, pareia só até o menor
      * tamanho em vez de quebrar.
      */
-    private List<AcaoAnalisada> combinarAnaliseComJustificativas(String departamento, List<AcaoComCodigo> piores, List<JustificativaAcao> justificativas) {
-        List<AcaoAnalisada> resultado = new ArrayList<>();
+    private List<AcaoAnalisadaDTO> combinarAnaliseComJustificativas(String departamento, List<AcaoComCodigo> piores, List<JustificativaAcaoDTO> justificativas) {
         int total = Math.min(piores.size(), justificativas.size());
+
+        List<String> codigos = piores.stream()
+                .limit(total)
+                .map(AcaoComCodigo::codigo)
+                .filter(c -> c != null && !c.isBlank())
+                .toList();
+
+        // Antes: 1 query de tarefas + 1 query de departamentos parceiros POR ação (até 30 idas ao
+        // banco pras 15 piores ações). Agora: busca tudo de uma vez com IN (...) e agrupa em Java.
+        Map<String, List<TarefaResponsavelDTO>> tarefasPorCodigo = buscarTarefasPorAcoes(departamento, codigos);
+        Map<String, List<DepartamentoParceiroDTO>> parceirosPorCodigo = buscarOutrosDepartamentosPorAcoes(codigos, departamento);
+
+        List<AcaoAnalisadaDTO> resultado = new ArrayList<>();
         for (int i = 0; i < total; i++) {
             AcaoComCodigo acao = piores.get(i);
-            JustificativaAcao justificativa = justificativas.get(i);
-            List<TarefaResponsavel> tarefas = buscarTarefasDaAcao(departamento, acao.codigo());
-            List<DepartamentoParceiro> outrosDepartamentos = buscarOutrosDepartamentos(acao.codigo(), departamento);
-            resultado.add(new AcaoAnalisada(
+            JustificativaAcaoDTO justificativa = justificativas.get(i);
+            List<TarefaResponsavelDTO> tarefas = tarefasPorCodigo.getOrDefault(acao.codigo(), List.of());
+            List<DepartamentoParceiroDTO> outrosDepartamentos = parceirosPorCodigo.getOrDefault(acao.codigo(), List.of());
+            resultado.add(new AcaoAnalisadaDTO(
                     acao.acao(),
                     acao.percentual(),
                     tarefas,
@@ -280,9 +292,9 @@ public class RelatorioService {
      * prazo da tarefa mais próxima vencendo em até DIAS_LIMITE_ATENCAO dias, ou um
      * departamento parceiro na mesma ação GAP_LIMITE_ATENCAO pontos % à frente.
      */
-    private boolean calcularPrecisaAtencao(Double percentual, List<TarefaResponsavel> tarefas, List<DepartamentoParceiro> outrosDepartamentos) {
+    private boolean calcularPrecisaAtencao(Double percentual, List<TarefaResponsavelDTO> tarefas, List<DepartamentoParceiroDTO> outrosDepartamentos) {
         boolean prazoApertado = tarefas.stream()
-                .map(TarefaResponsavel::prazo)
+                .map(TarefaResponsavelDTO::prazo)
                 .filter(java.util.Objects::nonNull)
                 .anyMatch(prazoStr -> {
                     try {
@@ -300,63 +312,80 @@ public class RelatorioService {
     }
 
     /**
-     * Tarefas operacionais do próprio departamento sob essa ação (pat_tarefas),
-     * com responsável e prazo — dá contexto de "quem" e "quando" à justificativa da IA.
+     * Tarefas operacionais do próprio departamento (pat_tarefas), com responsável e prazo, pra
+     * TODAS as ações recebidas de uma vez (1 query com IN, não 1 query por ação) — agrupadas por
+     * código da ação, no máximo 3 tarefas por código (mais recentes/próximas primeiro).
      */
-    private List<TarefaResponsavel> buscarTarefasDaAcao(String departamento, String codigoAcao) {
-        if (codigoAcao == null || codigoAcao.isBlank()) {
-            return List.of();
+    private Map<String, List<TarefaResponsavelDTO>> buscarTarefasPorAcoes(String departamento, List<String> codigos) {
+        if (codigos.isEmpty()) {
+            return Map.of();
         }
         try {
-            List<Map<String, Object>> tarefas = jdbcTemplate.queryForList("""
-                SELECT
-                    dados_completos->>'TÍTULO DA TAREFA' AS titulo_tarefa,
-                    dados_completos->>'Responsável' AS responsavel,
-                    to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') AS data_final
-                FROM pat_tarefas
-                WHERE departamento ILIKE ?
-                    AND substring(dados_completos->>'ITEM DO PAT' from '[A-Z]+ [0-9]+(?:\\.[0-9]+)*') = ?
-                ORDER BY to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') ASC NULLS LAST
-                LIMIT 3
-                """, "%" + departamento.trim() + "%", codigoAcao);
+            String placeholders = String.join(",", java.util.Collections.nCopies(codigos.size(), "?"));
+            List<Object> params = new ArrayList<>();
+            params.add("%" + departamento.trim() + "%");
+            params.addAll(codigos);
 
-            List<TarefaResponsavel> resultado = new ArrayList<>();
+            String sql = "SELECT " +
+                    "substring(dados_completos->>'ITEM DO PAT' from '[A-Z]+ [0-9]+(?:\\.[0-9]+)*') AS codigo_acao, " +
+                    "dados_completos->>'TÍTULO DA TAREFA' AS titulo_tarefa, " +
+                    "dados_completos->>'Responsável' AS responsavel, " +
+                    "to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') AS data_final " +
+                    "FROM pat_tarefas " +
+                    "WHERE departamento ILIKE ? " +
+                    "AND substring(dados_completos->>'ITEM DO PAT' from '[A-Z]+ [0-9]+(?:\\.[0-9]+)*') IN (" + placeholders + ") " +
+                    "ORDER BY to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') ASC NULLS LAST";
+
+            List<Map<String, Object>> tarefas = jdbcTemplate.queryForList(sql, params.toArray());
+
+            Map<String, List<TarefaResponsavelDTO>> porCodigo = new java.util.LinkedHashMap<>();
             for (Map<String, Object> t : tarefas) {
-                resultado.add(new TarefaResponsavel(
-                        (String) t.get("titulo_tarefa"),
-                        (String) t.get("responsavel"),
-                        formatarPrazo((java.sql.Date) t.get("data_final"))));
+                String codigo = (String) t.get("codigo_acao");
+                List<TarefaResponsavelDTO> lista = porCodigo.computeIfAbsent(codigo, k -> new ArrayList<>());
+                if (lista.size() < 3) {
+                    lista.add(new TarefaResponsavelDTO(
+                            (String) t.get("titulo_tarefa"),
+                            (String) t.get("responsavel"),
+                            formatarPrazo((java.sql.Date) t.get("data_final"))));
+                }
             }
-            return resultado;
+            return porCodigo;
         } catch (Exception e) {
-            System.err.println(">>> AVISO: falha ao buscar tarefas da ação '" + codigoAcao + "': " + e.getMessage());
-            return List.of();
+            System.err.println(">>> AVISO: falha ao buscar tarefas em lote das ações: " + e.getMessage());
+            return Map.of();
         }
     }
 
     /**
-     * Outros departamentos que também respondem por essa mesma ação, com o percentual
-     * de execução de cada um (pat_execucao_departamento) — visibilidade cruzada sem a
-     * IA precisar (ou poder) apontar responsabilidade de outro setor.
+     * Outros departamentos que também respondem por cada ação, com o percentual de execução —
+     * pra TODAS as ações recebidas de uma vez (1 query com IN, não 1 query por ação).
      */
-    private List<DepartamentoParceiro> buscarOutrosDepartamentos(String codigoAcao, String departamentoAtual) {
-        if (codigoAcao == null || codigoAcao.isBlank()) {
-            return List.of();
+    private Map<String, List<DepartamentoParceiroDTO>> buscarOutrosDepartamentosPorAcoes(List<String> codigos, String departamentoAtual) {
+        if (codigos.isEmpty()) {
+            return Map.of();
         }
         try {
-            List<Map<String, Object>> linhas = jdbcTemplate.queryForList("""
-                SELECT departamento, ROUND(percentual_execucao * 100, 2) AS percentual
-                FROM pat_execucao_departamento
-                WHERE codigo_acao = ? AND departamento NOT ILIKE ?
-                ORDER BY percentual_execucao DESC
-                """, codigoAcao, "%" + departamentoAtual.trim() + "%");
+            String placeholders = String.join(",", java.util.Collections.nCopies(codigos.size(), "?"));
+            List<Object> params = new ArrayList<>(codigos);
+            params.add("%" + departamentoAtual.trim() + "%");
 
-            return linhas.stream()
-                    .map(row -> new DepartamentoParceiro((String) row.get("departamento"), toDouble(row.get("percentual"))))
-                    .toList();
+            String sql = "SELECT codigo_acao, departamento, ROUND(percentual_execucao * 100, 2) AS percentual " +
+                    "FROM pat_execucao_departamento " +
+                    "WHERE codigo_acao IN (" + placeholders + ") AND departamento NOT ILIKE ? " +
+                    "ORDER BY codigo_acao, percentual_execucao DESC";
+
+            List<Map<String, Object>> linhas = jdbcTemplate.queryForList(sql, params.toArray());
+
+            Map<String, List<DepartamentoParceiroDTO>> porCodigo = new java.util.LinkedHashMap<>();
+            for (Map<String, Object> row : linhas) {
+                String codigo = (String) row.get("codigo_acao");
+                porCodigo.computeIfAbsent(codigo, k -> new ArrayList<>())
+                        .add(new DepartamentoParceiroDTO((String) row.get("departamento"), toDouble(row.get("percentual"))));
+            }
+            return porCodigo;
         } catch (Exception e) {
-            System.err.println(">>> AVISO: falha ao buscar departamentos parceiros da ação '" + codigoAcao + "': " + e.getMessage());
-            return List.of();
+            System.err.println(">>> AVISO: falha ao buscar departamentos parceiros em lote: " + e.getMessage());
+            return Map.of();
         }
     }
 
@@ -376,15 +405,15 @@ public class RelatorioService {
     /**
      * Ação com código isolado — usado só internamente pra poder cruzar com pat_tarefas
      * (tarefas operacionais) e com outros departamentos que compartilham a mesma ação.
-     * Não faz parte do JSON persistido (isso é o AcaoAnalisada, montado depois).
+     * Não faz parte do JSON persistido (isso é o AcaoAnalisadaDTO, montado depois).
      */
     private record AcaoComCodigo(String codigo, String acao, Double percentual) {
     }
 
     private record DadosQuantitativosRelatorio(
-            List<IndicadorRelatorio> indicadores,
+            List<IndicadorRelatorioDTO> indicadores,
             List<AcaoComCodigo> piores,
-            List<AcaoRelatorio> melhores) {
+            List<AcaoRelatorioDTO> melhores) {
     }
 
     /**
@@ -408,15 +437,15 @@ public class RelatorioService {
                     .toList();
 
             double media = ordenadas.stream().mapToDouble(AcaoComCodigo::percentual).average().orElse(0);
-            List<IndicadorRelatorio> indicadores = List.of(
-                    new IndicadorRelatorio("Total de Ações no PDI", String.valueOf(ordenadas.size())),
-                    new IndicadorRelatorio("Média Geral de Execução Acumulada", formatarPercentual(media)));
+            List<IndicadorRelatorioDTO> indicadores = List.of(
+                    new IndicadorRelatorioDTO("Total de Ações no PDI", String.valueOf(ordenadas.size())),
+                    new IndicadorRelatorioDTO("Média Geral de Execução Acumulada", formatarPercentual(media)));
 
             List<AcaoComCodigo> piores = ordenadas.stream().limit(15).toList();
-            List<AcaoRelatorio> melhores = ordenadas.stream()
+            List<AcaoRelatorioDTO> melhores = ordenadas.stream()
                     .sorted(java.util.Comparator.comparingDouble(AcaoComCodigo::percentual).reversed())
                     .limit(15)
-                    .map(a -> new AcaoRelatorio(a.acao(), a.percentual()))
+                    .map(a -> new AcaoRelatorioDTO(a.acao(), a.percentual()))
                     .toList();
             return new DadosQuantitativosRelatorio(indicadores, piores, melhores);
         }
@@ -434,12 +463,12 @@ public class RelatorioService {
             """, "%" + departamento.trim() + "%");
 
         int totalAcoes = ((Number) resumo.get("total_acoes")).intValue();
-        List<IndicadorRelatorio> indicadores = new ArrayList<>();
-        indicadores.add(new IndicadorRelatorio("Total de Ações no PAT", String.valueOf(totalAcoes)));
-        indicadores.add(new IndicadorRelatorio("Média Geral de Execução", formatarPercentual(toDouble(resumo.get("media_geral")))));
-        indicadores.add(new IndicadorRelatorio("Ações Concluídas", formatarContagem(resumo.get("concluidas"), totalAcoes)));
-        indicadores.add(new IndicadorRelatorio("Ações em Andamento", formatarContagem(resumo.get("em_andamento"), totalAcoes)));
-        indicadores.add(new IndicadorRelatorio("Ações Zeradas (Não Iniciadas)", formatarContagem(resumo.get("zeradas"), totalAcoes)));
+        List<IndicadorRelatorioDTO> indicadores = new ArrayList<>();
+        indicadores.add(new IndicadorRelatorioDTO("Total de Ações no PAT", String.valueOf(totalAcoes)));
+        indicadores.add(new IndicadorRelatorioDTO("Média Geral de Execução", formatarPercentual(toDouble(resumo.get("media_geral")))));
+        indicadores.add(new IndicadorRelatorioDTO("Ações Concluídas", formatarContagem(resumo.get("concluidas"), totalAcoes)));
+        indicadores.add(new IndicadorRelatorioDTO("Ações em Andamento", formatarContagem(resumo.get("em_andamento"), totalAcoes)));
+        indicadores.add(new IndicadorRelatorioDTO("Ações Zeradas (Não Iniciadas)", formatarContagem(resumo.get("zeradas"), totalAcoes)));
 
         List<Map<String, Object>> piores = jdbcTemplate.queryForList("""
             SELECT codigo_acao, titulo_acao, ROUND(percentual_execucao * 100, 2) AS percentual
@@ -463,7 +492,7 @@ public class RelatorioService {
                         (String) row.get("codigo_acao"),
                         (String) row.get("titulo_acao"),
                         toDouble(row.get("percentual")))).toList(),
-                melhores.stream().map(row -> new AcaoRelatorio((String) row.get("titulo_acao"), toDouble(row.get("percentual")))).toList());
+                melhores.stream().map(row -> new AcaoRelatorioDTO((String) row.get("titulo_acao"), toDouble(row.get("percentual")))).toList());
     }
 
     /**
@@ -498,7 +527,7 @@ public class RelatorioService {
     private static final int MAX_DEPARTAMENTOS_EXIBIDOS = 3;
 
     /** Lista já vem ordenada por percentual DESC — mostra só os mais à frente, resume o resto. */
-    private String formatarComparativoDepartamentos(List<DepartamentoParceiro> outrosDepartamentos) {
+    private String formatarComparativoDepartamentos(List<DepartamentoParceiroDTO> outrosDepartamentos) {
         String principais = outrosDepartamentos.stream()
                 .limit(MAX_DEPARTAMENTOS_EXIBIDOS)
                 .map(d -> d.departamento() + " (" + formatarPercentual(d.percentual()) + ")")
@@ -510,7 +539,7 @@ public class RelatorioService {
 
     private static final String COR_DESTAQUE = "1F4E79";
 
-    private byte[] gerarDocx(RelatorioEstruturado r) throws Exception {
+    private byte[] gerarDocx(RelatorioEstruturadoDTO r) throws Exception {
         try (XWPFDocument document = new XWPFDocument()) {
 
             XWPFParagraph titulo = document.createParagraph();
@@ -535,12 +564,12 @@ public class RelatorioService {
             docxTabelaIndicadores(document, r.indicadores());
 
             docxSecao(document, "Análise das Ações com Menor Execução");
-            for (AcaoAnalisada a : r.analiseMenorExecucao()) {
-                docxItemAcaoAnalisada(document, a);
+            for (AcaoAnalisadaDTO a : r.analiseMenorExecucao()) {
+                docxItemAcaoAnalisadaDTO(document, a);
             }
 
             docxSecao(document, "Destaques Positivos");
-            for (AcaoRelatorio a : r.destaquesPositivos()) {
+            for (AcaoRelatorioDTO a : r.destaquesPositivos()) {
                 docxItemAcao(document, a.acao(), a.percentual());
             }
 
@@ -592,7 +621,7 @@ public class RelatorioService {
     }
 
     /** Item completo da análise de menor execução: título, tarefas, comparação entre departamentos e justificativa. */
-    private void docxItemAcaoAnalisada(XWPFDocument document, AcaoAnalisada a) {
+    private void docxItemAcaoAnalisadaDTO(XWPFDocument document, AcaoAnalisadaDTO a) {
         XWPFParagraph p = document.createParagraph();
         p.setSpacingAfter(20);
         XWPFRun run = p.createRun();
@@ -603,7 +632,7 @@ public class RelatorioService {
             run.setColor(COR_ATENCAO);
         }
 
-        for (TarefaResponsavel t : a.tarefas()) {
+        for (TarefaResponsavelDTO t : a.tarefas()) {
             XWPFParagraph pTarefa = document.createParagraph();
             pTarefa.setSpacingAfter(20);
             pTarefa.setIndentationLeft(300);
@@ -633,12 +662,12 @@ public class RelatorioService {
         runJust.setFontSize(10);
     }
 
-    private void docxTabelaIndicadores(XWPFDocument document, List<IndicadorRelatorio> indicadores) {
+    private void docxTabelaIndicadores(XWPFDocument document, List<IndicadorRelatorioDTO> indicadores) {
         XWPFTable tabela = document.createTable(indicadores.size(), 2);
         tabela.setWidth("100%");
 
         for (int i = 0; i < indicadores.size(); i++) {
-            IndicadorRelatorio indicador = indicadores.get(i);
+            IndicadorRelatorioDTO indicador = indicadores.get(i);
             XWPFTableRow linha = tabela.getRow(i);
 
             XWPFTableCell celulaRotulo = linha.getCell(0);
@@ -658,7 +687,7 @@ public class RelatorioService {
         }
     }
 
-    private byte[] gerarPdf(RelatorioEstruturado r) throws Exception {
+    private byte[] gerarPdf(RelatorioEstruturadoDTO r) throws Exception {
         try (PDDocument document = new PDDocument()) {
             EscritorPdf escritor = new EscritorPdf(document);
 
@@ -672,12 +701,12 @@ public class RelatorioService {
             escritor.tabelaIndicadores(r.indicadores());
 
             escritor.secao("Análise das Ações com Menor Execução");
-            for (AcaoAnalisada a : r.analiseMenorExecucao()) {
-                escritor.itemAcaoAnalisada(a);
+            for (AcaoAnalisadaDTO a : r.analiseMenorExecucao()) {
+                escritor.itemAcaoAnalisadaDTO(a);
             }
 
             escritor.secao("Destaques Positivos");
-            for (AcaoRelatorio a : r.destaquesPositivos()) {
+            for (AcaoRelatorioDTO a : r.destaquesPositivos()) {
                 escritor.itemAcao(normalizarTextoPdf(a.acao()), a.percentual());
             }
 
@@ -796,7 +825,7 @@ public class RelatorioService {
         }
 
         /** Item completo: título, tarefas com responsável/prazo, comparação entre departamentos e justificativa. */
-        void itemAcaoAnalisada(AcaoAnalisada a) throws Exception {
+        void itemAcaoAnalisadaDTO(AcaoAnalisadaDTO a) throws Exception {
             if (a.precisaAtencao()) {
                 content.setNonStrokingColor(192, 0, 0);
             }
@@ -810,7 +839,7 @@ public class RelatorioService {
             }
 
             content.setNonStrokingColor(90, 90, 90);
-            for (TarefaResponsavel t : a.tarefas()) {
+            for (TarefaResponsavelDTO t : a.tarefas()) {
                 String linha = "- " + t.titulo() + " - " + t.responsavel() + " - prazo " + t.prazo();
                 for (String trecho : quebrarTextoPdf(normalizarTextoPdf(linha), 92)) {
                     garantirEspaco(12);
@@ -836,9 +865,9 @@ public class RelatorioService {
             y -= 8;
         }
 
-        void tabelaIndicadores(List<IndicadorRelatorio> indicadores) throws Exception {
+        void tabelaIndicadores(List<IndicadorRelatorioDTO> indicadores) throws Exception {
             float alturaLinha = 20;
-            for (IndicadorRelatorio ind : indicadores) {
+            for (IndicadorRelatorioDTO ind : indicadores) {
                 garantirEspaco(alturaLinha);
 
                 content.setNonStrokingColor(235, 240, 245);

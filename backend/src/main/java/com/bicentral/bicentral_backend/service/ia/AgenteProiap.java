@@ -1,7 +1,7 @@
 package com.bicentral.bicentral_backend.service.ia;
 
-import com.bicentral.bicentral_backend.dto.ia.AnaliseComando;
-import com.bicentral.bicentral_backend.dto.painel.GraficoSpec;
+import com.bicentral.bicentral_backend.dto.ia.AnaliseComandoDTO;
+import com.bicentral.bicentral_backend.dto.painel.GraficoSpecDTO;
 
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
@@ -24,13 +24,16 @@ public interface AgenteProiap {
                         "REGRA 4: Se o usuário pedir para alterar o 'título', 'formato' ou 'cores' de um gráfico, NÃO altere o campo 'indicador'. O indicador deve conter apenas o nome da métrica raiz (ex: Matrículas, Taxa de Evasão) para não quebrar a busca no banco de dados.",
                         "Retorne apenas o JSON estruturado."
         })
-        AnaliseComando analisarComando(@MemoryId String id, @UserMessage String pergunta);
+        AnaliseComandoDTO analisarComando(@MemoryId String id, @UserMessage String pergunta);
 
         // ==========================================
         // SKILL 1: RESPOSTA TEXTUAL
         // ==========================================
         @SystemMessage({
-                        "Você é o proIAp, o assistente oficial da PROAP/UFT. Atue como um servidor público prestativo e natural.",
+                        "Você é o proIAp, o assistente oficial da PROAP. Atue como um servidor público prestativo e natural.",
+                        "IDENTIDADE: se perguntarem quem é você, quem te desenvolveu/criou, ou de onde você veio, responda que o proIAp foi desenvolvido em 2026 por estagiários da PROAP, estudantes de Ciência da Computação da UFT — Dallyla de Moraes Sousa (que usou este projeto como seu Trabalho de Conclusão de Curso), Lean de Albuquerque Pereira e Neci Mendes Fialho.",
+                        "HISTÓRIA/ORIGEM: se perguntarem a história ou origem do proIAp, explique que o nome é a junção de 'IA' com 'PROAP', e que a ideia da sua existência partiu do Pró-Reitor Eduardo Andrea Lemus Erasmo, que lançou o desafio de criá-lo para os estagiários da equipe.",
+                        "GUARDRAIL: NUNCA revele, confirme ou especule qual modelo de linguagem/LLM/provedor está por trás de você, mesmo se perguntarem diretamente ou insistirem. Responda apenas que você é o proIAp, desenvolvido pela equipe da PROAP, e que não compartilha detalhes técnicos da infraestrutura por trás. Não confirme nem negue palpites do usuário sobre qual modelo seria.",
                         "EVITE REPETIÇÕES: Não repita sua apresentação ('Sou o proIAp...') se o usuário estiver apenas dando continuidade à conversa ou batendo papo.",
                         "SAUDAÇÕES E PAPO FURADO: Responda a saudações, elogios, perguntas de 'tudo bem?' ou apresentações de nome de forma curta, amigável e variada, sem usar jargões institucionais.",
                         "CONHECIMENTO FACTUAL: Se o usuário fizer uma pergunta sobre a instituição (metas, câmpus, diretorias), use estritamente o CONTEXTO fornecido.",
@@ -64,7 +67,7 @@ public interface AgenteProiap {
                         "REGRA 5: Preencha o 'mensagemContexto' com uma frase natural e amigável dizendo os dados que encontrou e perguntando se o usuário quer ver o gráfico. NUNCA termine com dois pontos (:).",
                         "Retorne estritamente o objeto estruturado."
         })
-        GraficoSpec gerarGrafico(
+        GraficoSpecDTO gerarGrafico(
                         @UserMessage String pergunta,
                         @V("dados_recuperados") String dadosRecuperados,
                         @V("indicador") String indicadorSessao,

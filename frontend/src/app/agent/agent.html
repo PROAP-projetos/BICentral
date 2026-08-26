@@ -1,13 +1,44 @@
-<div class="agent-shell" [class.dark-theme]="isDarkMode">
+<div class="agent-shell"
+  [class.dark-theme]="isDarkMode"
+  [class.sidebar-collapsed]="sidebarColapsada"
+  [class.font-size-small]="fontSize === 'small'"
+  [class.font-size-large]="fontSize === 'large'"
+  [class.font-family-serif]="fontFamily === 'serif'"
+  [class.font-family-mono]="fontFamily === 'mono'">
 
   <!-- BARRA LATERAL (Sidebar) -->
   <aside class="sidebar">
     <div class="sidebar-header">
-      <a class="logo" routerLink="/">proIAp</a>
-      <button class="new-chat-btn" (click)="iniciarNovoChat()">
-        Novo Chat
+      <a class="logo" routerLink="/" aria-label="proIAp">
+        <svg class="logo-mark" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"></path>
+        </svg>
+        <span class="logo-text">pro<span class="logo-accent">IA</span>p</span>
+      </a>
+      <button class="sidebar-collapse-btn" type="button" (click)="toggleSidebar()" aria-label="Fechar barra lateral" title="Fechar barra lateral">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+          <line x1="9" y1="3" x2="9" y2="21"></line>
+        </svg>
       </button>
     </div>
+
+    <!-- LINK DISCRETO PRO PAINEL DE RANKING -->
+    <div class="sidebar-nav">
+      <button type="button" class="nav-ranking-link" (click)="painelAtivo = 'ranking'" title="Ver painel de ranking">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-ranking-icon">
+          <line x1="18" y1="20" x2="18" y2="10"></line>
+          <line x1="12" y1="20" x2="12" y2="4"></line>
+          <line x1="6" y1="20" x2="6" y2="14"></line>
+        </svg>
+        <span>Painel de ranking</span>
+      </button>
+    </div>
+
+    <button class="new-chat-btn" (click)="iniciarNovoChat()">
+      Novo Chat
+    </button>
 
     <div class="chat-history">
       <p class="section-title">Hoje</p>
@@ -20,34 +51,75 @@
     </div>
 
     <div class="sidebar-footer">
-      <div class="fontes-info">
-        <p class="section-title">Fontes ({{ equipeSelecionada }})</p>
-        <span *ngIf="carregandoFontes" class="fonte-item">Carregando...</span>
-        <span *ngIf="!carregandoFontes && fontesDisponiveis.length === 0" class="fonte-item">Nenhuma fonte.</span>
-        <div class="fonte-item" *ngFor="let fonte of fontesDisponiveis">
-          <span class="status-dot"></span> {{ fonte.nome }}
-        </div>
-      </div>
-
       <div class="user-config">
-        <button class="theme-toggle" (click)="toggleTheme()">
-          {{ isDarkMode ? 'Modo Claro' : 'Modo Escuro' }}
-        </button>
         <div class="user-info">{{ usuarioLogado }}</div>
+
+        <div class="notif-wrapper">
+          <button class="settings-gear-btn" type="button" (click)="toggleSettings()" aria-label="Configurações" title="Configurações">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
   </aside>
+
+  <!-- Painel de configurações: fora da sidebar de propósito, pra não ser cortado pelo overflow dela -->
+  <div class="notif-panel settings-panel settings-panel-floating" *ngIf="mostrarSettings">
+    <div class="notif-panel-header">Configurações</div>
+
+    <div class="notif-panel-body settings-body">
+      <div class="settings-group">
+        <p class="settings-group-title">Tema</p>
+        <div class="settings-options">
+          <button type="button" class="settings-option" [class.active]="!isDarkMode" (click)="isDarkMode && toggleTheme()">Claro</button>
+          <button type="button" class="settings-option" [class.active]="isDarkMode" (click)="!isDarkMode && toggleTheme()">Escuro</button>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <p class="settings-group-title">Tamanho da fonte</p>
+        <div class="settings-options">
+          <button type="button" class="settings-option" [class.active]="fontSize === 'small'" (click)="setFontSize('small')">Pequena</button>
+          <button type="button" class="settings-option" [class.active]="fontSize === 'medium'" (click)="setFontSize('medium')">Média</button>
+          <button type="button" class="settings-option" [class.active]="fontSize === 'large'" (click)="setFontSize('large')">Grande</button>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <p class="settings-group-title">Tipo de fonte</p>
+        <div class="settings-options">
+          <button type="button" class="settings-option" [class.active]="fontFamily === 'default'" (click)="setFontFamily('default')">Padrão</button>
+          <button type="button" class="settings-option" [class.active]="fontFamily === 'serif'" (click)="setFontFamily('serif')">Serifada</button>
+          <button type="button" class="settings-option" [class.active]="fontFamily === 'mono'" (click)="setFontFamily('mono')">Monoespaçada</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ÁREA PRINCIPAL DO CHAT -->
   <main class="chat-area">
 
     <header class="chat-header">
-      <div class="model-selector" (click)="mudarModelo()">
-        <span class="model-name">{{ modeloAtivo }}</span>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="6 9 12 15 18 9"></polyline>
-        </svg>
+      <div class="chat-header-left">
+        <button class="sidebar-reopen-btn" type="button" *ngIf="sidebarColapsada" (click)="toggleSidebar()" aria-label="Abrir barra lateral" title="Abrir barra lateral">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+            <line x1="9" y1="3" x2="9" y2="21"></line>
+          </svg>
+        </button>
+
+        <div class="model-selector" *ngIf="isAdminSistema" (click)="mudarModelo()">
+          <span class="model-name">{{ modeloAtivo }}</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </div>
       </div>
 
       <div class="top-nav-links">
@@ -123,7 +195,7 @@
         </div>
 
         <div class="notif-wrapper">
-          <button class="notif-bell" type="button" (click)="toggleNotificacoes()" aria-label="Notificações">
+          <button class="notif-bell" type="button" (click)="toggleNotificacoes()" aria-label="Notificações" title="Notificações">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round">
               <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
@@ -150,7 +222,7 @@
                   {{ tarefasExpandidas.has(i) ? 'ocultar tarefas' : 'ver tarefas (' + n.tarefas.length + ')' }}
                 </button>
                 <ul class="notif-tarefas" *ngIf="n.tarefas.length && tarefasExpandidas.has(i)">
-                  <li *ngFor="let t of n.tarefas">{{ t.titulo }} — {{ t.responsavel }} — prazo {{ t.prazo }}</li>
+                  <li *ngFor="let t of n.tarefas">{{ t.titulo }} — {{ t.responsavel || 'Sem responsável' }}<span *ngIf="t.prazo"> — prazo {{ t.prazo }}</span></li>
                 </ul>
                 <button class="notif-ver-painel" type="button" *ngIf="n.tarefas.length && tarefasExpandidas.has(i)"
                   (click)="abrirPainelAtrasos(n.departamento)">
@@ -165,8 +237,40 @@
       </div>
     </header>
 
+    <!-- PAINÉIS (ranking / grafo de atividades) em tela cheia dentro do agente -->
+    <div class="ranking-panel-view" *ngIf="painelAtivo === 'ranking' || painelAtivo === 'grafo'">
+      <div class="painel-topo-row">
+        <button class="voltar-chat-btn" type="button" (click)="painelAtivo = 'chat'">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+          <span>Voltar para o chat</span>
+        </button>
+
+        <div class="painel-abas">
+          <button type="button" class="painel-aba-btn" [class.active]="painelAtivo === 'ranking'" (click)="painelAtivo = 'ranking'">Ranking</button>
+          <button type="button" class="painel-aba-btn" [class.active]="painelAtivo === 'grafo'" (click)="painelAtivo = 'grafo'">Grafo de Atividades</button>
+        </div>
+      </div>
+
+      <app-leaderboard-ug *ngIf="painelAtivo === 'ranking'"></app-leaderboard-ug>
+      <app-grafo-atividades *ngIf="painelAtivo === 'grafo'"></app-grafo-atividades>
+    </div>
+
+    <!-- AVISO: o chat só responde com uma chave de API própria, que não vai pro repositório -->
+    <div class="aviso-api-banner" *ngIf="avisoApiVisivel">
+      <span class="aviso-api-icon">⚠️</span>
+      <div class="aviso-api-texto">
+        <strong>Antes de sair testando o chat:</strong> o proIAp tá configurado com a API paga da OpenAI, e a minha chave é local — não subiu pro repositório. Sem uma chave sua, o chat vai dar erro e não responder nada.
+        Vocês já têm a chave do Groq no <code>application.properties</code> de vocês (é a que a gente já usava) — pra voltar a usar ela, só trocar <code>@Qualifier("openaiLunaModel")</code> e <code>@Qualifier("openaiTerraModel")</code> por <code>@Qualifier("groqModel")</code> em <code>LangchainConfig.java</code>. Não precisa mexer em mais nada.
+        Quer testar a versão premium mesmo (mais estável)? me chama que a gente vê uma chave da OpenAI pra você.
+      </div>
+      <button type="button" class="aviso-api-fechar" (click)="dispensarAvisoApi()" aria-label="Fechar aviso" title="Fechar">×</button>
+    </div>
+
     <!-- O CORPO DA CONVERSA -->
-    <div class="chat-body" [class.is-empty]="messages.length === 0">
+    <div class="chat-body" [class.is-empty]="messages.length === 0" *ngIf="painelAtivo === 'chat'">
 
       <!-- Título Dinâmico de Boas Vindas -->
       <div class="empty-title" *ngIf="messages.length === 0">
@@ -243,6 +347,12 @@
 
       <!-- Área do Input de Texto -->
       <div class="composer">
+        <div *ngIf="sugestoesAtuais.length > 0" class="composer-sugestoes">
+          <button type="button" class="sugestao-chip" *ngFor="let s of sugestoesAtuais" (click)="enviarSugestao(s)">
+            {{ s }}
+          </button>
+        </div>
+
         <p class="agent-error" *ngIf="erro">{{ erro }}</p>
 
         <div class="agent-input-container">

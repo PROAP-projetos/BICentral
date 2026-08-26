@@ -33,6 +33,12 @@
         (alterado)="onAlterado($event)">
       </app-gestao-gerentes>
 
+      <app-gestao-responsaveis
+        [responsaveis]="responsaveis"
+        [usuarios]="usuarios"
+        (alterado)="onAlterado($event)">
+      </app-gestao-responsaveis>
+
       <app-gestao-apis (alterado)="onAlterado($event)"></app-gestao-apis>
     </div>
 

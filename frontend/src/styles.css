@@ -611,7 +611,7 @@ footer {
 
 .managers-head,
 .managers-row {
-  grid-template-columns: minmax(210px, 1.2fr) minmax(150px, 1fr) 70px auto;
+  grid-template-columns: minmax(210px, 1.2fr) minmax(150px, 1fr) auto;
 }
 
 

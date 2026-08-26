@@ -3,11 +3,14 @@ package com.bicentral.bicentral_backend.controller.admin;
 import com.bicentral.bicentral_backend.model.Usuario;
 import com.bicentral.bicentral_backend.service.admin.AdminService;
 import com.bicentral.bicentral_backend.dto.admin.AdminSistemaDTO;
+import com.bicentral.bicentral_backend.dto.admin.ClassificacaoDepartamentoRequestDTO;
 import com.bicentral.bicentral_backend.dto.admin.ConfiguracaoNotificacaoDTO;
 import com.bicentral.bicentral_backend.dto.admin.AdminUsuarioRequestDTO;
 import com.bicentral.bicentral_backend.dto.admin.ConfiguracaoNotificacaoRequestDTO;
 import com.bicentral.bicentral_backend.dto.admin.GerenteDepartamentoDTO;
 import com.bicentral.bicentral_backend.dto.admin.GerenteDepartamentoRequestDTO;
+import com.bicentral.bicentral_backend.dto.admin.UsuarioResponsavelDTO;
+import com.bicentral.bicentral_backend.dto.admin.UsuarioResponsavelRequestDTO;
 import com.bicentral.bicentral_backend.dto.admin.UsuarioResumoDTO;
 import com.bicentral.bicentral_backend.dto.uft.ConfiguracaoUftDTO;
 import com.bicentral.bicentral_backend.dto.uft.ConfiguracaoUftRequestDTO;
@@ -85,6 +88,15 @@ public class AdminController {
         return ResponseEntity.ok(adminService.adicionarGerente(usuario.getId(), request));
     }
 
+    @PostMapping("/departamentos/classificar")
+    public ResponseEntity<Void> classificarDepartamento(
+            @RequestBody ClassificacaoDepartamentoRequestDTO request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Usuario usuario = usuarioLogado(userDetails);
+        adminService.classificarDepartamento(usuario.getId(), request);
+        return ResponseEntity.noContent().build();
+    }
+
     @DeleteMapping("/gerentes/{id}")
     public ResponseEntity<Void> removerGerente(
             @PathVariable Long id,
@@ -92,6 +104,38 @@ public class AdminController {
         Usuario usuario = usuarioLogado(userDetails);
         adminService.removerGerente(usuario.getId(), id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/responsaveis")
+    public ResponseEntity<List<UsuarioResponsavelDTO>> listarResponsaveis(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Usuario usuario = usuarioLogado(userDetails);
+        return ResponseEntity.ok(adminService.listarResponsaveis(usuario.getId()));
+    }
+
+    @PostMapping("/responsaveis")
+    public ResponseEntity<UsuarioResponsavelDTO> adicionarResponsavel(
+            @RequestBody UsuarioResponsavelRequestDTO request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Usuario usuario = usuarioLogado(userDetails);
+        return ResponseEntity.ok(adminService.adicionarResponsavel(usuario.getId(), request));
+    }
+
+    @DeleteMapping("/responsaveis/{id}")
+    public ResponseEntity<Void> removerResponsavel(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Usuario usuario = usuarioLogado(userDetails);
+        adminService.removerResponsavel(usuario.getId(), id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/responsaveis-pat")
+    public ResponseEntity<List<String>> buscarResponsaveisPat(
+            @RequestParam String busca,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Usuario usuario = usuarioLogado(userDetails);
+        return ResponseEntity.ok(adminService.buscarResponsaveisPat(usuario.getId(), busca));
     }
 
     @GetMapping("/configuracoes-notificacao")

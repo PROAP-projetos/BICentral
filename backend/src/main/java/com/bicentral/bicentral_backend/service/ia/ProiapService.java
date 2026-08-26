@@ -5,12 +5,16 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
-import com.bicentral.bicentral_backend.dto.ia.AnaliseComando;
-import com.bicentral.bicentral_backend.dto.ia.ContextoRAG;
-import com.bicentral.bicentral_backend.dto.ia.Intencao;
-import com.bicentral.bicentral_backend.dto.ia.RespostaTextual;
-import com.bicentral.bicentral_backend.dto.painel.GraficoSpec;
+import com.bicentral.bicentral_backend.dto.ia.AnaliseComandoDTO;
+import com.bicentral.bicentral_backend.dto.ia.ContextoRAGDTO;
+import com.bicentral.bicentral_backend.dto.ia.IntencaoDTO;
+import com.bicentral.bicentral_backend.dto.ia.RespostaTextualDTO;
+import com.bicentral.bicentral_backend.dto.painel.GraficoSpecDTO;
 import com.bicentral.bicentral_backend.state.EstadoSessao;
+import dev.langchain4j.service.Result;
+import dev.langchain4j.service.tool.ToolExecution;
+import java.util.LinkedHashSet;
+import java.util.Map;
 
 @Service
 public class ProiapService {
@@ -19,6 +23,18 @@ public class ProiapService {
     private final EstadoSessao estadoSessao;
     private final EmbeddingService embeddingService;
     private final AgenteConsultaSql agenteConsultaSql;
+
+    private static final int MAX_SUGESTOES = 3;
+
+    private static final Map<String, String> SUGESTOES_POR_FERRAMENTA = Map.of(
+        "ranquearDepartamentosPorExecucaoPAT", "Alguma dessas ações é compartilhada entre departamentos?",
+        "buscarExecucaoPATPorDepartamento", "Quero um relatório completo dessa unidade",
+        "buscarDetalhamentoDesempenhoDepartamento", "Essas ações têm outros departamentos envolvidos?",
+        "rastrearGargaloEmAcaoCompartilhada", "Quero um relatório da unidade mais atrasada",
+        "contarAcoesPorDepartamentoPAT", "Qual o desempenho dessas unidades no PAT?",
+        "buscarMinhasTarefas", "Quais dessas estão atrasadas?",
+        "buscarTarefasPorDepartamento", "Quero o relatório completo dessa unidade"
+    );
 
     public ProiapService(AgenteProiap agenteProiap, AgenteConsultaSql agenteConsultaSql, EstadoSessao estadoSessao,
             EmbeddingService embeddingService) {
@@ -56,9 +72,9 @@ public class ProiapService {
 
             if (classificacao.contains("CONFIRMAR")) {
                 System.out.println(">>> USUÁRIO CONFIRMOU (IA ENTENDEU)");
-                GraficoSpec pendente = estadoSessao.getGraficoPendente();
+                GraficoSpecDTO pendente = estadoSessao.getGraficoPendente();
 
-                GraficoSpec graficoPronto = new GraficoSpec(
+                GraficoSpecDTO graficoPronto = new GraficoSpecDTO(
                         "Prontinho! Aqui está o gráfico. Se quiser mudar o formato (ex: pizza) ou o título, é só pedir.",
                         pendente.skill(),
                         pendente.titulo(),
@@ -78,7 +94,7 @@ public class ProiapService {
                 estadoSessao.setAguardandoConfirmacaoGrafico(false);
                 estadoSessao.setGraficoPendente(null);
 
-                return new RespostaTextual("Tudo bem! Me diz o que você quer ver e eu busco novamente.", null, false);
+                return new RespostaTextualDTO("Tudo bem! Me diz o que você quer ver e eu busco novamente.", null, false, List.of());
             }
 
             System.out.println(">>> USUÁRIO REFORMULOU A CONSULTA (IA ENTENDEU)");
@@ -86,7 +102,7 @@ public class ProiapService {
             estadoSessao.setGraficoPendente(null);
         }
 
-        AnaliseComando analise = agenteProiap.analisarComando(UUID.randomUUID().toString(), perguntaUsuario);
+        AnaliseComandoDTO analise = agenteProiap.analisarComando(UUID.randomUUID().toString(), perguntaUsuario);
 
         System.out.println("Intenção detectada: " + analise.intencao());
 
@@ -111,7 +127,7 @@ public class ProiapService {
         String modelo = estadoSessao.getModelo() != null ? estadoSessao.getModelo() : "Llama 3 (Groq)";
         String termoDeBusca = perguntaUsuario;
 
-        if (analise.intencao() == Intencao.GRAFICO) {
+        if (analise.intencao() == IntencaoDTO.GRAFICO) {
             String indicadorParaBusca = analise.indicador() != null ? analise.indicador() : estadoSessao.getIndicador();
             if (indicadorParaBusca != null && !indicadorParaBusca.equals("Todos")) {
                 termoDeBusca = indicadorParaBusca + " " + perguntaUsuario;
@@ -121,9 +137,9 @@ public class ProiapService {
         // ================================================================
         // BUSCA O CONTEXTO E AS FONTES
         // ================================================================
-        ContextoRAG contextoRAG = usuarioEhAdmin
+        ContextoRAGDTO contextoRAG = usuarioEhAdmin
                    ? embeddingService.buscarContextoSemelhante(termoDeBusca, equipeDaSessao, modelo)
-                   : new ContextoRAG("", List.of());
+                   : new ContextoRAGDTO("", List.of());
                    
         System.out.println("DEBUG - Termo usado na busca: " + termoDeBusca);
         System.out.println("DEBUG - Fontes encontradas: " + contextoRAG.fontes());
@@ -131,20 +147,21 @@ public class ProiapService {
         // ================================================================
         // ROTEAMENTO
         // ================================================================
-        if (analise.intencao() == Intencao.RESPOSTA) {
+        if (analise.intencao() == IntencaoDTO.RESPOSTA) {
             
             String memoryId = (sessaoId != null && !sessaoId.isBlank()) 
                     ? sessaoId 
                     : "sessao-fallback-" + System.identityHashCode(estadoSessao);
             
-            String respostaTexto = agenteConsultaSql.responderComFerramentas(memoryId, perguntaUsuario,
+            Result<String> resultado = agenteConsultaSql.responderComFerramentas(memoryId, perguntaUsuario,
                     contextoRAG.textoContexto());
+            List<String> sugestoes = montarSugestoes(resultado.toolExecutions());
 
-            return new RespostaTextual(respostaTexto, contextoRAG.fontes(), estadoSessao.isRelatorioGerado());
+            return new RespostaTextualDTO(resultado.content(), contextoRAG.fontes(), estadoSessao.isRelatorioGerado(), sugestoes);
             
-        } else if (analise.intencao() == Intencao.GRAFICO) {
+        } else if (analise.intencao() == IntencaoDTO.GRAFICO) {
 
-            GraficoSpec spec = agenteProiap.gerarGrafico(
+            GraficoSpecDTO spec = agenteProiap.gerarGrafico(
                     perguntaUsuario,
                     contextoRAG.textoContexto(),
                     estadoSessao.getIndicador(),
@@ -156,9 +173,24 @@ public class ProiapService {
             estadoSessao.setGraficoPendente(spec);
             estadoSessao.setAguardandoConfirmacaoGrafico(true);
 
-            return new RespostaTextual(spec.mensagemContexto(), contextoRAG.fontes(), false);
+            return new RespostaTextualDTO(spec.mensagemContexto(), contextoRAG.fontes(), false, List.of());
         }
 
-        return new RespostaTextual("Desculpe, não consegui entender a intenção do seu comando.", null, false);
+        return new RespostaTextualDTO("Desculpe, não consegui entender a intenção do seu comando.", null, false, List.of());
+    }
+
+    private List<String> montarSugestoes(List<ToolExecution> execucoes) {
+        if (execucoes == null || execucoes.isEmpty()) {
+            return List.of();
+        }
+        LinkedHashSet<String> sugestoes = new LinkedHashSet<>();
+        for (ToolExecution execucao : execucoes) {
+            String sugestao = SUGESTOES_POR_FERRAMENTA.get(execucao.request().name());
+            if (sugestao != null) {
+                sugestoes.add(sugestao);
+            }
+            if (sugestoes.size() >= MAX_SUGESTOES) break;
+        }
+        return List.copyOf(sugestoes);
     }
 }

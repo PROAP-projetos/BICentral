@@ -20,7 +20,16 @@ export interface GerenteDepartamento {
   usuarioNome: string | null;
   usuarioEmail: string | null;
   departamento: string;
-  tipoUnidade: 'UA' | 'UG';
+  tipoUnidade: 'UA' | 'UG' | null;
+  createdAt: string;
+}
+
+export interface UsuarioResponsavel {
+  id: number;
+  usuarioId: number;
+  usuarioNome: string | null;
+  usuarioEmail: string | null;
+  nomeResponsavel: string;
   createdAt: string;
 }
 
@@ -84,16 +93,41 @@ export class AdminService {
     return this.http.get<GerenteDepartamento[]>(`${this.apiURL}/gerentes`);
   }
 
-  adicionarGerente(usuarioId: number, departamento: string, tipoUnidade: 'UA' | 'UG'): Observable<GerenteDepartamento> {
+  adicionarGerente(usuarioId: number, departamento: string): Observable<GerenteDepartamento> {
     return this.http.post<GerenteDepartamento>(`${this.apiURL}/gerentes`, {
       usuarioId,
-      departamento,
-      tipoUnidade
+      departamento
     });
   }
 
   removerGerente(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiURL}/gerentes/${id}`);
+  }
+
+  classificarDepartamento(departamento: string, tipoUnidade: 'UA' | 'UG'): Observable<void> {
+    return this.http.post<void>(`${this.apiURL}/departamentos/classificar`, {
+      departamento,
+      tipoUnidade
+    });
+  }
+
+  listarResponsaveis(): Observable<UsuarioResponsavel[]> {
+    return this.http.get<UsuarioResponsavel[]>(`${this.apiURL}/responsaveis`);
+  }
+
+  adicionarResponsavel(usuarioId: number, nomeResponsavel: string): Observable<UsuarioResponsavel> {
+    return this.http.post<UsuarioResponsavel>(`${this.apiURL}/responsaveis`, {
+      usuarioId,
+      nomeResponsavel
+    });
+  }
+
+  removerResponsavel(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiURL}/responsaveis/${id}`);
+  }
+
+  buscarResponsaveisPat(busca: string): Observable<string[]> {
+    return this.http.get<string[]>(`${this.apiURL}/responsaveis-pat`, { params: { busca } });
   }
 
   buscarConfiguracoesNotificacao(): Observable<ConfiguracaoNotificacao> {
