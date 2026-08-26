@@ -157,3 +157,9 @@ Minha sugestão: sem essas relações, um grafo de nós conectados não agrega m
 ## 8. Sugestão pequena: nome do botão "ECharts Bar"
 
 O botão que alterna pra visualização em gráfico de barras mostra "ECharts Bar" pro usuário final — nome de biblioteca técnica, não faz sentido pra quem usa o painel. Sugiro trocar por algo tipo "Gráfico de Barras".
+
+## 9. "Última entrega" / tarefa concluída há X horas — também não tem como ser real
+
+Se em algum momento entrar a ideia de mostrar algo tipo "tarefa concluída há 3 horas por Fulano" (uma espécie de feed de atividade recente), vale saber de antemão: o dado não sustenta isso. `pat_tarefas` só guarda "Data Final" (o prazo da tarefa) e "% Concluído" (o valor atual) — não existe nenhum campo que registre QUANDO o percentual mudou. Não tem timestamp de conclusão, só o estado atual e o prazo.
+
+Pra "há 3 horas" ser real, precisaria de um histórico de mudança do percentual ao longo do tempo (tipo um log de auditoria), que não existe na sincronização de hoje. Dá pra aproximar usando a "Data Final" como se fosse "quando terminou", mas isso é enganoso — uma tarefa com prazo pra semana passada e 100% pode ter sido concluída há um mês, não há "3 horas". Não recomendo esse tipo de feed sem esse dado de verdade.

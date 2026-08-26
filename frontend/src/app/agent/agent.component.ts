@@ -13,7 +13,7 @@ import { SafeUrlPipe } from '../pipes/safe-url.pipe';
 interface ChatSession {
   id: number;
   titulo: string;
-  messages: { from: 'bot' | 'user'; text?: string; spec?: any; fontes?: string[] }[];
+  messages: { from: 'bot' | 'user'; text?: string; spec?: any; fontes?: string[]; sugestoes?: string[] }[];
 }
 
 @Component({
@@ -28,8 +28,11 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   @ViewChild('messagesContainer') private messagesContainer?: ElementRef<HTMLDivElement>;
   @ViewChild('promptInput') private promptInput?: ElementRef<HTMLTextAreaElement>;
 
+  private static readonly AVISO_API_DISPENSADO_KEY = 'bicentral_aviso_api_openai_dispensado';
+
   isDarkMode = false;
   painelAtivo: 'chat' | 'ranking' | 'grafo' = 'chat';
+  avisoApiVisivel = localStorage.getItem(AgentComponent.AVISO_API_DISPENSADO_KEY) !== '1';
   private scrollPendente = true;
   usuarioLogado = 'dallyla.moraes';
   equipeSelecionada = 'Orçamento';
@@ -248,7 +251,8 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
             this.sessaoAtual.messages.push({
               from: 'bot',
               text: resposta.texto,
-              fontes: resposta.fontes // Guarda as fontes lidas
+              fontes: resposta.fontes, // Guarda as fontes lidas
+              sugestoes: resposta.sugestoes
             });
 
             if (resposta.relatorioGerado) {
@@ -269,6 +273,23 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
           this.agendarScrollParaFim();
         }
       });
+  }
+
+  enviarSugestao(texto: string) {
+    this.input = texto;
+    this.send();
+  }
+
+  dispensarAvisoApi(): void {
+    this.avisoApiVisivel = false;
+    localStorage.setItem(AgentComponent.AVISO_API_DISPENSADO_KEY, '1');
+  }
+
+  get sugestoesAtuais(): string[] {
+    const msgs = this.sessaoAtual?.messages;
+    if (!msgs || msgs.length === 0) return [];
+    const ultima = msgs[msgs.length - 1];
+    return ultima.from === 'bot' && ultima.sugestoes ? ultima.sugestoes : [];
   }
 
   // ==========================================

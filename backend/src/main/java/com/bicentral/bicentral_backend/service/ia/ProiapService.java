@@ -11,6 +11,10 @@ import com.bicentral.bicentral_backend.dto.ia.IntencaoDTO;
 import com.bicentral.bicentral_backend.dto.ia.RespostaTextualDTO;
 import com.bicentral.bicentral_backend.dto.painel.GraficoSpecDTO;
 import com.bicentral.bicentral_backend.state.EstadoSessao;
+import dev.langchain4j.service.Result;
+import dev.langchain4j.service.tool.ToolExecution;
+import java.util.LinkedHashSet;
+import java.util.Map;
 
 @Service
 public class ProiapService {
@@ -19,6 +23,18 @@ public class ProiapService {
     private final EstadoSessao estadoSessao;
     private final EmbeddingService embeddingService;
     private final AgenteConsultaSql agenteConsultaSql;
+
+    private static final int MAX_SUGESTOES = 3;
+
+    private static final Map<String, String> SUGESTOES_POR_FERRAMENTA = Map.of(
+        "ranquearDepartamentosPorExecucaoPAT", "Alguma dessas ações é compartilhada entre departamentos?",
+        "buscarExecucaoPATPorDepartamento", "Quero um relatório completo dessa unidade",
+        "buscarDetalhamentoDesempenhoDepartamento", "Essas ações têm outros departamentos envolvidos?",
+        "rastrearGargaloEmAcaoCompartilhada", "Quero um relatório da unidade mais atrasada",
+        "contarAcoesPorDepartamentoPAT", "Qual o desempenho dessas unidades no PAT?",
+        "buscarMinhasTarefas", "Quais dessas estão atrasadas?",
+        "buscarTarefasPorDepartamento", "Quero o relatório completo dessa unidade"
+    );
 
     public ProiapService(AgenteProiap agenteProiap, AgenteConsultaSql agenteConsultaSql, EstadoSessao estadoSessao,
             EmbeddingService embeddingService) {
@@ -78,7 +94,7 @@ public class ProiapService {
                 estadoSessao.setAguardandoConfirmacaoGrafico(false);
                 estadoSessao.setGraficoPendente(null);
 
-                return new RespostaTextualDTO("Tudo bem! Me diz o que você quer ver e eu busco novamente.", null, false);
+                return new RespostaTextualDTO("Tudo bem! Me diz o que você quer ver e eu busco novamente.", null, false, List.of());
             }
 
             System.out.println(">>> USUÁRIO REFORMULOU A CONSULTA (IA ENTENDEU)");
@@ -137,10 +153,11 @@ public class ProiapService {
                     ? sessaoId 
                     : "sessao-fallback-" + System.identityHashCode(estadoSessao);
             
-            String respostaTexto = agenteConsultaSql.responderComFerramentas(memoryId, perguntaUsuario,
+            Result<String> resultado = agenteConsultaSql.responderComFerramentas(memoryId, perguntaUsuario,
                     contextoRAG.textoContexto());
+            List<String> sugestoes = montarSugestoes(resultado.toolExecutions());
 
-            return new RespostaTextualDTO(respostaTexto, contextoRAG.fontes(), estadoSessao.isRelatorioGerado());
+            return new RespostaTextualDTO(resultado.content(), contextoRAG.fontes(), estadoSessao.isRelatorioGerado(), sugestoes);
             
         } else if (analise.intencao() == IntencaoDTO.GRAFICO) {
 
@@ -156,9 +173,24 @@ public class ProiapService {
             estadoSessao.setGraficoPendente(spec);
             estadoSessao.setAguardandoConfirmacaoGrafico(true);
 
-            return new RespostaTextualDTO(spec.mensagemContexto(), contextoRAG.fontes(), false);
+            return new RespostaTextualDTO(spec.mensagemContexto(), contextoRAG.fontes(), false, List.of());
         }
 
-        return new RespostaTextualDTO("Desculpe, não consegui entender a intenção do seu comando.", null, false);
+        return new RespostaTextualDTO("Desculpe, não consegui entender a intenção do seu comando.", null, false, List.of());
+    }
+
+    private List<String> montarSugestoes(List<ToolExecution> execucoes) {
+        if (execucoes == null || execucoes.isEmpty()) {
+            return List.of();
+        }
+        LinkedHashSet<String> sugestoes = new LinkedHashSet<>();
+        for (ToolExecution execucao : execucoes) {
+            String sugestao = SUGESTOES_POR_FERRAMENTA.get(execucao.request().name());
+            if (sugestao != null) {
+                sugestoes.add(sugestao);
+            }
+            if (sugestoes.size() >= MAX_SUGESTOES) break;
+        }
+        return List.copyOf(sugestoes);
     }
 }

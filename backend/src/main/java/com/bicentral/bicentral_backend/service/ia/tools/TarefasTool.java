@@ -39,6 +39,10 @@ public class TarefasTool {
                    "Um administrador precisa cadastrar esse vínculo no painel admin para essa consulta funcionar.";
         }
         
+        Integer totalTarefas = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM pat_tarefas WHERE dados_completos->>'Responsável' ILIKE ?",
+            Integer.class, "%" + nomeResponsavel.trim() + "%");
+
         List<Map<String, Object>> tarefas = jdbcTemplate.queryForList("""
             SELECT
                 dados_completos->>'TÍTULO DA TAREFA' AS titulo_tarefa,
@@ -53,26 +57,30 @@ public class TarefasTool {
             FROM pat_tarefas
             WHERE dados_completos->>'Responsável' ILIKE ?
             ORDER BY atrasada DESC, to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') ASC NULLS LAST
+            LIMIT 30
             """, "%" + nomeResponsavel.trim() + "%");
 
-        System.out.println(">>> TOOL RESULTADO: " + tarefas.size() + " tarefa(s) para " + nomeResponsavel);
+        System.out.println(">>> TOOL RESULTADO: " + tarefas.size() + " tarefa(s) de " + totalTarefas + " para " + nomeResponsavel);
 
         if (tarefas.isEmpty()) {
             return "Nenhuma tarefa encontrada para " + nomeResponsavel + " no PAT atual.";
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.append("Tarefas de ").append(nomeResponsavel).append(" (").append(tarefas.size()).append(" no total):\n\n");
+        boolean truncado = totalTarefas != null && totalTarefas > tarefas.size();
+        sb.append("Tarefas de ").append(nomeResponsavel).append(" (")
+          .append(truncado ? tarefas.size() + " mais urgentes de " + totalTarefas + " no total" : tarefas.size() + " no total")
+          .append("):\n\n");
         sb.append("| Ação | Tarefa | % | Prazo |\n");
         sb.append("|---|---|---|---|\n");
         for (Map<String, Object> t : tarefas) {
             boolean atrasada = Boolean.TRUE.equals(t.get("atrasada"));
             String prefixo = atrasada ? "⚠️ ATRASADA (" + t.get("dias_atraso") + "d) — " : "";
 
-            sb.append("| ").append(t.get("codigo_acao"))
+            sb.append("| ").append(formatarCodigo(t.get("codigo_acao")))
               .append(" | ").append(prefixo).append(t.get("titulo_tarefa"))
-              .append(" | ").append(t.get("percentual")).append("%")
-              .append(" | ").append(t.get("data_final"))
+              .append(" | ").append(formatarPercentualEnxuto(t.get("percentual"))).append("%")
+              .append(" | ").append(formatarData(t.get("data_final")))
               .append(" |\n");
         }
         return sb.toString();
@@ -120,13 +128,13 @@ public class TarefasTool {
         for (Map<String, Object> t : tarefas) {
             String tituloAcao = truncarTitulo((String) t.get("titulo_acao"));
             Object percentualAcao = t.get("percentual_acao");
-            sb.append("| ").append(t.get("codigo_acao"))
+            sb.append("| ").append(formatarCodigo(t.get("codigo_acao")))
               .append(" | ").append(tituloAcao.isBlank() ? "—" : tituloAcao)
               .append(" | ").append(t.get("titulo_tarefa"))
               .append(" | ").append(t.get("responsavel"))
-              .append(" | ").append(percentualAcao == null ? "não disponível no PAT" : percentualAcao + "%")
-              .append(" | ").append(t.get("percentual_tarefa")).append("%")
-              .append(" | ").append(t.get("data_final"))
+              .append(" | ").append(percentualAcao == null ? "não disponível no PAT" : formatarPercentualEnxuto(percentualAcao) + "%")
+              .append(" | ").append(formatarPercentualEnxuto(t.get("percentual_tarefa"))).append("%")
+              .append(" | ").append(formatarData(t.get("data_final")))
               .append(" |\n");
         }
         return sb.toString();
@@ -143,5 +151,27 @@ public class TarefasTool {
         if (separador >= 0) resultado = resultado.substring(0, separador);
         resultado = resultado.replaceFirst("^[A-Z]+ [0-9]+(?:\\.[0-9]+)*\\s*-\\s*", "");
         return resultado;
+    }
+
+    /** 100.00 vira "100", mas 36.52 continua "36.52" — só mostra casa decimal quando o número não é inteiro. */
+    private String formatarPercentualEnxuto(Object valor) {
+        if (valor == null) return "—";
+        double v = ((Number) valor).doubleValue();
+        return v == Math.rint(v) ? String.format("%.0f", v) : String.format("%.2f", v);
+    }
+
+    /** Espaço normal em "U 2.1.2.22" deixa o navegador quebrar linha no meio do código dentro de
+     * coluna estreita — troca por espaço não-quebrável pra o código sempre ficar numa linha só. */
+    private String formatarCodigo(Object codigo) {
+        return codigo == null ? "" : codigo.toString().replace(" ", " ");
+    }
+
+    /** data_final vem como java.sql.Date (ISO "2026-12-31") — exibe no formato brasileiro. */
+    private String formatarData(Object data) {
+        if (data == null) return "—";
+        if (data instanceof java.sql.Date d) {
+            return d.toLocalDate().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        }
+        return data.toString();
     }
 }

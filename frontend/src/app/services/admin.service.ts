@@ -20,7 +20,7 @@ export interface GerenteDepartamento {
   usuarioNome: string | null;
   usuarioEmail: string | null;
   departamento: string;
-  tipoUnidade: 'UA' | 'UG';
+  tipoUnidade: 'UA' | 'UG' | null;
   createdAt: string;
 }
 
@@ -93,16 +93,22 @@ export class AdminService {
     return this.http.get<GerenteDepartamento[]>(`${this.apiURL}/gerentes`);
   }
 
-  adicionarGerente(usuarioId: number, departamento: string, tipoUnidade: 'UA' | 'UG'): Observable<GerenteDepartamento> {
+  adicionarGerente(usuarioId: number, departamento: string): Observable<GerenteDepartamento> {
     return this.http.post<GerenteDepartamento>(`${this.apiURL}/gerentes`, {
       usuarioId,
-      departamento,
-      tipoUnidade
+      departamento
     });
   }
 
   removerGerente(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiURL}/gerentes/${id}`);
+  }
+
+  classificarDepartamento(departamento: string, tipoUnidade: 'UA' | 'UG'): Observable<void> {
+    return this.http.post<void>(`${this.apiURL}/departamentos/classificar`, {
+      departamento,
+      tipoUnidade
+    });
   }
 
   listarResponsaveis(): Observable<UsuarioResponsavel[]> {

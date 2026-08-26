@@ -8,32 +8,112 @@
   box-sizing: border-box;
 }
 
-form, .card {
-  width: 500px;
-  max-width: 500px; /* Largura máxima da caixa */
-  padding: 50px;
-  background: white; /* Cor da caixa */
-  border-radius: 8px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Sombra suave */
-  box-sizing: border-box;
+/* --- 1. Estrutura em dois painéis --- */
+
+.login-shell {
+  display: flex;
+  width: 100%;
+  max-width: 780px;
+  min-height: 640px;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px -12px rgba(0, 30, 60, 0.28);
+  background: white;
+}
+
+/* --- 2. Painel de marca (proIAp) --- */
+
+.brand-panel {
+  position: relative;
+  flex: 0 0 42%;
+  display: flex;
+  align-items: center;
+  padding: 48px 40px;
+  overflow: hidden;
+  background: linear-gradient(160deg, #005a99 0%, #00304f 100%);
+  color: white;
+}
+
+.brand-decor {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.spark {
+  position: absolute;
+  fill: currentColor;
+  color: white;
+}
+
+.spark-1 { width: 20px; height: 20px; top: 12%;  left: 18%; opacity: 0.16; transform: rotate(12deg); }
+.spark-2 { width: 34px; height: 34px; top: 68%;  left: 8%;  opacity: 0.14; transform: rotate(-18deg); }
+.spark-3 { width: 16px; height: 16px; top: 22%;  left: 78%; opacity: 0.2;  transform: rotate(30deg); }
+.spark-4 { width: 26px; height: 26px; top: 80%;  left: 70%; opacity: 0.13; transform: rotate(-8deg); }
+.spark-5 { width: 14px; height: 14px; top: 48%;  left: 88%; opacity: 0.18; transform: rotate(20deg); }
+
+.brand-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.brand-mark-lg {
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.2));
+}
+
+.brand-word {
+  margin: 0;
+  font-size: 1.9rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: white;
+}
+
+.brand-accent {
+  color: #7ec8ff;
+}
+
+.brand-tagline {
+  margin: 0;
+  max-width: 30ch;
+  font-size: 0.94rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* --- 3. Painel do formulário --- */
+
+.form-panel {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 44px;
+  background: white;
+}
+
+form {
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 h2 {
   text-align: center;
-  font-size: 2rem;
+  font-size: 1.3rem;
   font-weight: 600;
-  color: #333; /* Cor do título */
+  color: #333;
   margin-top: 0;
-  margin-bottom: 32px;
+  margin-bottom: 8px;
 }
 
-/* --- 4. Formulário e Campos --- */
-
-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px; /* Espaço moderno entre os campos e o botão */
-}
+/* --- 4. Campos --- */
 
 .form-group {
   display: flex;
@@ -42,7 +122,7 @@ form {
 
 label {
   font-weight: 600;
-  color: #555; /* Cor do texto da label */
+  color: #555;
   margin-bottom: 8px;
 }
 
@@ -50,74 +130,64 @@ input[type="text"],
 input[type="email"],
 input[type="password"] {
   width: 100%;
-  padding: 16px;
+  padding: 14px 16px;
   font-size: 1rem;
-  border: 1px solid #ccc; /* Cor da borda do input */
-  border-radius: 4px;
+  border: 1px solid #d8dee6;
+  border-radius: 10px;
   transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
 }
 
 input[type="text"]:focus,
 input[type="email"]:focus,
 input[type="password"]:focus {
   outline: none;
-  border-color: var(--color-primary); /* Cor primária */
-  box-shadow: 0 0 0 2px rgba(0, 74, 128, 0.25); /* Sombra de foco */
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(0, 74, 128, 0.15);
 }
 
-/* --- 5. Botão de Ação --- */
+/* --- 5. Botão de ação --- */
 
 .btn {
   width: 100%;
-  padding: 16px;
+  padding: 14px;
   border: none;
-  border-radius: 4px;
-  font-size: 1.1rem;
+  border-radius: 10px;
+  font-size: 1.05rem;
   font-weight: 600;
   cursor: pointer;
   text-align: center;
   transition: all 0.2s ease-in-out;
-
-  color: white; /* Cor do texto do botão */
-  background-color: var(--color-nav-button-bg); /* Cor de fundo do botão */
+  color: white;
+  background-color: var(--color-nav-button-bg);
 }
 
 .btn-primary:hover {
-  background-color: #009f67; /* Cor do hover */
+  background-color: #009f67;
   transform: translateY(-2px);
 }
 
-/* --- 6. Link de Rodapé e Texto de Sucesso --- */
+/* --- 6. Link de rodapé --- */
 
 .footer-link {
   text-align: center;
-  /* O 'gap' do form já dá o espaçamento,
-     mas podemos forçar se necessário */
   margin-top: 8px;
 }
 
 .footer-link a {
   font-weight: 500;
   text-decoration: none;
-  color: var(--color-primary); /* Cor primária */
+  color: var(--color-primary);
 }
 
 .footer-link a:hover {
   text-decoration: underline;
 }
 
-/* Estilo para o parágrafo da mensagem de sucesso */
-.card p {
-  font-size: 1.1rem;
-  color: #333;
-  text-align: center;
-  margin-bottom: 24px;
-}
-
 /* --- 7. Alertas --- */
 
 .log-wrapper {
-  margin-top: 4px;
+  margin-top: -4px;
 }
 
 .premium-alert {
@@ -183,4 +253,68 @@ input[type="password"]:focus {
 .premium-alert.info .alert-icon,
 .premium-alert.info .alert-title {
   color: var(--color-info);
+}
+
+/* --- 8. Responsivo --- */
+
+@media (max-width: 760px) {
+  :host {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .login-shell {
+    flex-direction: column;
+    width: 100%;
+    max-width: none;
+    min-height: 100vh;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  /* No celular o painel de marca vira um cabeçalho compacto e horizontal —
+     não faz sentido repetir o layout de desktop (ícone grande + texto embaixo
+     + tagline longa) espremido numa tela estreita, isso que ficava achatado. */
+  .brand-panel {
+    flex: none;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 22px 20px;
+    background: linear-gradient(100deg, #005a99 0%, #00304f 100%);
+  }
+
+  .brand-decor {
+    display: none;
+  }
+
+  .brand-content {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .brand-mark-lg {
+    width: 26px;
+    height: 26px;
+  }
+
+  .brand-word {
+    font-size: 1.3rem;
+  }
+
+  .brand-tagline {
+    display: none;
+  }
+
+  .form-panel {
+    flex: 1 1 auto;
+    align-items: flex-start;
+    padding: 32px 24px;
+  }
+
+  form {
+    max-width: none;
+  }
 }

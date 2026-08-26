@@ -18,10 +18,13 @@ export class GestaoGerentesComponent {
 
   usuarioId: number | null = null;
   departamentosSelecionados: string[] = [];
-  tipoUnidade: 'UA' | 'UG' = 'UA';
   salvando = false;
   departamentos: string[] = [];
   dropdownAberto = false;
+
+  departamentoParaClassificar: string | null = null;
+  tipoParaClassificar: 'UA' | 'UG' = 'UA';
+  classificando = false;
 
   get departamentosDisponiveis(): string[] {
     const jaCadastrados = new Set(this.gerentes.map((g) => g.departamento));
@@ -43,7 +46,7 @@ export class GestaoGerentesComponent {
     let houveErro = false;
 
     this.departamentosSelecionados.forEach((departamento) => {
-      this.adminService.adicionarGerente(this.usuarioId!, departamento, this.tipoUnidade).subscribe({
+      this.adminService.adicionarGerente(this.usuarioId!, departamento).subscribe({
         next: () => {
           pendentes--;
           if (pendentes === 0) this.finalizarAdicao(houveErro);
@@ -60,7 +63,6 @@ export class GestaoGerentesComponent {
   private finalizarAdicao(houveErro: boolean): void {
     this.usuarioId = null;
     this.departamentosSelecionados = [];
-    this.tipoUnidade = 'UA';
     this.salvando = false;
     this.alterado.emit(houveErro ? 'Alguns vínculos falharam ao adicionar.' : 'Vínculo(s) de gerente adicionado(s).');
   }
@@ -72,6 +74,24 @@ export class GestaoGerentesComponent {
     } else {
       this.departamentosSelecionados = this.departamentosSelecionados.filter((d) => d !== dep);
     }
+  }
+
+  classificar(): void {
+    if (!this.departamentoParaClassificar || this.classificando) return;
+
+    this.classificando = true;
+    this.adminService.classificarDepartamento(this.departamentoParaClassificar, this.tipoParaClassificar).subscribe({
+      next: () => {
+        this.classificando = false;
+        this.alterado.emit(`Departamento classificado como ${this.tipoParaClassificar}.`);
+        this.departamentoParaClassificar = null;
+        this.tipoParaClassificar = 'UA';
+      },
+      error: () => {
+        this.classificando = false;
+        this.alterado.emit('Erro ao classificar departamento.');
+      }
+    });
   }
 
   remover(gerente: GerenteDepartamento): void {

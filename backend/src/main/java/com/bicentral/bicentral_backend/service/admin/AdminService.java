@@ -10,6 +10,7 @@ import com.bicentral.bicentral_backend.dto.uft.ConfiguracaoUftDTO;
 import com.bicentral.bicentral_backend.dto.uft.ConfiguracaoUftRequestDTO;
 import com.bicentral.bicentral_backend.dto.uft.ResultadoTesteUftDTO;
 import com.bicentral.bicentral_backend.dto.admin.AdminSistemaDTO;
+import com.bicentral.bicentral_backend.dto.admin.ClassificacaoDepartamentoRequestDTO;
 import com.bicentral.bicentral_backend.dto.admin.ConfiguracaoNotificacaoDTO;
 import com.bicentral.bicentral_backend.dto.admin.AdminUsuarioRequestDTO;
 import com.bicentral.bicentral_backend.dto.admin.ConfiguracaoNotificacaoRequestDTO;
@@ -45,6 +46,39 @@ public class AdminService {
         garantirTabelaAdmins();
         garantirTabelaResponsaveis();
         garantirIndiceGerentes();
+        garantirTabelaDepartamentoTipo();
+    }
+
+    // Classificar o tipo (UA/UG) de um departamento estava amarrado a atribuir um gerente de
+    // verdade em gerentes_departamento (usuario_id é obrigatório lá) — por isso 77 coordenações
+    // de curso nunca foram classificadas, ninguém ia inventar um gerente falso só pra isso.
+    // Essa tabela separa as duas coisas: aqui só se classifica o tipo, sem precisar de usuário.
+    // IF NOT EXISTS também aparece em ConsultaAcoesTool (a view que lê essa tabela) — os dois
+    // lados garantem a tabela porque a ordem de inicialização dos beans não é garantida.
+    private void garantirTabelaDepartamentoTipo() {
+        jdbcTemplate.execute("""
+            CREATE TABLE IF NOT EXISTS departamento_tipo (
+                departamento TEXT PRIMARY KEY,
+                tipo_unidade VARCHAR(2) NOT NULL,
+                atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+            """);
+    }
+
+    @Transactional
+    public void classificarDepartamento(Long usuarioLogadoId, ClassificacaoDepartamentoRequestDTO request) {
+        exigirAdmin(usuarioLogadoId);
+        if (request.departamento() == null || request.departamento().trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe o departamento");
+        }
+        if (!"UA".equals(request.tipoUnidade()) && !"UG".equals(request.tipoUnidade())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tipo de unidade deve ser UA ou UG");
+        }
+        jdbcTemplate.update("""
+            INSERT INTO departamento_tipo (departamento, tipo_unidade)
+            VALUES (?, ?)
+            ON CONFLICT (departamento) DO UPDATE SET tipo_unidade = EXCLUDED.tipo_unidade, atualizado_em = NOW()
+            """, request.departamento().trim(), request.tipoUnidade());
     }
 
     // gerentes_departamento foi criada direto no banco (não tem CREATE TABLE aqui no código),
@@ -54,6 +88,10 @@ public class AdminService {
     // não usuario_id sozinho.
     private void garantirIndiceGerentes() {
         jdbcTemplate.execute("CREATE UNIQUE INDEX IF NOT EXISTS gerentes_departamento_usuario_depto_key ON gerentes_departamento (usuario_id, departamento)");
+        // tipo_unidade aqui é legado — a classificação de tipo agora mora em departamento_tipo,
+        // sem depender de gerente nenhum (ver garantirTabelaDepartamentoTipo). Deixar de exigir
+        // NOT NULL permite adicionar um gerente sem precisar (mal) inventar um tipo pra ele.
+        jdbcTemplate.execute("ALTER TABLE gerentes_departamento ALTER COLUMN tipo_unidade DROP NOT NULL");
     }
 
     private void garantirTabelaResponsaveis() {
@@ -442,7 +480,9 @@ public class AdminService {
         if (request.departamento() == null || request.departamento().trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe o departamento");
         }
-        if (!"UA".equals(request.tipoUnidade()) && !"UG".equals(request.tipoUnidade())) {
+        // tipoUnidade agora é opcional aqui — quem classifica o tipo é /departamentos/classificar.
+        String tipo = request.tipoUnidade();
+        if (tipo != null && !tipo.isBlank() && !"UA".equals(tipo) && !"UG".equals(tipo)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tipo de unidade deve ser UA ou UG");
         }
     }

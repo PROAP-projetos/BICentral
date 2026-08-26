@@ -258,6 +258,17 @@
       <app-grafo-atividades *ngIf="painelAtivo === 'grafo'"></app-grafo-atividades>
     </div>
 
+    <!-- AVISO: o chat só responde com uma chave de API própria, que não vai pro repositório -->
+    <div class="aviso-api-banner" *ngIf="avisoApiVisivel">
+      <span class="aviso-api-icon">⚠️</span>
+      <div class="aviso-api-texto">
+        <strong>Antes de sair testando o chat:</strong> o proIAp tá configurado com a API paga da OpenAI, e a minha chave é local — não subiu pro repositório. Sem uma chave sua, o chat vai dar erro e não responder nada.
+        Vocês já têm a chave do Groq no <code>application.properties</code> de vocês (é a que a gente já usava) — pra voltar a usar ela, só trocar <code>@Qualifier("openaiLunaModel")</code> e <code>@Qualifier("openaiTerraModel")</code> por <code>@Qualifier("groqModel")</code> em <code>LangchainConfig.java</code>. Não precisa mexer em mais nada.
+        Quer testar a versão premium mesmo (mais estável)? me chama que a gente vê uma chave da OpenAI pra você.
+      </div>
+      <button type="button" class="aviso-api-fechar" (click)="dispensarAvisoApi()" aria-label="Fechar aviso" title="Fechar">×</button>
+    </div>
+
     <!-- O CORPO DA CONVERSA -->
     <div class="chat-body" [class.is-empty]="messages.length === 0" *ngIf="painelAtivo === 'chat'">
 
@@ -336,6 +347,12 @@
 
       <!-- Área do Input de Texto -->
       <div class="composer">
+        <div *ngIf="sugestoesAtuais.length > 0" class="composer-sugestoes">
+          <button type="button" class="sugestao-chip" *ngFor="let s of sugestoesAtuais" (click)="enviarSugestao(s)">
+            {{ s }}
+          </button>
+        </div>
+
         <p class="agent-error" *ngIf="erro">{{ erro }}</p>
 
         <div class="agent-input-container">

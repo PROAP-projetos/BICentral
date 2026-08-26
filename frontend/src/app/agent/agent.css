@@ -319,6 +319,85 @@
 .top-nav-links a { color: var(--text-secondary); text-decoration: none; font-size: 0.9rem; }
 .top-nav-links a:hover { color: var(--text-primary); }
 
+.aviso-api-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 10px 16px 0;
+  padding: 14px 16px;
+  background: linear-gradient(90deg, #fff6da, #fff0c2);
+  border: 1px solid #f0c95a;
+  border-left: 5px solid #e0a800;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(224, 168, 0, 0.15);
+  flex-shrink: 0;
+}
+
+.aviso-api-icon {
+  font-size: 1.3rem;
+  line-height: 1.3;
+  flex-shrink: 0;
+}
+
+.aviso-api-texto {
+  flex: 1;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: #5a4400;
+}
+
+.aviso-api-texto strong {
+  color: #4a3800;
+}
+
+.aviso-api-texto code {
+  background: rgba(0, 0, 0, 0.08);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.82em;
+}
+
+.aviso-api-fechar {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: #8a6d00;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.aviso-api-fechar:hover {
+  color: #4a3800;
+}
+
+.dark-theme .aviso-api-banner {
+  background: linear-gradient(90deg, #4a3c10, #3d3009);
+  border-color: #806000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.dark-theme .aviso-api-texto {
+  color: #ffe9a8;
+}
+
+.dark-theme .aviso-api-texto strong {
+  color: #fff3cf;
+}
+
+.dark-theme .aviso-api-texto code {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.dark-theme .aviso-api-fechar {
+  color: #ffe9a8;
+}
+
+.dark-theme .aviso-api-fechar:hover {
+  color: #fff3cf;
+}
+
 .chat-body {
   flex-grow: 1; display: flex; flex-direction: column;
   overflow: hidden; align-items: center; width: 100%;
@@ -535,6 +614,7 @@
 :host ::ng-deep .message-table-wrap table {
   width: 100%;
   min-width: 760px;
+  table-layout: auto;
   border-collapse: collapse;
   font-size: 0.86rem;
   line-height: 1.35;
@@ -547,6 +627,8 @@
   border-right: 1px solid var(--border-color);
   text-align: left;
   vertical-align: top;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 :host ::ng-deep .message-table-wrap th:last-child,
@@ -572,26 +654,10 @@
   background: rgba(127, 127, 127, 0.045);
 }
 
-:host ::ng-deep .message-table-wrap th:nth-child(1),
-:host ::ng-deep .message-table-wrap td:nth-child(1) {
-  width: 72px;
-  text-align: center;
-  white-space: nowrap;
-}
-
-:host ::ng-deep .message-table-wrap th:nth-child(2),
-:host ::ng-deep .message-table-wrap td:nth-child(2) {
-  width: 52%;
-}
-
-:host ::ng-deep .message-table-wrap th:nth-child(3),
-:host ::ng-deep .message-table-wrap td:nth-child(3),
-:host ::ng-deep .message-table-wrap th:nth-child(4),
-:host ::ng-deep .message-table-wrap td:nth-child(4) {
-  width: 120px;
-  text-align: right;
-  white-space: nowrap;
-}
+/* Sem larguras fixas por posição de coluna — cada ferramenta do agente gera tabelas com formas
+   diferentes (2 a 7 colunas, em ordens diferentes), então uma regra por nth-child sempre acerta
+   uma forma e espreme as outras. table-layout:auto + overflow-wrap acima deixa cada coluna se
+   ajustar ao próprio conteúdo, e o wrapper com overflow-x:auto cobre o caso de tabela grande. */
 
 .composer {
   width: 100%; max-width: 800px; padding: 1rem; margin-top: auto;
@@ -679,6 +745,40 @@
   background-color: rgba(100, 180, 255, 0.15);
   color: #80c0ff;
   border-color: rgba(100, 180, 255, 0.2);
+}
+
+.composer-sugestoes {
+  margin-bottom: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sugestao-chip {
+  background-color: rgba(0, 120, 215, 0.08);
+  color: #0078D7;
+  padding: 5px 12px;
+  border-radius: 14px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: 1px solid rgba(0, 120, 215, 0.25);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background-color 0.15s ease;
+}
+
+.sugestao-chip:hover {
+  background-color: rgba(0, 120, 215, 0.18);
+}
+
+.dark-theme .sugestao-chip {
+  background-color: rgba(100, 180, 255, 0.12);
+  color: #80c0ff;
+  border-color: rgba(100, 180, 255, 0.25);
+}
+
+.dark-theme .sugestao-chip:hover {
+  background-color: rgba(100, 180, 255, 0.22);
 }
 
 .pdf-viewer-overlay {

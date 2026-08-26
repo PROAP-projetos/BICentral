@@ -25,13 +25,25 @@
       </div>
     </div>
 
-    <select [(ngModel)]="tipoUnidade" name="tipoUnidade">
+    <button class="btn btn-primary btn-sm" type="submit" [disabled]="!usuarioId || departamentosSelecionados.length === 0 || salvando">
+      Adicionar
+    </button>
+  </form>
+
+  <form class="form-compact classificar-form" (ngSubmit)="classificar()">
+    <span class="classificar-label">Classificar tipo sem vincular gerente:</span>
+    <select class="select-departamento-largo" [(ngModel)]="departamentoParaClassificar" name="departamentoClassificar" required>
+      <option [ngValue]="null">Selecione um departamento</option>
+      <option *ngFor="let dep of departamentos" [ngValue]="dep">{{ dep }}</option>
+    </select>
+
+    <select [(ngModel)]="tipoParaClassificar" name="tipoParaClassificar">
       <option value="UA">UA</option>
       <option value="UG">UG</option>
     </select>
 
-    <button class="btn btn-primary btn-sm" type="submit" [disabled]="!usuarioId || departamentosSelecionados.length === 0 || salvando">
-      Adicionar
+    <button class="btn btn-primary btn-sm" type="submit" [disabled]="!departamentoParaClassificar || classificando">
+      Classificar
     </button>
   </form>
 
@@ -39,7 +51,6 @@
     <div class="table-row table-head managers-head">
       <div>Usuario</div>
       <div>Departamento</div>
-      <div>Tipo</div>
       <div style="text-align: right;">Acoes</div>
     </div>
 
@@ -52,7 +63,6 @@
         </div>
       </div>
       <div>{{ gerente.departamento }}</div>
-      <div><span class="role-chip-small">{{ gerente.tipoUnidade }}</span></div>
       <div class="actions-col">
         <button class="btn-icon btn-danger-icon" type="button" title="Remover" (click)="remover(gerente)" [disabled]="salvando">
           Remover
