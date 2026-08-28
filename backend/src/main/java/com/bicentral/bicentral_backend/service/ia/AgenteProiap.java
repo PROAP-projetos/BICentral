@@ -1,7 +1,7 @@
 package com.bicentral.bicentral_backend.service.ia;
 
 import com.bicentral.bicentral_backend.dto.ia.AnaliseComandoDTO;
-import com.bicentral.bicentral_backend.dto.painel.GraficoSpecDTO;
+import com.bicentral.bicentral_backend.dto.painel.PainelSpecDTO;
 
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
@@ -51,23 +51,25 @@ public interface AgenteProiap {
         String responderDuvida(@V("pergunta") String pergunta, @V("contexto") String contexto);
 
         // ==========================================
-        // SKILL 2: GERADOR DE GRÁFICOS
+        // SKILL 2: GERADOR DE PAINÉIS (1 OU MAIS GRÁFICOS)
         // ==========================================
         @SystemMessage({
                         "Você é um especialista em visualização de dados da PROAP.",
-                        "Sua tarefa é ler os DADOS RECUPERADOS e montar a configuração do gráfico ECharts.",
+                        "Sua tarefa é ler os DADOS RECUPERADOS e montar um painel com um ou mais gráficos ECharts.",
                         "DADOS RECUPERADOS: {{dados_recuperados}}",
                         "MEMÓRIA DA SESSÃO ATUAL:",
                         "- Indicador Focado: {{indicador}}",
                         "- Tipo de Gráfico Preferido: {{tipo_grafico}}",
                         "REGRA 1: Use EXATAMENTE os números fornecidos. NUNCA invente ou deduza valores.",
-                        "REGRA 2: Extraia a métrica exata que o usuário pediu para TODOS os anos disponíveis.",
-                        "REGRA 3: O campo 'tipo' do json DEVE respeitar o 'Tipo de Gráfico Preferido' da memória da sessão, a menos que o usuário exija outro na mensagem.",
-                        "REGRA 4: Se os números exatos para o gráfico solicitado não estiverem nos DADOS RECUPERADOS, retorne as séries vazias e avise.",
-                        "REGRA 5: Preencha o 'mensagemContexto' com uma frase natural e amigável dizendo os dados que encontrou e perguntando se o usuário quer ver o gráfico. NUNCA termine com dois pontos (:).",
+                        "REGRA 2: Extraia a(s) métrica(s) exata(s) que o usuário pediu. Se o pedido for um indicador só, o painel tem 1 gráfico na lista 'graficos'. Se envolver comparar vários indicadores, unidades ou períodos, monte um gráfico separado pra cada um dentro da mesma lista.",
+                        "REGRA 3: O campo 'tipo' de cada gráfico DEVE respeitar o 'Tipo de Gráfico Preferido' da memória da sessão, a menos que o usuário exija outro na mensagem.",
+                        "REGRA 4: Se os números exatos para o gráfico solicitado não estiverem nos DADOS RECUPERADOS, retorne as séries vazias e avise na mensagemContexto.",
+                        "REGRA 5: Preencha o 'mensagemContexto' com uma frase natural e amigável dizendo os dados que encontrou e perguntando se o usuário quer ver o painel. NUNCA termine com dois pontos (:).",
+                        "REGRA 6: 'skill' deve ser sempre a palavra exata 'painel', mesmo com um gráfico só.",
+                        "REGRA 7: Inclua TODAS as categorias presentes nos DADOS RECUPERADOS, mesmo que sejam muitas (dezenas) — nunca corte ou resuma a lista sozinho. O gráfico cresce e vira rolável para acomodar todas; cortar dados é pior que uma rolagem longa.",
                         "Retorne estritamente o objeto estruturado."
         })
-        GraficoSpecDTO gerarGrafico(
+        PainelSpecDTO gerarPainel(
                         @UserMessage String pergunta,
                         @V("dados_recuperados") String dadosRecuperados,
                         @V("indicador") String indicadorSessao,

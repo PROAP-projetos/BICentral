@@ -1,12 +1,14 @@
 .card-grafico {
   position: relative;
   background: #ffffff;
-  border-radius: 6px;
-  padding: 10px 6px 4px;
+  border-radius: 10px;
+  padding: 14px 10px 8px;
   margin: 10px 0 0;
   width: 100%;
   max-width: 100%;
   overflow: hidden;
+  border: 1px solid #eef1f4;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 .chart-icon-actions {
@@ -49,7 +51,83 @@
 }
 
 .chart-display {
-  height: 320px;
   width: 100%;
   min-width: 0;
+}
+
+.card-grafico.preencher {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-grafico.preencher .chart-display {
+  flex: 1;
+  min-height: 0;
+}
+
+.card-grafico.sem-moldura {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 4px;
+}
+
+.chart-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 999;
+}
+
+.card-grafico.expandido {
+  position: fixed;
+  inset: 32px;
+  /* .card-grafico (base) fixa width/max-width em 100% pra caber na bolha do chat — com
+     "inset" também fixando left+right, isso deixa a caixa sobre-restringida e o navegador ignora
+     o "right", estourando o card pra fora da tela. "auto" deixa left/right (do inset) mandarem. */
+  width: auto;
+  max-width: none;
+  height: auto;
+  margin: 0;
+  z-index: 1000;
+  padding: 20px 24px 16px;
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  /* Quem rola é o .chart-scroll-wrap de dentro, não o card — assim os ícones (posicionados
+     relativos a este card) ficam fixos no canto mesmo rolando o gráfico. */
+  overflow: hidden;
+}
+
+.chart-scroll-wrap.ativo {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Expandido, o botão de fechar mora no mesmo canto que "123"/baixar e ficava um em cima do
+   outro — empurra a barrinha de ícones pra esquerda pra abrir espaço pro X. */
+.card-grafico.expandido .chart-icon-actions {
+  right: 52px;
+}
+
+.chart-close-btn {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  z-index: 2;
+  border: none;
+  background: transparent;
+  color: #666;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.chart-close-btn:hover {
+  background: #f1f5f9;
+  color: #173d64;
 }

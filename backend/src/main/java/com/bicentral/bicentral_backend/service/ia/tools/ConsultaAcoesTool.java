@@ -160,8 +160,8 @@ public class ConsultaAcoesTool {
     public String ranquearDepartamentosPorExecucaoPAT(
             @P("'melhores' para maior execução primeiro, 'piores' para menor execução primeiro") String ordem,
             @P(value = "'UG' para só Unidades Gestoras, 'UA' para só Unidades Acadêmicas, deixe null para todas", required = false) String tipoUnidade,
-            @P(value = "quantidade a retornar, padrão 10", required = false) Integer limite) {
-        int qtd = (limite == null || limite <= 0) ? 10 : limite;
+            @P(value = "quantidade a retornar, padrão 10. Se o usuário pedir 'todos os departamentos' ou não quiser recorte nenhum, passe 500", required = false) Integer limite) {
+        int qtd = (limite == null || limite <= 0) ? 10 : Math.min(limite, 500);
         String direcao = ordem != null && ordem.toLowerCase().contains("melhor") ? "DESC" : "ASC";
         boolean filtrarTipo = tipoUnidade != null && (tipoUnidade.equalsIgnoreCase("UA") || tipoUnidade.equalsIgnoreCase("UG"));
         System.out.println(">>> TOOL CHAMADA: ranquearDepartamentosPorExecucaoPAT(ordem=" + ordem + ", tipoUnidade=" + tipoUnidade + ", limite=" + qtd + ")");
@@ -303,8 +303,8 @@ public class ConsultaAcoesTool {
     public String contarAcoesPorDepartamentoPDI(
             @P("'menos' para ranquear do menor para o maior número de ações, 'mais' para o maior primeiro") String ordem,
             @P(value = "'UG' para filtrar só Unidades Gestoras, 'UA' para só Unidades Acadêmicas, deixe null para todas", required = false) String tipoUnidade,
-            @P(value = "quantidade de departamentos a retornar, padrão 10", required = false) Integer limite) {
-        int qtd = (limite == null || limite <= 0) ? 10 : limite;
+            @P(value = "quantidade de departamentos a retornar, padrão 10. Se o usuário pedir 'todos os departamentos' ou não quiser recorte nenhum, passe 500", required = false) Integer limite) {
+        int qtd = (limite == null || limite <= 0) ? 10 : Math.min(limite, 500);
         String direcao = ordem != null && ordem.toLowerCase().contains("mais") ? "DESC" : "ASC";
         boolean filtrarTipo = tipoUnidade != null && (tipoUnidade.equalsIgnoreCase("UA") || tipoUnidade.equalsIgnoreCase("UG"));
         System.out.println(">>> TOOL CHAMADA: contarAcoesPorDepartamentoPDI(ordem=" + ordem + ", tipoUnidade=" + tipoUnidade + ", limite=" + qtd + ")");
@@ -354,8 +354,8 @@ public class ConsultaAcoesTool {
     public String contarAcoesPorDepartamentoPAT(
             @P("'menos' para ranquear do menor para o maior número de ações, 'mais' para o maior primeiro") String ordem,
             @P(value = "'UG' para filtrar só Unidades Gestoras, 'UA' para só Unidades Acadêmicas, deixe null para todas", required = false) String tipoUnidade,
-            @P(value = "quantidade de departamentos a retornar, padrão 10", required = false) Integer limite) {
-        int qtd = (limite == null || limite <= 0) ? 10 : limite;
+            @P(value = "quantidade de departamentos a retornar, padrão 10. Se o usuário pedir 'todos os departamentos' ou não quiser recorte nenhum, passe 500", required = false) Integer limite) {
+        int qtd = (limite == null || limite <= 0) ? 10 : Math.min(limite, 500);
         String direcao = ordem != null && ordem.toLowerCase().contains("mais") ? "DESC" : "ASC";
         System.out.println(">>> TOOL CHAMADA: contarAcoesPorDepartamentoPAT(ordem=" + ordem + ", tipoUnidade=" + tipoUnidade + ", limite=" + qtd + ")");
 

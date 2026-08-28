@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { AfterViewChecked, AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { GraficoIaComponent } from '../grafico-ia/grafico-ia';
 import { GrafoAtividadesComponent } from '../grafo-atividades/grafo-atividades.component';
@@ -13,7 +13,7 @@ import { SafeUrlPipe } from '../pipes/safe-url.pipe';
 interface ChatSession {
   id: number;
   titulo: string;
-  messages: { from: 'bot' | 'user'; text?: string; spec?: any; fontes?: string[]; sugestoes?: string[] }[];
+  messages: { from: 'bot' | 'user'; text?: string; spec?: any; fontes?: string[]; sugestoes?: string[]; salvandoPainel?: boolean; painelSalvo?: boolean }[];
 }
 
 @Component({
@@ -68,7 +68,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   private static readonly FONT_FAMILY_KEY = 'bicentral_font_family';
   mostrarSettings = false;
   fontSize: 'small' | 'medium' | 'large' = 'medium';
-  fontFamily: 'default' | 'serif' | 'mono' = 'default';
+  fontFamily: 'default' | 'serif' | 'rounded' = 'default';
 
   // ==========================================
   // NOTIFICAÇÕES
@@ -91,11 +91,12 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   relatorioPdfGerandoId?: number;
   private relatorioPollingTimer?: number;
 
-  constructor(private agentService: AgentService, private adminService: AdminService) {
+  constructor(private agentService: AgentService, private adminService: AdminService, private router: Router) {
     this.carregarUsuario();
     this.carregarEquipeSelecionada();
     this.carregarNotificacoes();
     this.verificarAdminSistema();
+    this.verificarTarefasAtrasadas();
 
     if (localStorage.getItem('theme') === 'dark') {
       this.isDarkMode = true;
@@ -111,13 +112,19 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     }
 
     const tipoSalvo = localStorage.getItem(AgentComponent.FONT_FAMILY_KEY);
-    if (tipoSalvo === 'default' || tipoSalvo === 'serif' || tipoSalvo === 'mono') {
+    if (tipoSalvo === 'default' || tipoSalvo === 'serif' || tipoSalvo === 'rounded') {
       this.fontFamily = tipoSalvo;
     }
   }
 
   ngOnInit() {
     this.gerarMensagemBoasVindas();
+  }
+
+  sair(): void {
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    this.router.navigate(['/login']);
   }
 
   verificarAdminSistema(): void {
@@ -237,8 +244,8 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
       .subscribe({
         next: (resposta: any) => {
 
-          // 1. Se a resposta for a configuração de um GRÁFICO
-          if (resposta.skill === 'grafico') {
+          // 1. Se a resposta for um PAINEL (1 ou mais gráficos)
+          if (resposta.skill === 'painel') {
             this.sessaoAtual.messages.push({
               from: 'bot',
               text: resposta.mensagemContexto || 'Aqui está a visualização dos dados:',
@@ -278,6 +285,22 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   enviarSugestao(texto: string) {
     this.input = texto;
     this.send();
+  }
+
+  salvarPainel(mensagem: { spec?: any; salvandoPainel?: boolean; painelSalvo?: boolean }): void {
+    if (!mensagem.spec || mensagem.salvandoPainel || mensagem.painelSalvo) return;
+
+    mensagem.salvandoPainel = true;
+    this.agentService.salvarPainelIa(mensagem.spec.titulo, mensagem.spec).subscribe({
+      next: () => {
+        mensagem.salvandoPainel = false;
+        mensagem.painelSalvo = true;
+      },
+      error: () => {
+        mensagem.salvandoPainel = false;
+        this.erro = 'Não foi possível salvar o painel agora.';
+      }
+    });
   }
 
   dispensarAvisoApi(): void {
@@ -349,7 +372,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     localStorage.setItem(AgentComponent.FONT_SIZE_KEY, tamanho);
   }
 
-  setFontFamily(tipo: 'default' | 'serif' | 'mono'): void {
+  setFontFamily(tipo: 'default' | 'serif' | 'rounded'): void {
     this.fontFamily = tipo;
     localStorage.setItem(AgentComponent.FONT_FAMILY_KEY, tipo);
   }
@@ -357,6 +380,27 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   // ==========================================
   // NOTIFICAÇÕES
   // ==========================================
+  private verificarTarefasAtrasadas(): void {
+    this.agentService.buscarMinhasTarefasAtrasadas().subscribe({
+      next: (resumo) => {
+        if (resumo.quantidade > 0 && this.sessaoAtual.messages.length === 0) {
+          const dias = resumo.diasAtraso ?? 0;
+          const diaOuDias = dias === 1 ? 'dia' : 'dias';
+          const texto = resumo.quantidade === 1
+            ? `⚠️ Antes de começarmos: você tem 1 tarefa atrasada — "${resumo.tituloMaisUrgente}", há ${dias} ${diaOuDias}. Quer que eu liste os detalhes?`
+            : `⚠️ Antes de começarmos: você tem ${resumo.quantidade} tarefas atrasadas. A mais urgente é "${resumo.tituloMaisUrgente}", há ${dias} ${diaOuDias}. Quer que eu liste todas?`;
+
+          this.sessaoAtual.messages.push({
+            from: 'bot',
+            text: texto,
+            sugestoes: ['Quais são minhas tarefas atrasadas?']
+          });
+        }
+      },
+      error: () => { /* silencioso: uma falha aqui não pode travar a abertura do chat */ }
+    });
+  }
+
   private carregarNotificacoes(): void {
     this.carregandoNotificacoes = true;
     this.agentService.listarNotificacoes()

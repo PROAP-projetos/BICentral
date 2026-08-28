@@ -1,10 +1,12 @@
-<div class="card-grafico">
+<div class="chart-backdrop" *ngIf="expandido" (click)="alternarExpandir()"></div>
+
+<div class="card-grafico" [class.expandido]="expandido" [class.sem-moldura]="modoPreview && !expandido" [class.preencher]="modoPreview && !expandido">
   <div class="chart-icon-actions">
-    <button type="button" class="chart-icon-btn" [class.active]="mostrarValores"
+    <button type="button" class="chart-icon-btn" *ngIf="!modoPreview || expandido" [class.active]="mostrarValores"
       [title]="mostrarValores ? 'Ocultar números' : 'Mostrar números'" (click)="alternarValores()">
       123
     </button>
-    <button type="button" class="chart-icon-btn" title="Baixar imagem" (click)="baixarPng()">
+    <button type="button" class="chart-icon-btn" *ngIf="!modoPreview || expandido" title="Baixar imagem" (click)="baixarPng()">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
         stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -12,7 +14,18 @@
         <line x1="12" y1="15" x2="12" y2="3"></line>
       </svg>
     </button>
+    <button type="button" class="chart-icon-btn" *ngIf="!expandido"
+      title="Expandir" (click)="alternarExpandir()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path>
+      </svg>
+    </button>
   </div>
 
-  <div echarts [options]="chartOptions" (chartInit)="onChartInit($event)" class="chart-display"></div>
+  <button type="button" class="chart-close-btn" *ngIf="expandido" title="Fechar (Esc)" (click)="alternarExpandir()">×</button>
+
+  <div class="chart-scroll-wrap" [class.ativo]="expandido">
+    <div echarts [options]="chartOptions" (chartInit)="onChartInit($event)" class="chart-display" [style.height]="(modoPreview && !expandido) ? '100%' : (chartHeight + 'px')"></div>
+  </div>
 </div>

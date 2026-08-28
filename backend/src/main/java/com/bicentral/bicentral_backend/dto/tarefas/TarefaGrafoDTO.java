@@ -1,4 +1,4 @@
-package com.bicentral.bicentral_backend.dto.painel;
+package com.bicentral.bicentral_backend.dto.tarefas;
 
 public record TarefaGrafoDTO(
     String titulo,
