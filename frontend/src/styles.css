@@ -40,6 +40,46 @@ body {
   color: var(--color-text);
 }
 
+/* Barra de rolagem fina e discreta (some quando não tem hover) — mesmo estilo que o proIAp já
+   usa no chat, aplicado aqui pro BICentral inteiro (documento e qualquer área com scroll). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+*:hover {
+  scrollbar-color: var(--color-text-muted) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 999px;
+}
+
+*:hover::-webkit-scrollbar-thumb {
+  background: var(--color-text-muted);
+  opacity: 0.4;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
 /* Você pode adicionar estilos para tags HTML básicas aqui, se necessário */
 h1 {
   color: var(--color-primary);

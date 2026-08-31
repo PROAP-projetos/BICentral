@@ -3,7 +3,7 @@ package com.bicentral.bicentral_backend.state;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.annotation.SessionScope;
 
-import com.bicentral.bicentral_backend.dto.painel.GraficoSpecDTO;
+import com.bicentral.bicentral_backend.dto.painel.PainelSpecDTO;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -31,7 +31,7 @@ public class EstadoSessao {
     private Long equipeId;
 
     private boolean aguardandoConfirmacaoGrafico = false;
-    private GraficoSpecDTO graficoPendente = null;
+    private PainelSpecDTO painelPendente = null;
 
     // Sinaliza que um relatório foi solicitado durante o processamento da pergunta atual,
     // pra o front saber que deve abrir o painel de relatórios sozinho.
@@ -51,16 +51,16 @@ public class EstadoSessao {
         this.aguardandoConfirmacaoGrafico = valor;
     }
 
-    public void setGraficoPendente(GraficoSpecDTO grafico) {
+    public void setPainelPendente(PainelSpecDTO painel) {
         System.out.println(
-            "\n[DEBUG ESTADO] setGraficoPendente(" +
-            (grafico != null ? "OBJETO" : "NULL") +
+            "\n[DEBUG ESTADO] setPainelPendente(" +
+            (painel != null ? "OBJETO" : "NULL") +
             ")"
         );
 
         Thread.dumpStack();
 
-        this.graficoPendente = grafico;
+        this.painelPendente = painel;
     }
 
     // Depuração
@@ -74,7 +74,7 @@ public class EstadoSessao {
                 ", modelo='" + modelo + '\'' +
                 ", equipeId=" + equipeId +
                 ", aguardandoConfirmacaoGrafico=" + aguardandoConfirmacaoGrafico +
-                ", graficoPendente=" + (graficoPendente != null ? "OBJETO" : "NULL") +
+                ", painelPendente=" + (painelPendente != null ? "OBJETO" : "NULL") +
                 '}';
     }
 }

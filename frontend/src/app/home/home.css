@@ -330,6 +330,135 @@ h2 {
   padding: 0 20px;
 }
 
+.paineis-ia-section {
+  padding: 0 20px 24px;
+}
+
+.paineis-ia-cabecalho {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.dashboard-cabecalho {
+  padding: 0 20px;
+}
+
+.paineis-ia-title {
+  margin: 0;
+  color: #000000;
+  font-size: 1.2em;
+  font-weight: bold;
+}
+
+.paineis-ia-subtitle {
+  margin: 2px 0 0;
+  color: #666;
+  font-size: 0.85em;
+}
+
+/* Mesmo grid do Power BI (minmax 250px) — os cards de painel de IA ficam do mesmo tamanho. */
+.paineis-ia-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 15px;
+  align-items: start;
+}
+
+/* Mesma altura fixa (250px) e mesma linguagem visual do .dashboard-card do Power BI. */
+.painel-ia-card {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(0, 74, 128, 0.12);
+  transition: all 0.3s ease;
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  height: 250px;
+  padding: 10px 12px 8px;
+  /* Sem isso, o padding soma por cima do height e o card fica maior que os 250px do Power BI
+     (o site não tem um reset global de box-sizing: border-box). */
+  box-sizing: border-box;
+}
+
+.painel-ia-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 16px 32px rgba(0, 74, 128, 0.18);
+}
+
+.painel-ia-nome {
+  margin: 0 0 4px;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: #000000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.painel-ia-graficos {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  gap: 6px;
+  /* Sem rolagem nenhuma — nem horizontal nem vertical. Vários gráficos num painel encolhem lado
+     a lado (flex-shrink) pra caber no card em vez de precisar rolar pra ver o resto. */
+  overflow: hidden;
+}
+
+.painel-ia-graficos app-grafico-ia {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  width: 100%;
+}
+
+/* Excluir discreto, mesmo padrão do botão "Editar" dos cards do Power BI — texto pequeno e
+   apagado, sem caixa/borda chamativa, só destaca no hover. */
+.painel-ia-rodape {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+.painel-ia-excluir-btn {
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  border-radius: 6px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--color-text-muted);
+  border: 1px solid transparent;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.painel-ia-excluir-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.04);
+  color: #d33;
+}
+
+.painel-ia-excluir-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.painel-ia-confirmar {
+  font-size: 0.75rem;
+  color: #444;
+}
+
+.painel-ia-confirmar .btn-danger,
+.painel-ia-confirmar .btn-secondary {
+  padding: 2px 9px;
+  font-size: 0.72rem;
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));

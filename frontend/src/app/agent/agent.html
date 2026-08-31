@@ -4,7 +4,7 @@
   [class.font-size-small]="fontSize === 'small'"
   [class.font-size-large]="fontSize === 'large'"
   [class.font-family-serif]="fontFamily === 'serif'"
-  [class.font-family-mono]="fontFamily === 'mono'">
+  [class.font-family-rounded]="fontFamily === 'rounded'">
 
   <!-- BARRA LATERAL (Sidebar) -->
   <aside class="sidebar">
@@ -93,9 +93,14 @@
         <p class="settings-group-title">Tipo de fonte</p>
         <div class="settings-options">
           <button type="button" class="settings-option" [class.active]="fontFamily === 'default'" (click)="setFontFamily('default')">Padrão</button>
-          <button type="button" class="settings-option" [class.active]="fontFamily === 'serif'" (click)="setFontFamily('serif')">Serifada</button>
-          <button type="button" class="settings-option" [class.active]="fontFamily === 'mono'" (click)="setFontFamily('mono')">Monoespaçada</button>
+          <button type="button" class="settings-option" [class.active]="fontFamily === 'serif'" (click)="setFontFamily('serif')">Clássica</button>
+          <button type="button" class="settings-option" [class.active]="fontFamily === 'rounded'" (click)="setFontFamily('rounded')">Arredondada</button>
         </div>
+      </div>
+
+      <div class="settings-group settings-group-conta">
+        <p class="settings-group-title">Conta</p>
+        <button type="button" class="settings-logout-btn" (click)="sair()">Sair da conta</button>
       </div>
     </div>
   </div>
@@ -328,7 +333,16 @@
             <div *ngIf="m.text" class="message-text" [innerHTML]="formatarMensagem(m.text)"></div>
 
             <div *ngIf="m.spec" class="chart-message">
-              <app-grafico-ia [spec]="m.spec"></app-grafico-ia>
+              <app-grafico-ia *ngFor="let g of m.spec.graficos" [spec]="g"></app-grafico-ia>
+
+              <button
+                type="button"
+                class="salvar-painel-btn"
+                *ngIf="m.spec.aguardandoConfirmacao === false"
+                [disabled]="m.salvandoPainel || m.painelSalvo"
+                (click)="salvarPainel(m)">
+                {{ m.painelSalvo ? 'Salvo no BICentral ✓' : (m.salvandoPainel ? 'Salvando...' : 'Salvar no BICentral') }}
+              </button>
             </div>
 
             <div *ngIf="m.fontes && m.fontes.length > 0" class="bubble-fontes">

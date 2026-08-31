@@ -239,8 +239,8 @@ public class NotificacaoService {
         }
 
         GraficoSpecDTO grafico = new GraficoSpecDTO(
-                "", "grafico", "Tarefas atrasadas por responsável — " + departamento, "bar",
-                responsaveis, List.of(new SerieGraficoDTO("Tarefas atrasadas", totais)), false);
+                "Tarefas atrasadas por responsável — " + departamento, "bar",
+                responsaveis, List.of(new SerieGraficoDTO("Tarefas atrasadas", totais)));
 
         return new PainelAtrasosDTO(departamento, grafico, tarefas);
     }

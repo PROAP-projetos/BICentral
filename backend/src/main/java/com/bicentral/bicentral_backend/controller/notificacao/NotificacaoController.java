@@ -1,4 +1,4 @@
-package com.bicentral.bicentral_backend.controller.ia;
+package com.bicentral.bicentral_backend.controller.notificacao;
 
 import com.bicentral.bicentral_backend.dto.notificacao.NotificacaoDTO;
 import com.bicentral.bicentral_backend.model.Usuario;

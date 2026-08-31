@@ -41,6 +41,12 @@ export interface RelatorioStatusResponse {
   tipo: string;
 }
 
+export interface TarefasAtrasadasResumo {
+  quantidade: number;
+  tituloMaisUrgente: string | null;
+  diasAtraso: number | null;
+}
+
 export interface RelatorioHistoricoItem {
   id: number;
   departamento: string;
@@ -77,6 +83,13 @@ export interface PainelAtrasos {
   tarefas: TarefaCritica[];
 }
 
+export interface PainelIa {
+  id: number;
+  titulo: string;
+  especificacao: any;
+  criadoEm: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -110,6 +123,26 @@ export class AgentService {
   listarNotificacoes(): Observable<Notificacao[]> {
     const urlNotificacoes = 'http://localhost:8080/api/proiap/notificacoes';
     return this.http.get<Notificacao[]>(urlNotificacoes, { withCredentials: true });
+  }
+
+  buscarMinhasTarefasAtrasadas(): Observable<TarefasAtrasadasResumo> {
+    const url = 'http://localhost:8080/api/tarefas/minhas-atrasadas';
+    return this.http.get<TarefasAtrasadasResumo>(url, { withCredentials: true });
+  }
+
+  salvarPainelIa(titulo: string, especificacao: any): Observable<PainelIa> {
+    const url = 'http://localhost:8080/api/paineis-ia';
+    return this.http.post<PainelIa>(url, { titulo, especificacao }, { withCredentials: true });
+  }
+
+  listarPaineisIa(): Observable<PainelIa[]> {
+    const url = 'http://localhost:8080/api/paineis-ia';
+    return this.http.get<PainelIa[]>(url, { withCredentials: true });
+  }
+
+  excluirPainelIa(id: number): Observable<void> {
+    const url = `http://localhost:8080/api/paineis-ia/${id}`;
+    return this.http.delete<void>(url, { withCredentials: true });
   }
 
   buscarPainelAtrasos(departamento: string): Observable<PainelAtrasos> {

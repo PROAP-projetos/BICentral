@@ -44,8 +44,8 @@
 .agent-shell.font-family-serif {
   --font-family-chat: "Georgia", "Times New Roman", serif;
 }
-.agent-shell.font-family-mono {
-  --font-family-chat: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+.agent-shell.font-family-rounded {
+  --font-family-chat: Verdana, "Trebuchet MS", "Segoe UI", sans-serif;
 }
 
 .agent-shell.dark-theme {
@@ -704,6 +704,32 @@
 .disclaimer { font-size: 0.75rem; color: var(--text-secondary); text-align: center; margin-top: 12px; }
 .chart-message {
   margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.salvar-painel-btn {
+  align-self: flex-start;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--color-primary, #004a80);
+  background: transparent;
+  color: var(--color-primary, #004a80);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.salvar-painel-btn:hover:not(:disabled) {
+  background: var(--color-primary, #004a80);
+  color: white;
+}
+
+.salvar-painel-btn:disabled {
+  cursor: default;
+  opacity: 0.7;
 }
 .bubble-fontes {
   margin-top: 8px;
@@ -1131,6 +1157,29 @@
   background: var(--text-primary);
   color: var(--bg-main);
   border-color: var(--text-primary);
+}
+
+.settings-group-conta {
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.settings-logout-btn {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid #d33;
+  background: transparent;
+  color: #d33;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.settings-logout-btn:hover {
+  background: #d33;
+  color: white;
 }
 
 .relatorio-body {

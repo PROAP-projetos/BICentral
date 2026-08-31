@@ -131,6 +131,48 @@
         {{ error }}
       </div>
 
+      <section class="paineis-ia-section" *ngIf="paineisIa.length > 0">
+        <div class="paineis-ia-cabecalho">
+          <h2 class="paineis-ia-title">Painéis de IA</h2>
+          <p class="paineis-ia-subtitle">Gerados pelo proIAp e salvos direto do chat.</p>
+        </div>
+
+        <div class="paineis-ia-grid">
+          <div class="painel-ia-card" *ngFor="let painel of paineisIa">
+            <h3 class="painel-ia-nome" [title]="painel.titulo">{{ painel.titulo }}</h3>
+
+            <div class="painel-ia-graficos">
+              <app-grafico-ia
+                *ngFor="let g of painel.especificacao.graficos"
+                [spec]="g"
+                [modoPreview]="true">
+              </app-grafico-ia>
+            </div>
+
+            <div class="painel-ia-rodape" *ngIf="confirmandoExclusaoPainelIaId !== painel.id">
+              <button
+                type="button"
+                class="painel-ia-excluir-btn"
+                [disabled]="excluindoPainelIaId === painel.id"
+                (click)="pedirConfirmacaoExclusaoPainelIa(painel.id, $event)">
+                Excluir
+              </button>
+            </div>
+            <div class="painel-ia-rodape painel-ia-confirmar" *ngIf="confirmandoExclusaoPainelIaId === painel.id">
+              <span>Excluir?</span>
+              <button type="button" class="btn-danger" [disabled]="excluindoPainelIaId === painel.id" (click)="confirmarExclusaoPainelIa(painel.id, $event)">
+                {{ excluindoPainelIaId === painel.id ? 'Excluindo...' : 'Sim' }}
+              </button>
+              <button type="button" class="btn-secondary" (click)="cancelarExclusaoPainelIa($event)">Não</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="paineis-ia-cabecalho dashboard-cabecalho" *ngIf="dashboards.length > 0">
+        <h2 class="paineis-ia-title">Painéis {{ equipeMenuLabel }}</h2>
+      </div>
+
       <div class="dashboard-grid">
         <a *ngFor="let painel of dashboards; trackBy: trackById"
            [href]="painel.linkPowerBi"

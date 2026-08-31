@@ -7,6 +7,8 @@ import { switchMap, catchError } from 'rxjs/operators';
 import { FormBuilder, ReactiveFormsModule, Validators, FormGroup } from '@angular/forms';
 import { AdminService } from '../services/admin.service';
 import { EquipeService, Equipe } from '../services/equipe.service';
+import { AgentService, PainelIa } from '../services/agent.service';
+import { GraficoIaComponent } from '../grafico-ia/grafico-ia';
 
 // ✅ ajuste o path real do seu projeto
 import { AddPainelComponent } from '../add-painel/add-painel.component';
@@ -46,7 +48,7 @@ interface EquipeMenuItem {
 @Component({
 selector: 'app-home',
 standalone: true,
-imports: [CommonModule, RouterModule, ReactiveFormsModule, AddPainelComponent],
+imports: [CommonModule, RouterModule, ReactiveFormsModule, AddPainelComponent, GraficoIaComponent],
 templateUrl: './home.html',
 styleUrls: ['./home.css']
 })
@@ -57,6 +59,14 @@ dashboards: PainelDTO[] = [];
 equipesMenu: EquipeMenuItem[] = [];
 loading = true;
 error: string | null = null;
+
+// -------------------------
+// Painéis de IA (gerados no chat do proIAp)
+// -------------------------
+paineisIa: PainelIa[] = [];
+loadingPaineisIa = true;
+excluindoPainelIaId: number | null = null;
+confirmandoExclusaoPainelIaId: number | null = null;
 
 isLoggedIn = false;
 isAdminSistema = false;
@@ -134,7 +144,8 @@ constructor(
     private router: Router,
   private fb: FormBuilder,
   private adminService: AdminService,
-  private equipeService: EquipeService
+  private equipeService: EquipeService,
+  private agentService: AgentService
   ) {
     this.editForm = this.fb.group({
       nome: ['', [Validators.required, Validators.minLength(2)]],
@@ -157,6 +168,7 @@ constructor(
     this.verificarAdminSistema();
     this.carregarEquipesMenu();
     this.loadDashboards();
+    this.carregarPaineisIa();
     this.startPolling();
   }
 
@@ -437,6 +449,58 @@ constructor(
 
   onImageError(painel: PainelDTO) {
     painel.carregada = false;
+  }
+
+  // -------------------------
+  // Painéis de IA (gerados no chat do proIAp e salvos por lá)
+  // -------------------------
+  carregarPaineisIa(): void {
+    this.loadingPaineisIa = true;
+    this.agentService.listarPaineisIa().subscribe({
+      next: (paineis) => {
+        this.paineisIa = paineis || [];
+        this.loadingPaineisIa = false;
+      },
+      error: () => {
+        this.paineisIa = [];
+        this.loadingPaineisIa = false;
+      }
+    });
+  }
+
+  pedirConfirmacaoExclusaoPainelIa(id: number, ev?: MouseEvent): void {
+    if (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+    }
+    this.confirmandoExclusaoPainelIaId = id;
+  }
+
+  cancelarExclusaoPainelIa(ev?: MouseEvent): void {
+    if (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+    }
+    this.confirmandoExclusaoPainelIaId = null;
+  }
+
+  confirmarExclusaoPainelIa(id: number, ev?: MouseEvent): void {
+    if (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+    }
+    this.excluindoPainelIaId = id;
+    this.agentService.excluirPainelIa(id).subscribe({
+      next: () => {
+        this.paineisIa = this.paineisIa.filter(p => p.id !== id);
+        this.excluindoPainelIaId = null;
+        this.confirmandoExclusaoPainelIaId = null;
+      },
+      error: () => {
+        this.excluindoPainelIaId = null;
+        this.confirmandoExclusaoPainelIaId = null;
+      }
+    });
   }
 
   // -------------------------
