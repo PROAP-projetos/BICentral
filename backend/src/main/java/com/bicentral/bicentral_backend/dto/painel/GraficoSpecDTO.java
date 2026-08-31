@@ -10,7 +10,7 @@ public record GraficoSpecDTO(
     @Description("Um título curto e claro para este gráfico")
     String titulo,
 
-    @Description("O tipo do gráfico do ECharts. Opções permitidas: 'bar', 'line', 'pie'")
+    @Description("O tipo do gráfico do ECharts. Opções permitidas: 'bar', 'line', 'pie', 'gauge' (indicador único), 'combo' (barra + linha, para PAT vs PDI), 'empilhado' (barra empilhada, para distribuição de status entre categorias)")
     String tipo,
 
     @Description("Os rótulos do eixo X (categorias). Ex: ['Engenharia', 'Computação', 'Direito']")

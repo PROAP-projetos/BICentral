@@ -1,3 +1,8 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
 .card-grafico {
   position: relative;
   background: #ffffff;
@@ -103,6 +108,15 @@
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
+}
+
+/* O gráfico tem uma altura própria calculada (chartHeight, em px) pra caber cada categoria
+   direito — mas quando essa altura é menor que o espaço disponível na tela cheia (poucas
+   categorias), ele ficava grudado no topo, sobrando vazio embaixo. min-height:100% garante que
+   ele pelo menos preencha o espaço todo; se precisar de mais (muitas categorias), o height em
+   px definido no componente continua vencendo e o wrap acima rola. */
+.chart-scroll-wrap.ativo .chart-display {
+  min-height: 100%;
 }
 
 /* Expandido, o botão de fechar mora no mesmo canto que "123"/baixar e ficava um em cima do

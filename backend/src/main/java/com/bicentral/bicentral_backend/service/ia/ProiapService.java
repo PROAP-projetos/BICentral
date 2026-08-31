@@ -15,6 +15,7 @@ import dev.langchain4j.service.Result;
 import dev.langchain4j.service.tool.ToolExecution;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 public class ProiapService {
@@ -26,14 +27,32 @@ public class ProiapService {
 
     private static final int MAX_SUGESTOES = 3;
 
-    private static final Map<String, String> SUGESTOES_POR_FERRAMENTA = Map.of(
-        "ranquearDepartamentosPorExecucaoPAT", "Alguma dessas ações é compartilhada entre departamentos?",
-        "buscarExecucaoPATPorDepartamento", "Quero um relatório completo dessa unidade",
-        "buscarDetalhamentoDesempenhoDepartamento", "Essas ações têm outros departamentos envolvidos?",
-        "rastrearGargaloEmAcaoCompartilhada", "Quero um relatório da unidade mais atrasada",
-        "contarAcoesPorDepartamentoPAT", "Qual o desempenho dessas unidades no PAT?",
-        "buscarMinhasTarefas", "Quais dessas estão atrasadas?",
-        "buscarTarefasPorDepartamento", "Quero o relatório completo dessa unidade"
+    // Uma ferramenta pode render mais de uma sugestão candidata (ex: além do follow-up de sempre,
+    // uma sugestão nova pra descobrir os tipos de gráfico gauge/combo/empilhado, que ninguém
+    // adivinha sozinho que existem).
+    private static final Map<String, List<String>> SUGESTOES_POR_FERRAMENTA = Map.of(
+        "ranquearDepartamentosPorExecucaoPAT", List.of(
+            "Alguma dessas ações é compartilhada entre departamentos?",
+            "Quero ver a distribuição de status dessas unidades num gráfico"),
+        "buscarExecucaoPATPorDepartamento", List.of("Quero um relatório completo dessa unidade"),
+        "buscarDetalhamentoDesempenhoDepartamento", List.of(
+            "Essas ações têm outros departamentos envolvidos?",
+            "Quero ver a execução média num indicador visual"),
+        "rastrearGargaloEmAcaoCompartilhada", List.of("Quero um relatório da unidade mais atrasada"),
+        "contarAcoesPorDepartamentoPAT", List.of("Qual o desempenho dessas unidades no PAT?"),
+        "buscarMinhasTarefas", List.of("Quais dessas estão atrasadas?"),
+        "buscarTarefasPorDepartamento", List.of("Quero o relatório completo dessa unidade"),
+        "compararExecucaoPDIxPAT", List.of("Quero ver essa comparação num gráfico")
+    );
+
+    // Mensagem depois de o painel ser confirmado — string fixa em Java, não gerada pela IA, então
+    // sem essa lista sempre sairia idêntica. Sorteia uma a cada confirmação pra variar.
+    private static final List<String> MENSAGENS_PAINEL_PRONTO = List.of(
+        "Prontinho! Aqui está o painel. Se quiser mudar o formato (ex: pizza) ou o título, é só pedir.",
+        "Pronto, montei o painel! Quer ajustar o tipo de gráfico ou o título? É só falar.",
+        "Aqui está! Se não ficou do jeito que você queria — outro formato, outro título — é só pedir de novo.",
+        "Painel gerado! Fica à vontade pra pedir outro formato (barra, pizza, linha) ou trocar o título.",
+        "Feito! Se quiser ver de outro jeito (outro tipo de gráfico) ou mudar o título, é só me falar."
     );
 
     public ProiapService(AgenteProiap agenteProiap, AgenteConsultaSql agenteConsultaSql, EstadoSessao estadoSessao,
@@ -74,9 +93,12 @@ public class ProiapService {
                 System.out.println(">>> USUÁRIO CONFIRMOU (IA ENTENDEU)");
                 PainelSpecDTO pendente = estadoSessao.getPainelPendente();
 
+                String mensagemPronto = MENSAGENS_PAINEL_PRONTO.get(
+                        ThreadLocalRandom.current().nextInt(MENSAGENS_PAINEL_PRONTO.size()));
+
                 PainelSpecDTO painelPronto = new PainelSpecDTO(
                         pendente.skill(),
-                        "Prontinho! Aqui está o painel. Se quiser mudar o formato (ex: pizza) ou o título, é só pedir.",
+                        mensagemPronto,
                         pendente.titulo(),
                         pendente.graficos(),
                         false);
@@ -192,12 +214,12 @@ public class ProiapService {
         }
         LinkedHashSet<String> sugestoes = new LinkedHashSet<>();
         for (ToolExecution execucao : execucoes) {
-            String sugestao = SUGESTOES_POR_FERRAMENTA.get(execucao.request().name());
-            if (sugestao != null) {
-                sugestoes.add(sugestao);
+            List<String> candidatas = SUGESTOES_POR_FERRAMENTA.get(execucao.request().name());
+            if (candidatas != null) {
+                sugestoes.addAll(candidatas);
             }
             if (sugestoes.size() >= MAX_SUGESTOES) break;
         }
-        return List.copyOf(sugestoes);
+        return sugestoes.stream().limit(MAX_SUGESTOES).toList();
     }
 }

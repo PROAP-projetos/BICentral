@@ -128,12 +128,19 @@ export class GraficoIaComponent implements OnChanges, OnDestroy {
     const rawSeries = Array.isArray(this.spec?.series) ? this.spec.series : [];
     const tipo = this.spec?.tipo || 'bar';
 
+    if (tipo === 'gauge') {
+      this.mapearGauge(rawSeries, eixoX);
+      return;
+    }
+
     // Muitas categorias OU nomes compridos (nome de departamento institucional raramente é curto,
     // mesmo com só 4-5 categorias já sobrepõe) espremidos na horizontal viram ilegíveis — Power BI
-    // resolve isso virando o gráfico de barras deitado, categoria no eixo vertical. Só faz sentido
-    // pra 'bar' (pizza e linha não têm esse problema de rótulo).
+    // resolve isso virando o gráfico de barras deitado, categoria no eixo vertical. Vale pra
+    // qualquer tipo baseado em barra ('bar' e 'empilhado'); 'combo' fica sempre vertical porque
+    // linha sobreposta em barra deitada não faz sentido visualmente.
+    const ehBarra = tipo === 'bar' || tipo === 'empilhado';
     const algumRotuloLongo = eixoX.some((r: string) => String(r ?? '').length > 14);
-    const horizontal = tipo === 'bar' && (eixoX.length > 3 || algumRotuloLongo);
+    const horizontal = ehBarra && (eixoX.length > 3 || algumRotuloLongo);
 
     const series = rawSeries.map((s: any, i: number) => {
       const valores = Array.isArray(s.valores) ? s.valores : [];
@@ -147,18 +154,30 @@ export class GraficoIaComponent implements OnChanges, OnDestroy {
         return Number.isFinite(n) ? n : null;
       });
 
+      // 'combo': convenção fixa (REGRA 9 do backend) — 1ª série é sempre PAT (barra), 2ª é
+      // sempre PDI (linha). 'empilhado': todas as séries são barra, só empilhadas.
+      const tipoSerie = tipo === 'combo' ? (i === 0 ? 'bar' : 'line') : (tipo === 'empilhado' ? 'bar' : tipo);
+
       return {
         name: s.nome,
-        type: tipo,
+        type: tipoSerie,
         data: coerced,
-        smooth: tipo === 'line',
+        stack: tipo === 'empilhado' ? 'total' : undefined,
+        // Um valor muito pequeno numa escala grande (ex: 1 em 0-120) vira um fiapo de pixel
+        // praticamente invisível — dá uma altura mínima só pra garantir que o pedaço apareça.
+        // O número do rótulo continua o valor real, isso só afeta o desenho.
+        barMinHeight: tipo === 'empilhado' ? 4 : undefined,
+        smooth: tipoSerie === 'line',
         itemStyle: {
-          borderRadius: tipo === 'bar' ? (horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0]) : 0,
+          borderRadius: tipoSerie === 'bar' && tipo !== 'empilhado' ? (horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0]) : 0,
           color: tipo === 'pie' ? undefined : PALETA_POWER_BI[i % PALETA_POWER_BI.length]
         },
         label: {
           show: this.compacto ? false : this.mostrarValores,
-          position: horizontal ? 'right' : 'top',
+          // Empilhado: 'top' cai bem na borda entre os segmentos — em segmentos finos os números
+          // colidem uns nos outros. 'inside' centraliza o rótulo dentro do próprio pedaço colorido.
+          position: tipo === 'empilhado' ? 'inside' : (horizontal ? 'right' : 'top'),
+          color: tipo === 'empilhado' ? '#fff' : undefined,
           fontSize: 10
         }
       };
@@ -210,12 +229,67 @@ export class GraficoIaComponent implements OnChanges, OnDestroy {
         left: this.compacto ? 4 : (horizontal ? 12 : 8),
         right: this.compacto ? 8 : (horizontal ? 40 : 8),
         top: this.compacto ? 6 : 48,
-        bottom: this.compacto ? 4 : (horizontal ? 16 : 58),
+        // 16 não sobrava espaço suficiente pra legenda embaixo do rótulo do eixo de valor na
+        // barra deitada — os dois ficavam sobrepostos.
+        bottom: this.compacto ? 4 : (horizontal ? 44 : 58),
         containLabel: true
       },
       xAxis: horizontal ? eixoValor : eixoCategoria,
       yAxis: horizontal ? eixoCategoria : eixoValor,
       series
+    };
+  }
+
+  // 'gauge' é estruturalmente diferente dos outros (sem eixoX/eixoY, sem grid) — não cabe na
+  // lógica de barra/linha/pizza, por isso é um método à parte. REGRA 8 do backend garante 1
+  // série com 1 valor só.
+  private mapearGauge(rawSeries: any[], eixoX: any[]): void {
+    const primeiraSerie = rawSeries[0];
+    const valorBruto = Array.isArray(primeiraSerie?.valores) ? primeiraSerie.valores[0] : undefined;
+    const valorNumerico = typeof valorBruto === 'number'
+      ? valorBruto
+      : Number(String(valorBruto ?? '').replace(/[^0-9eE+\-\.]/g, ''));
+    const valor = Number.isFinite(valorNumerico) ? valorNumerico : 0;
+    const rotulo = eixoX?.[0] || primeiraSerie?.nome || '';
+
+    this.chartHeight = 260;
+
+    this.chartOptions = {
+      title: this.compacto ? undefined : {
+        text: this.spec?.titulo || '',
+        left: 'center',
+        top: 4,
+        textStyle: { fontFamily: 'sans-serif', color: '#333', fontWeight: 600, fontSize: 14 }
+      },
+      series: [{
+        type: 'gauge',
+        startAngle: 200,
+        endAngle: -20,
+        min: 0,
+        max: 100,
+        progress: { show: true, width: 14, itemStyle: { color: PALETA_POWER_BI[0] } },
+        axisLine: { lineStyle: { width: 14, color: [[1, '#eef1f4']] } },
+        axisTick: { show: false },
+        splitLine: { length: 8, lineStyle: { color: '#d9d9d9' } },
+        axisLabel: { show: !this.compacto, fontSize: 9, distance: 14 },
+        pointer: { show: !this.compacto, width: 4 },
+        anchor: { show: false },
+        detail: {
+          valueAnimation: true,
+          fontSize: this.compacto ? 22 : 28,
+          fontWeight: 700,
+          color: '#333',
+          offsetCenter: [0, this.compacto ? '0%' : '20%'],
+          formatter: (v: number) => `${v}%`
+        },
+        title: {
+          show: !this.compacto,
+          fontSize: 11,
+          color: '#666',
+          offsetCenter: [0, '45%']
+        },
+        data: [{ value: valor, name: rotulo }]
+      }]
     };
   }
 
