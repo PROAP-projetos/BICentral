@@ -77,18 +77,8 @@ public class AiConfig {
                 .build();
     }
 
-    @Bean("openrouterModel")
-    public ChatLanguageModel openrouterModel() {
-        return OpenAiChatModel.builder()
-                .apiKey(openrouterApiKey)
-                .baseUrl("https://openrouter.ai/api/v1")
-                .modelName("openai/gpt-oss-20b:free")
-                .temperature(0.0)
-                .build();
-    }
+    /*@Bean("openaiLunaModel")
 
-    @Bean("openaiLunaModel")
-    @Primary
     public ChatLanguageModel openaiLunaModel() {
         return OpenAiChatModel.builder()
                 .apiKey(openaiApiKey)
@@ -97,9 +87,9 @@ public class AiConfig {
                         .reasoningEffort("none")
                         .build())
                 .build();
-    }
+    }*/
 
-    @Bean("openaiTerraModel")
+    /*@Bean("openaiTerraModel")
     public ChatLanguageModel openaiTerraModel() {
         return OpenAiChatModel.builder()
                 .apiKey(openaiApiKey)
@@ -108,7 +98,7 @@ public class AiConfig {
                         .reasoningEffort("none")
                         .build())
                 .build();
-    }
+    }*/
 
     @Bean("geminiModel")
     @Primary

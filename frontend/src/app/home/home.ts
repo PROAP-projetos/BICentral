@@ -244,7 +244,9 @@ constructor(
   }
 
   private salvarEquipeSelecionada(equipe: EquipeMenuItem): void {
-    localStorage.setItem(HomeComponent.SELECTED_EQUIPE_KEY, JSON.stringify(equipe));
+    const key = this.getEquipeStorageKey();
+    if (!key) return;
+    localStorage.setItem(key, JSON.stringify(equipe));
   }
 
   carregarEquipesMenu(): void {
@@ -283,13 +285,25 @@ constructor(
       return 'VIEWER';
   }
 
-    private loadEquipeSelecionada(): void {
-      const raw = localStorage.getItem(HomeComponent.SELECTED_EQUIPE_KEY);
-      if (!raw) {
-        this.equipeSelecionada = null;
-        this.currentRole = 'VIEWER';
-        return;
-      }
+  private getEquipeStorageKey(): string | null {
+    const user = this.getUserFromStorage();
+    if (!user?.id) return null;
+    return `${HomeComponent.SELECTED_EQUIPE_KEY}:${user.id}`;
+  }
+
+  private loadEquipeSelecionada(): void {
+    const key = this.getEquipeStorageKey();
+    if (!key) {
+      this.equipeSelecionada = null;
+      this.currentRole = 'VIEWER';
+      return;
+    }
+    const raw = localStorage.getItem(key);
+    if (!raw) {
+      this.equipeSelecionada = null;
+      this.currentRole = 'VIEWER';
+      return;
+    }
 
       try {
         const equipe = JSON.parse(raw) as Partial<EquipeSelecionada>;
@@ -802,10 +816,15 @@ constructor(
 
   logout(): void {
     this.pararPolling();
+    const equipeKey = this.getEquipeStorageKey();
     localStorage.removeItem('user');
     localStorage.removeItem('token');
+    if (equipeKey) localStorage.removeItem(equipeKey);
+    localStorage.removeItem(HomeComponent.SELECTED_EQUIPE_KEY); // limpeza da chave antiga não escopada
     this.isLoggedIn = false;
     this.userName = null;
+    this.equipeSelecionada = null;
+    this.currentRole = 'VIEWER';
     this.router.navigate(['/login']);
   }
 }
