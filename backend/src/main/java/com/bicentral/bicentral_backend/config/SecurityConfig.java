@@ -51,7 +51,7 @@ public class SecurityConfig {
 
                 .headers(headers -> headers
                         .frameOptions(frameOptions -> frameOptions.disable()))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
                     // Esse é o log que você vê quando dá 401
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
