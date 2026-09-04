@@ -1,7 +1,15 @@
 <header>
   <a class="logo" routerLink="/">BICentral</a>
 
-  <nav>
+  <button type="button" class="menu-toggle" (click)="mobileNavOpen = !mobileNavOpen" [attr.aria-expanded]="mobileNavOpen" aria-label="Abrir menu">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </button>
+
+  <nav [class.mobile-nav-open]="mobileNavOpen">
     <ul>
       <li class="nav-item-with-dropdown team-menu" *ngIf="isLoggedIn; else equipeFallbackLink">
         <a class="nav-text-link team-menu-trigger" href="javascript:void(0)">{{ equipeMenuLabel }}</a>
@@ -12,28 +20,28 @@
             class="team-menu-item"
             *ngFor="let equipe of equipesMenu"
             [class.active]="equipeSelecionada?.id === equipe.id"
-            (click)="selecionarEquipeDoMenu(equipe)">
+            (click)="selecionarEquipeDoMenu(equipe); mobileNavOpen = false">
             <span class="team-item-name">{{ equipe.nome }}</span>
             <span class="team-item-role">{{ equipe.role }}</span>
           </button>
 
-          <a class="team-menu-manage" routerLink="/equipe">Gerenciar equipes</a>
+          <a class="team-menu-manage" routerLink="/equipe" (click)="mobileNavOpen = false">Gerenciar equipes</a>
         </div>
       </li>
 
       <ng-template #equipeFallbackLink>
         <li class="nav-item-with-dropdown">
-          <a class="nav-text-link" routerLink="/equipe">Minha Equipe</a>
+          <a class="nav-text-link" routerLink="/equipe" (click)="mobileNavOpen = false">Minha Equipe</a>
         </li>
       </ng-template>
     </ul>
 
     <div class="nav-right-section">
-      <a class="nav-text-link" routerLink="/suporte">Suporte</a>
+      <a class="nav-text-link" routerLink="/suporte" (click)="mobileNavOpen = false">Suporte</a>
 
       <span *ngIf="isLoggedIn" class="user-greeting">Olá, {{ userName }}</span>
 
-      <a *ngIf="!isLoggedIn" routerLink="/login" class="nav-text-link">Login</a>
+      <a *ngIf="!isLoggedIn" routerLink="/login" class="nav-text-link" (click)="mobileNavOpen = false">Login</a>
 
       <a *ngIf="isLoggedIn"
          class="nav-text-link"
@@ -42,7 +50,7 @@
         Logout
       </a>
 
-      <a *ngIf="!isLoggedIn" routerLink="/cadastro" class="nav-button">
+      <a *ngIf="!isLoggedIn" routerLink="/cadastro" class="nav-button" (click)="mobileNavOpen = false">
         Cadastre-se
       </a>
     </div>

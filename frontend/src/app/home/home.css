@@ -19,6 +19,19 @@ img {
 
 .menu-toggle {
   display: none;
+  background: transparent;
+  border: none;
+  color: white;
+  padding: 6px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.menu-toggle:hover {
+  background: rgba(255, 255, 255, 0.14);
 }
 
 header {
@@ -937,6 +950,126 @@ label {
 .modal-err {
   color: #d32f2f;
   font-size: 12px;
+}
+
+@media (max-width: 768px) {
+  header {
+    padding: 0 1rem;
+  }
+
+  .logo {
+    font-size: 1.5rem;
+    margin-right: auto;
+  }
+
+  .menu-toggle {
+    display: inline-flex;
+  }
+
+  nav {
+    display: none;
+    position: absolute;
+    top: 60px;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    height: auto;
+    max-height: calc(100vh - 60px);
+    overflow-y: auto;
+    background: linear-gradient(180deg, #0c5f91 0%, var(--color-primary) 100%);
+    box-shadow: 0 12px 24px rgba(0, 45, 82, 0.25);
+    padding: 0.5rem 0;
+    z-index: 200;
+  }
+
+  nav.mobile-nav-open {
+    display: flex;
+  }
+
+  nav ul {
+    flex-direction: column;
+    height: auto;
+    width: 100%;
+    align-items: stretch;
+  }
+
+  nav ul li {
+    height: auto;
+    width: 100%;
+  }
+
+  nav ul li a {
+    height: auto;
+    width: 100%;
+    padding: 0.85rem 1.25rem;
+  }
+
+  .nav-right-section {
+    flex-direction: column;
+    align-items: stretch;
+    margin-left: 0;
+    gap: 0;
+    width: 100%;
+    padding: 0.25rem 1.25rem 0.75rem;
+  }
+
+  .nav-right-section > * {
+    padding: 0.6rem 0;
+  }
+
+  .user-greeting {
+    margin-right: 0;
+  }
+
+  .nav-button {
+    margin-top: 6px;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .sub-nav-button-container {
+    padding: 7px 14px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .content-area {
+    padding: 16px 14px;
+  }
+
+  .dashboard-grid,
+  .paineis-ia-grid {
+    padding: 0 14px;
+    gap: 12px;
+  }
+
+  h2,
+  .dashboard-cabecalho {
+    padding: 0 14px;
+  }
+
+  .paineis-ia-section {
+    padding: 0 14px 20px;
+  }
+
+  .agent-float {
+    right: 14px;
+    bottom: 14px;
+  }
+
+  .agent-btn {
+    padding: 6px 12px 6px 10px;
+    font-size: 0.8rem;
+  }
+
+  .modal-card {
+    padding: 24px;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
 }
 
 /* Ajuste fino do onboarding na Home (garante espaçamento mesmo com resets globais) */

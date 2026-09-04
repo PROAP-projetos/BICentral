@@ -70,6 +70,7 @@ confirmandoExclusaoPainelIaId: number | null = null;
 
 isLoggedIn = false;
 isAdminSistema = false;
+mobileNavOpen = false;
 userName: string | null = null;
 currentRole: UserRole = 'VIEWER';
 equipeSelecionada: EquipeSelecionada | null = null;

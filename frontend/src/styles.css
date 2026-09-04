@@ -756,6 +756,15 @@ footer {
     min-height: 320px;
     border-radius: 0;
   }
+
+  /* Em coluna única o card fica bem mais alto, e "bottom:14px" (pensado pro desktop, onde a
+     coluna da esquerda é mais curta que a do showcase) passa a cair em cima do showcase, que
+     agora é o último bloco. Volta a fluir normalmente, abaixo de tudo. */
+  .welcome-skip.corner {
+    position: static;
+    display: inline-block;
+    margin-top: 14px;
+  }
 }
 
 @media (max-width: 640px) {

@@ -58,7 +58,10 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   isAdminSistema = false;
 
   private static readonly SIDEBAR_KEY = 'bicentral_sidebar_colapsada';
-  sidebarColapsada = false;
+  private static readonly MOBILE_BREAKPOINT = 768;
+  // Em telas pequenas a sidebar vira um overlay (ver agent.css) — começa fechada pra não
+  // cobrir o chat inteiro assim que a tela abre; em telas maiores começa aberta como sempre.
+  sidebarColapsada = window.innerWidth <= AgentComponent.MOBILE_BREAKPOINT;
 
   private static readonly FONT_SIZE_KEY = 'bicentral_font_size';
   private static readonly FONT_FAMILY_KEY = 'bicentral_font_family';

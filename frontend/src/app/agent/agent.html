@@ -6,6 +6,9 @@
   [class.font-family-serif]="fontFamily === 'serif'"
   [class.font-family-rounded]="fontFamily === 'rounded'">
 
+  <!-- Fundo escurecido atrás da sidebar quando ela vira overlay no mobile (ver agent.css) -->
+  <div class="sidebar-backdrop" *ngIf="!sidebarColapsada" (click)="toggleSidebar()"></div>
+
   <!-- BARRA LATERAL (Sidebar) -->
   <aside class="sidebar">
     <div class="sidebar-header">

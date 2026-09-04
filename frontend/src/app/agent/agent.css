@@ -1517,3 +1517,100 @@
   font-size: 0.78rem;
   font-weight: 700;
 }
+
+.sidebar-backdrop {
+  display: none;
+}
+
+/* ==========================================
+   MOBILE — sidebar vira overlay em vez de coluna do grid, painéis flutuantes
+   ficam largura de tela, e o chat ganha mais espaço útil.
+   ========================================== */
+@media (max-width: 768px) {
+  .agent-shell,
+  .agent-shell.sidebar-collapsed {
+    grid-template-columns: 1fr;
+  }
+
+  /* Com a sidebar em position:fixed (fora do fluxo do grid), ela deixa de "contar" como item
+     do grid — sem isso o chat-area sozinho cai na 1ª faixa de coluna do grid antigo (0px) em
+     vez de ocupar a tela inteira. */
+  .chat-area {
+    grid-column: 1;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 300;
+    width: min(82vw, 300px);
+    height: 100vh;
+    box-shadow: 8px 0 24px rgba(0, 0, 0, 0.22);
+    transition: transform 0.22s ease;
+    transform: translateX(-100%);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .agent-shell:not(.sidebar-collapsed) .sidebar {
+    transform: translateX(0);
+  }
+
+  .agent-shell.sidebar-collapsed .sidebar {
+    transform: translateX(-100%);
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 290;
+  }
+
+  .chat-header {
+    padding: 0 1rem;
+  }
+
+  .messages {
+    padding: 1rem;
+  }
+
+  .composer {
+    padding: 0.75rem;
+  }
+
+  .notif-panel,
+  .settings-panel {
+    width: min(88vw, 320px);
+  }
+
+  .relatorio-panel {
+    width: min(88vw, 340px);
+  }
+
+  .settings-panel-floating {
+    left: 10px;
+    bottom: 64px;
+  }
+
+  .painel-atrasos-content {
+    width: 94vw;
+    height: 88vh;
+  }
+
+  .pdf-viewer-content {
+    width: 94vw;
+    height: 88vh;
+  }
+
+  .painel-atrasos-body {
+    overflow-x: auto;
+  }
+
+  .aviso-api-banner {
+    margin: 10px 10px 0;
+    padding: 12px;
+  }
+}
