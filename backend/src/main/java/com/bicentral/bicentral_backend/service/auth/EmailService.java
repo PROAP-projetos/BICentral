@@ -3,79 +3,107 @@ package com.bicentral.bicentral_backend.service.auth;
 import com.bicentral.bicentral_backend.model.Equipe;
 import com.bicentral.bicentral_backend.model.Role;
 import com.bicentral.bicentral_backend.model.Usuario;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.lang.NonNull;
+import org.springframework.web.client.RestClient;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Base64;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
-
-
-
-//Envia o email de confirmação para o usuário, CUIDADO, A API É DO BREVO
-
-
+// Envia e-mails transacionais pela API HTTP do Brevo (https://api.brevo.com/v3/smtp/email),
+// não mais por SMTP puro. O Render bloqueia silenciosamente a porta 587 de saída — a conexão
+// nem chega a autenticar, trava no connect() até estourar timeout (ver commit "envio de convite
+// tester quebrou" e o log real: SocketTimeoutException em smtp-relay.brevo.com:587). A API roda
+// em HTTPS (443), porta que nenhum provedor de hospedagem bloqueia.
 @Service
 public class EmailService {
 
     private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
 
-    private static final String FROM_ADDRESS = "bicentraluft@gmail.com";
+    private static final String FROM_ADDRESS = "bicentraluft@gmail.com"; // precisa estar validado no Brevo
     private static final String SENDER_NAME = "BI Central";
     private static final DateTimeFormatter INVITE_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm");
     private static final String GUIA_TESTER_PROIAP_RESOURCE = "/documentos/guia-proiap.pdf";
     private static final String ROBO_PROIAP_RESOURCE = "/email/proiap-robo.gif";
-    private static final String ROBO_PROIAP_CID = "proiapRobo";
 
-    @Autowired
-    private JavaMailSender mailSender;
+    private final RestClient restClient;
+
+    @Value("${brevo.api.key:}")
+    private String brevoApiKey;
+
+    public EmailService(RestClient.Builder restClientBuilder) {
+        this.restClient = restClientBuilder
+                .baseUrl("https://api.brevo.com/v3/smtp/email")
+                .build();
+    }
+
+    private void enviarEmail(String toAddress, String toName, String assunto,
+            String htmlContent, String textContent, String replyToEmail, List<Map<String, String>> anexos) {
+        Map<String, String> destinatario = new LinkedHashMap<>();
+        destinatario.put("email", toAddress);
+        if (toName != null) destinatario.put("name", toName);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("sender", Map.of("name", SENDER_NAME, "email", FROM_ADDRESS));
+        body.put("to", List.of(destinatario));
+        body.put("subject", assunto);
+        if (htmlContent != null) body.put("htmlContent", htmlContent);
+        if (textContent != null) body.put("textContent", textContent);
+        if (replyToEmail != null) body.put("replyTo", Map.of("email", replyToEmail));
+        if (anexos != null && !anexos.isEmpty()) body.put("attachment", anexos);
+
+        restClient.post()
+                .header("api-key", brevoApiKey)
+                .header("content-type", "application/json")
+                .header("accept", "application/json")
+                .body(body)
+                .retrieve()
+                .toBodilessEntity();
+    }
 
     // Anexo é "best effort": se o guia não estiver empacotado por algum motivo, o e-mail
     // ainda sai sem ele em vez de falhar o envio inteiro.
-    private void anexarGuiaProiap(MimeMessageHelper helper) {
+    private List<Map<String, String>> guiaProiapAnexo() {
         try (InputStream is = getClass().getResourceAsStream(GUIA_TESTER_PROIAP_RESOURCE)) {
             if (is == null) {
                 logger.warn("Guia do proIAp não encontrado em {}", GUIA_TESTER_PROIAP_RESOURCE);
-                return;
+                return List.of();
             }
-            helper.addAttachment("Guia do proIAp.pdf", new ByteArrayResource(is.readAllBytes()));
-        } catch (IOException | MessagingException e) {
-            logger.error("Falha ao anexar o guia do proIAp no e-mail", e);
+            String base64 = Base64.getEncoder().encodeToString(is.readAllBytes());
+            return List.of(Map.of("name", "Guia do proIAp.pdf", "content", base64));
+        } catch (IOException e) {
+            logger.error("Falha ao ler o guia do proIAp", e);
+            return List.of();
         }
     }
 
-    // Robozinho do proIAp embutido inline (via cid:) — precisa que o helper tenha sido
-    // criado com MULTIPART_MODE_MIXED_RELATED, senão alguns clientes de e-mail mostram
-    // a imagem como anexo em vez de embutida no corpo.
-    private void anexarRoboProiap(MimeMessageHelper helper) {
+    // Embutido como data URI direto no HTML — a API do Brevo não tem um equivalente ao
+    // cid: do MIME multipart/related, então em vez de anexo+referência a imagem vai inline.
+    private String roboProiapDataUri() {
         try (InputStream is = getClass().getResourceAsStream(ROBO_PROIAP_RESOURCE)) {
             if (is == null) {
                 logger.warn("Robô do proIAp não encontrado em {}", ROBO_PROIAP_RESOURCE);
-                return;
+                return "";
             }
-            helper.addInline(ROBO_PROIAP_CID, new ByteArrayResource(is.readAllBytes()), "image/gif");
-        } catch (IOException | MessagingException e) {
-            logger.error("Falha ao anexar o robô do proIAp no e-mail", e);
+            return "data:image/gif;base64," + Base64.getEncoder().encodeToString(is.readAllBytes());
+        } catch (IOException e) {
+            logger.error("Falha ao ler o robô do proIAp", e);
+            return "";
         }
     }
 
-    public void sendVerificationEmail(@NonNull Usuario user, @NonNull String siteURL) throws MessagingException, UnsupportedEncodingException {
+    public void sendVerificationEmail(Usuario user, String siteURL) {
         String toAddress = Objects.requireNonNull(user.getEmail(), "user email");
-        String fromAddress = FROM_ADDRESS; // Lembre-se: Este email DEVE estar validado no Brevo
-        String senderName = SENDER_NAME;
         String subject = "Verifique seu cadastro";
 
         String content = """
@@ -143,20 +171,20 @@ public class EmailService {
                     <tr>
                         <td style="padding: 20px 0;">
                             <table class="container" align="center" border="0" cellpadding="0" cellspacing="0" width="600" style="width: 100%; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden;">
-                                
+
                                 <tr>
                                     <td class="header" style="padding: 40px; text-align: center; background-color: #f9f9f9; border-bottom: 1px solid #eeeeee;">
                                         <h1 style="margin: 0; color: #333333; font-size: 24px;">BI Central</h1>
                                     </td>
                                 </tr>
-            
+
                                 <tr>
                                     <td class="content" style="padding: 30px 40px;">
                                         <h2 style="color: #333333; font-size: 22px; margin-top: 0;">Olá, [[name]]!</h2>
                                         <p style="font-size: 16px; line-height: 1.6; color: #555555;">
                                             Obrigado por se cadastrar. Por favor, clique no botão abaixo para verificar seu endereço de e-mail e ativar sua conta.
                                         </p>
-                                        
+
                                         <table border="0" cellpadding="0" cellspacing="0" width="100%">
                                             <tr>
                                                 <td align="center" style="padding: 20px 0;">
@@ -166,7 +194,7 @@ public class EmailService {
                                                 </td>
                                             </tr>
                                         </table>
-                                        
+
                                         <p style="font-size: 16px; line-height: 1.6; color: #555555;">
                                             Se você não se cadastrou, por favor, ignore este e-mail.
                                         </p>
@@ -176,7 +204,7 @@ public class EmailService {
                                         </p>
                                     </td>
                                 </tr>
-            
+
                                 <tr>
                                     <td class="footer" style="padding: 30px 40px; text-align: center; font-size: 12px; color: #aaaaaa; border-top: 1px solid #eeeeee;">
                                         &copy; 2025 BI Central. Todos os direitos reservados.
@@ -190,33 +218,14 @@ public class EmailService {
             </html>
             """;
 
-
-        MimeMessage message = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8"); // Habilitar UTF-8
-
-        helper.setFrom(fromAddress, senderName);
-        helper.setTo(toAddress);
-        helper.setSubject(subject);
-
         content = content.replace("[[name]]", Objects.requireNonNull(user.getNomeExibicao(), "username"));
         String verifyURL = siteURL + "/api/usuarios/verify?code=" + Objects.requireNonNull(user.getVerificationToken(), "verification token");
         content = content.replace("[[URL]]", verifyURL);
 
-        helper.setText(Objects.requireNonNull(content), true); // O 'true' é crucial para interpretar como HTML
-
-        mailSender.send(message);
+        enviarEmail(toAddress, null, subject, content, null, null, null);
     }
 
-    public void sendSupportEmail(
-            @NonNull String nome,
-            @NonNull String email,
-            @NonNull String assunto,
-            @NonNull String mensagem
-    ) throws MessagingException, UnsupportedEncodingException {
-        String fromAddress = FROM_ADDRESS;
-        String senderName = "BI Central - Suporte";
-        String toAddress = FROM_ADDRESS;
-
+    public void sendSupportEmail(String nome, String email, String assunto, String mensagem) {
         String assuntoFinal = "[Suporte BICentral] " + assunto.trim();
         String conteudo = """
                 Novo contato recebido pelo formulário de suporte.
@@ -229,24 +238,10 @@ public class EmailService {
                 %s
                 """.formatted(nome.trim(), email.trim(), assunto.trim(), mensagem.trim());
 
-        MimeMessage message = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
-        helper.setFrom(fromAddress, senderName);
-        helper.setTo(toAddress);
-        helper.setReplyTo(email.trim());
-        helper.setSubject(assuntoFinal);
-        helper.setText(conteudo, false);
-
-        mailSender.send(message);
+        enviarEmail(FROM_ADDRESS, null, assuntoFinal, null, conteudo, email.trim(), null);
     }
 
-    public void sendTeamInviteEmail(
-            @NonNull Equipe equipe,
-            @NonNull String email,
-            @NonNull Role role,
-            @NonNull String inviteUrl,
-            @NonNull LocalDateTime expiraEm
-    ) throws MessagingException, UnsupportedEncodingException {
+    public void sendTeamInviteEmail(Equipe equipe, String email, Role role, String inviteUrl, LocalDateTime expiraEm) {
         String assunto = "Convite para a equipe " + equipe.getNome();
         String expiraEmFormatado = expiraEm.format(INVITE_DATE_FORMATTER);
 
@@ -311,17 +306,10 @@ public class EmailService {
                 </html>
                 """.formatted(equipe.getNome(), email, equipe.getNome(), role.name(), expiraEmFormatado, inviteUrl);
 
-        MimeMessage message = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-        helper.setFrom(FROM_ADDRESS, SENDER_NAME);
-        helper.setTo(email);
-        helper.setSubject(assunto);
-        helper.setText(content, true);
-
-        mailSender.send(message);
+        enviarEmail(email, null, assunto, content, null, null, null);
     }
 
-    public void sendTesterAddedEmail(@NonNull String toAddress, @NonNull String nome) throws MessagingException, UnsupportedEncodingException {
+    public void sendTesterAddedEmail(String toAddress, String nome) {
         String assunto = "Você agora é tester do proIAp";
         String content = """
                 <!DOCTYPE html>
@@ -344,7 +332,7 @@ public class EmailService {
                                     </tr>
                                     <tr>
                                         <td style="padding:22px 32px 0;text-align:center;background:#ffffff;">
-                                            <img src="cid:%s" width="88" height="88" alt="proIAp" style="display:block;margin:0 auto;border:0;outline:none;" />
+                                            <img src="%s" width="88" height="88" alt="proIAp" style="display:block;margin:0 auto;border:0;outline:none;" />
                                         </td>
                                     </tr>
                                     <tr>
@@ -369,22 +357,13 @@ public class EmailService {
                     </table>
                 </body>
                 </html>
-                """.formatted(ROBO_PROIAP_CID, nome);
+                """.formatted(roboProiapDataUri(), nome);
 
-        MimeMessage message = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(message, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED, "UTF-8");
-        helper.setFrom(FROM_ADDRESS, SENDER_NAME);
-        helper.setTo(toAddress);
-        helper.setSubject(assunto);
-        helper.setText(content, true);
-        anexarRoboProiap(helper);
-        anexarGuiaProiap(helper);
-
-        mailSender.send(message);
+        enviarEmail(toAddress, null, assunto, content, null, null, guiaProiapAnexo());
     }
 
     // Assíncrono porque quem chama (UsoIaService.adicionarTester) responde ao admin na hora —
-    // o envio do e-mail não pode segurar a requisição enquanto o SMTP do Brevo demora ou trava.
+    // o envio do e-mail não pode segurar a requisição.
     @Async
     public void sendTesterAddedEmailAsync(String toAddress, String nome) {
         try {
@@ -404,7 +383,7 @@ public class EmailService {
         }
     }
 
-    public void sendTesterInviteEmail(@NonNull String toAddress, @NonNull String cadastroUrl) throws MessagingException, UnsupportedEncodingException {
+    public void sendTesterInviteEmail(String toAddress, String cadastroUrl) {
         String assunto = "Convite para testar o proIAp";
         String content = """
                 <!DOCTYPE html>
@@ -427,7 +406,7 @@ public class EmailService {
                                     </tr>
                                     <tr>
                                         <td style="padding:22px 32px 0;text-align:center;background:#ffffff;">
-                                            <img src="cid:%s" width="88" height="88" alt="proIAp" style="display:block;margin:0 auto;border:0;outline:none;" />
+                                            <img src="%s" width="88" height="88" alt="proIAp" style="display:block;margin:0 auto;border:0;outline:none;" />
                                         </td>
                                     </tr>
                                     <tr>
@@ -464,18 +443,8 @@ public class EmailService {
                     </table>
                 </body>
                 </html>
-                """.formatted(ROBO_PROIAP_CID, cadastroUrl);
+                """.formatted(roboProiapDataUri(), cadastroUrl);
 
-        MimeMessage message = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(message, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED, "UTF-8");
-        helper.setFrom(FROM_ADDRESS, SENDER_NAME);
-        helper.setTo(toAddress);
-        helper.setSubject(assunto);
-        helper.setText(content, true);
-        anexarRoboProiap(helper);
-        anexarGuiaProiap(helper);
-
-        mailSender.send(message);
+        enviarEmail(toAddress, null, assunto, content, null, null, guiaProiapAnexo());
     }
 }
-
