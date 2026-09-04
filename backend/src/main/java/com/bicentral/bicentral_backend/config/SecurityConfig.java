@@ -31,11 +31,12 @@ public class SecurityConfig {
             "/api/usuarios/cadastro",
             "/api/usuarios/login",
             "/api/usuarios/verify",
-            "/api/convites/aceitar",
+            //"/api/convites/aceitar",
             "/auth/**",
             "/error",
             "/api/proiap/**",
-            "/favicon.ico"
+            "/favicon.ico",
+            "/api/admin/convites/aceitar"
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;

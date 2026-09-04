@@ -25,6 +25,11 @@ export const routes: Routes = [
   { path: 'cadastro', component: CadastroComponent },
   { path: 'verificar-email', component: VerificacaoComponent },
   { path: 'aceitar-convite', component: AceitarConviteComponent },
+  {
+    path: 'aceitar-convite-admin',
+    loadComponent: () => import('./aceitar-convite-admin/aceitar-convite-admin.component')
+      .then(m => m.AceitarConviteAdminComponent)
+  },
 
   // Equipes
   { path: 'equipe', component: EquipeComponent, canActivate: [authGuard] },

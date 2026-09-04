@@ -15,6 +15,10 @@ import com.bicentral.bicentral_backend.dto.admin.UsuarioResumoDTO;
 import com.bicentral.bicentral_backend.dto.uft.ConfiguracaoUftDTO;
 import com.bicentral.bicentral_backend.dto.uft.ConfiguracaoUftRequestDTO;
 import com.bicentral.bicentral_backend.dto.uft.ResultadoTesteUftDTO;
+import com.bicentral.bicentral_backend.dto.admin.ConviteAdminRequestDTO;
+import com.bicentral.bicentral_backend.dto.admin.ConviteAdminResponseDTO;
+import com.bicentral.bicentral_backend.dto.admin.AceiteConviteAdminResponseDTO;
+import jakarta.servlet.http.HttpServletRequest;
 import com.bicentral.bicentral_backend.service.auth.UsuarioService;
 
 import org.springframework.http.ResponseEntity;
@@ -71,6 +75,25 @@ public class AdminController {
         Usuario usuario = usuarioLogado(userDetails);
         adminService.removerAdmin(usuario.getId(), usuarioId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/convites")
+    public ResponseEntity<ConviteAdminResponseDTO> enviarConviteAdmin(
+            @RequestBody ConviteAdminRequestDTO request,
+            @AuthenticationPrincipal UserDetails userDetails,
+            HttpServletRequest httpRequest) {
+        Usuario usuario = usuarioLogado(userDetails);
+        return ResponseEntity.ok(adminService.enviarConviteAdmin(usuario.getId(), request, getSiteURL(httpRequest)));
+    }
+
+    @PostMapping("/convites/aceitar")
+    public ResponseEntity<AceiteConviteAdminResponseDTO> aceitarConviteAdmin(@RequestParam String token) {
+        return ResponseEntity.ok(adminService.aceitarConviteAdmin(token));
+    }
+
+    private String getSiteURL(HttpServletRequest request) {
+        String siteURL = request.getRequestURL().toString();
+        return siteURL.replace(request.getServletPath(), "");
     }
 
     @GetMapping("/gerentes")

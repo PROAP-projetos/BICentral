@@ -89,6 +89,14 @@ export class AdminService {
     return this.http.delete<void>(`${this.apiURL}/admins/${usuarioId}`);
   }
 
+  enviarConviteAdmin(usuarioId: number) {
+    return this.http.post<any>('/api/admin/convites', { usuarioId });
+  }
+
+  aceitarConviteAdmin(token: string) {
+    return this.http.post<any>(`/api/admin/convites/aceitar?token=${token}`, {});
+  }
+
   listarGerentes(): Observable<GerenteDepartamento[]> {
     return this.http.get<GerenteDepartamento[]>(`${this.apiURL}/gerentes`);
   }

@@ -28,15 +28,15 @@ export class GestaoAdminsComponent {
     if (!this.usuarioId || this.salvando) return;
 
     this.salvando = true;
-    this.adminService.adicionarAdmin(this.usuarioId).subscribe({
+    this.adminService.enviarConviteAdmin(this.usuarioId).subscribe({
       next: () => {
         this.usuarioId = null;
         this.salvando = false;
-        this.alterado.emit('Administrador adicionado.');
+        this.alterado.emit('Convite de administrador enviado.');
       },
       error: () => {
         this.salvando = false;
-        this.alterado.emit('Erro ao adicionar administrador.');
+        this.alterado.emit('Erro ao enviar convite de administrador.');
       }
     });
   }

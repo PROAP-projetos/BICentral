@@ -5,6 +5,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.beans.factory.annotation.Value;
+import com.bicentral.bicentral_backend.service.auth.EmailService;
+import java.security.SecureRandom;
 
 import com.bicentral.bicentral_backend.dto.uft.ConfiguracaoUftDTO;
 import com.bicentral.bicentral_backend.dto.uft.ConfiguracaoUftRequestDTO;
@@ -19,6 +22,9 @@ import com.bicentral.bicentral_backend.dto.admin.GerenteDepartamentoRequestDTO;
 import com.bicentral.bicentral_backend.dto.admin.UsuarioResponsavelDTO;
 import com.bicentral.bicentral_backend.dto.admin.UsuarioResponsavelRequestDTO;
 import com.bicentral.bicentral_backend.dto.admin.UsuarioResumoDTO;
+import com.bicentral.bicentral_backend.dto.admin.ConviteAdminRequestDTO;
+import com.bicentral.bicentral_backend.dto.admin.ConviteAdminResponseDTO;
+import com.bicentral.bicentral_backend.dto.admin.AceiteConviteAdminResponseDTO;
 
 import java.math.BigDecimal;
 import java.net.URI;
@@ -28,26 +34,60 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Base64;
 
 @Service
 public class AdminService {
+
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
+    private final JdbcTemplate jdbcTemplate;
+    private final EmailService emailService;
+
+    @Value("${app.frontend-base-url:}")
+    private String frontendBaseUrl;
+
+    @Value("${convite.admin.expiracao-horas:72}")
+    private long expiracaoHoras;
+
+    public AdminService(JdbcTemplate jdbcTemplate, EmailService emailService) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.emailService = emailService;
+        garantirTabelaAdmins();
+        garantirTabelaResponsaveis();
+        garantirIndiceGerentes();
+        garantirTabelaDepartamentoTipo();
+        garantirTabelaConvitesAdmin();
+    }
+
+    private void garantirTabelaConvitesAdmin() {
+        jdbcTemplate.execute("""
+        CREATE TABLE IF NOT EXISTS convites_admin (
+            id BIGSERIAL PRIMARY KEY,
+            usuario_id BIGINT NOT NULL,
+            token TEXT NOT NULL UNIQUE,
+            status VARCHAR(20) NOT NULL DEFAULT 'PENDENTE',
+            criado_por BIGINT NOT NULL,
+            criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            expira_em TIMESTAMPTZ NOT NULL,
+            aceito_em TIMESTAMPTZ
+        )
+        """);
+        // evita dois convites PENDENTE pro mesmo usuário (mesmo problema do Bug 4 de equipe)
+        jdbcTemplate.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS convites_admin_usuario_pendente_key
+        ON convites_admin (usuario_id)
+        WHERE status = 'PENDENTE'
+        """);
+    }
 
     private static final long BOOTSTRAP_ADMIN_ID = 22L;
 
     private static final HttpClient HTTP = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .build();
-
-    private final JdbcTemplate jdbcTemplate;
-
-    public AdminService(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
-        garantirTabelaAdmins();
-        garantirTabelaResponsaveis();
-        garantirIndiceGerentes();
-        garantirTabelaDepartamentoTipo();
-    }
 
     // Classificar o tipo (UA/UG) de um departamento estava amarrado a atribuir um gerente de
     // verdade em gerentes_departamento (usuario_id é obrigatório lá) — por isso 77 coordenações
@@ -193,6 +233,79 @@ public class AdminService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Voce nao pode remover seu proprio acesso administrativo");
         }
         jdbcTemplate.update("DELETE FROM admins_sistema WHERE usuario_id = ?", usuarioId);
+    }
+
+    @Transactional
+    public ConviteAdminResponseDTO enviarConviteAdmin(Long usuarioLogadoId, ConviteAdminRequestDTO request, String siteUrl) {
+        exigirAdmin(usuarioLogadoId);
+        validarUsuarioExistente(request.usuarioId());
+
+        if (isAdmin(request.usuarioId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Usuario ja e administrador.");
+        }
+
+        String token = gerarTokenSeguro();
+        OffsetDateTime expiraEm = OffsetDateTime.now().plusHours(expiracaoHoras);
+
+        // cancela convite pendente anterior pro mesmo usuário antes de criar um novo
+        jdbcTemplate.update("DELETE FROM convites_admin WHERE usuario_id = ? AND status = 'PENDENTE'", request.usuarioId());
+
+        Long id = jdbcTemplate.queryForObject("""
+        INSERT INTO convites_admin (usuario_id, token, criado_por, expira_em)
+        VALUES (?, ?, ?, ?)
+        RETURNING id
+        """, Long.class, request.usuarioId(), token, usuarioLogadoId, expiraEm);
+
+        String nomeUsuario = jdbcTemplate.queryForObject(
+                "SELECT username FROM usuario WHERE id = ?", String.class, request.usuarioId());
+        String emailUsuario = jdbcTemplate.queryForObject(
+                "SELECT email FROM usuario WHERE id = ?", String.class, request.usuarioId());
+
+        String baseUrl = frontendBaseUrl != null && !frontendBaseUrl.isBlank() ? frontendBaseUrl.trim() : siteUrl;
+        String link = baseUrl.replaceAll("/$", "") + "/aceitar-convite-admin?token=" + token;
+
+        // ajuste o nome do método conforme o que existir de fato no seu EmailService
+        emailService.sendAdminInviteEmail(emailUsuario, link, expiraEm);
+
+        return new ConviteAdminResponseDTO(id, request.usuarioId(), nomeUsuario, "PENDENTE", expiraEm);
+    }
+
+    @Transactional
+    public AceiteConviteAdminResponseDTO aceitarConviteAdmin(String token) {
+        var convite = jdbcTemplate.queryForMap(
+                "SELECT usuario_id, status, expira_em FROM convites_admin WHERE token = ?", token);
+
+        if (convite == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Convite invalido.");
+        }
+        String status = (String) convite.get("status");
+        OffsetDateTime expiraEm = (OffsetDateTime) convite.get("expira_em");
+        Long usuarioId = (Long) convite.get("usuario_id");
+
+        if ("ACEITO".equals(status)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Este convite ja foi utilizado.");
+        }
+        if (expiraEm.isBefore(OffsetDateTime.now())) {
+            jdbcTemplate.update("UPDATE convites_admin SET status = 'EXPIRADO' WHERE token = ?", token);
+            throw new ResponseStatusException(HttpStatus.GONE, "Este convite expirou.");
+        }
+
+        jdbcTemplate.update("""
+        INSERT INTO admins_sistema (usuario_id)
+        VALUES (?)
+        ON CONFLICT (usuario_id) DO NOTHING
+        """, usuarioId);
+
+        jdbcTemplate.update(
+                "UPDATE convites_admin SET status = 'ACEITO', aceito_em = NOW() WHERE token = ?", token);
+
+        return new AceiteConviteAdminResponseDTO("Convite aceito com sucesso. Voce agora e administrador.");
+    }
+
+    private String gerarTokenSeguro() {
+        byte[] bytes = new byte[32];
+        SECURE_RANDOM.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
     public List<GerenteDepartamentoDTO> listarGerentes(Long usuarioLogadoId) {
