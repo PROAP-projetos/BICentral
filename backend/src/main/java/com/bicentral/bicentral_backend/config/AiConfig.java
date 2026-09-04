@@ -51,7 +51,12 @@ public class AiConfig {
 
     // --- CHAT MODELS (LLMs) ---
 
+    // @Lazy nesses três: nenhum agente usa @Qualifier pra eles hoje (só openaiLunaModel/
+    // openaiTerraModel são usados de verdade). Sem @Lazy, o Spring cria (e valida a chave
+    // de) todo @Bean no boot mesmo sem uso, travando o deploy por causa de uma chave de
+    // provedor que ninguém está usando.
     @Bean("groqModel")
+    @Lazy
     public ChatLanguageModel groqModel() {
         return OpenAiChatModel.builder()
                 .apiKey(groqApiKey)
@@ -62,6 +67,7 @@ public class AiConfig {
     }
 
     @Bean("cerebrasModel")
+    @Lazy
     public ChatLanguageModel cerebrasModel() {
         return OpenAiChatModel.builder()
                 .apiKey(cerebrasApiKey)
@@ -72,6 +78,7 @@ public class AiConfig {
     }
 
     @Bean("sambanovaModel")
+    @Lazy
     public ChatLanguageModel sambanovaModel() {
         return OpenAiChatModel.builder()
                 .apiKey(sambanovaApiKey)
@@ -117,6 +124,7 @@ public class AiConfig {
     }
 
     @Bean("ollamaModel")
+    @Lazy
     public ChatLanguageModel ollamaModel() {
         return OllamaChatModel.builder()
                 .baseUrl(ollamaBaseUrl)
