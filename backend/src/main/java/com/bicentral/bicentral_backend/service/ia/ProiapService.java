@@ -173,7 +173,7 @@ public class ProiapService {
             Result<String> resultado = agenteConsultaSql.responderComFerramentas(memoryId, perguntaUsuario,
                     contextoRAG.textoContexto());
             List<String> sugestoes = montarSugestoes(resultado.toolExecutions());
-            Long interacaoId = usoIaService.registrarUso(usuarioId, perguntaUsuario, resultado.content(), resultado.tokenUsage());
+            Long interacaoId = usoIaService.registrarUso(usuarioId, sessaoId, perguntaUsuario, resultado.content(), resultado.tokenUsage());
 
             return new RespostaTextualDTO(resultado.content(), contextoRAG.fontes(), estadoSessao.isRelatorioGerado(), sugestoes, interacaoId);
             
@@ -181,7 +181,7 @@ public class ProiapService {
 
             Result<String> dadosResultado = agenteConsultaSql.responderComFerramentas(
                     "grafico-" + UUID.randomUUID(), perguntaUsuario, contextoRAG.textoContexto());
-            Long interacaoId = usoIaService.registrarUso(usuarioId, perguntaUsuario, dadosResultado.content(), dadosResultado.tokenUsage());
+            Long interacaoId = usoIaService.registrarUso(usuarioId, sessaoId, perguntaUsuario, dadosResultado.content(), dadosResultado.tokenUsage());
 
             PainelSpecDTO spec = agenteProiap.gerarPainel(
                     perguntaUsuario,

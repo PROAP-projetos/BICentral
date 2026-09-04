@@ -55,8 +55,9 @@ public class UsoIaController {
     public record FeedbackRequestDTO(String comentario) {}
 
     @PostMapping("/interacoes/{id}/feedback")
-    public void enviarFeedback(@PathVariable Long id, @RequestBody FeedbackRequestDTO requisicao) {
-        usoIaService.salvarFeedback(id, requisicao.comentario());
+    public void enviarFeedback(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long id, @RequestBody FeedbackRequestDTO requisicao) {
+        Usuario usuario = usuarioService.buscarPorEmail(userDetails.getUsername());
+        usoIaService.salvarFeedback(id, requisicao.comentario(), usuario.getId());
     }
 
     // --- Gestão de testers do proIAp (só admin) ---

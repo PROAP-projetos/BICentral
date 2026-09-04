@@ -2,6 +2,7 @@ package com.bicentral.bicentral_backend.config;
 
 import com.bicentral.bicentral_backend.security.JwtAuthenticationFilter;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
@@ -20,6 +21,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 
 @Configuration
@@ -38,6 +40,12 @@ public class SecurityConfig {
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    // URL pública do frontend em produção (ex: https://bicentral-frontend.onrender.com) —
+    // liberada no CORS além do localhost, pra chamada direta funcionar mesmo sem passar
+    // pelo proxy/_redirects do Render. Em dev local fica vazia e não afeta nada.
+    @Value("${app.frontend-base-url:}")
+    private String frontendBaseUrl;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
@@ -75,10 +83,14 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowedOriginPatterns(List.of(
+        List<String> origensPermitidas = new ArrayList<>(List.of(
                 "http://localhost:*",
                 "http://127.0.0.1:*",
                 "http://*.localhost:*"));
+        if (frontendBaseUrl != null && !frontendBaseUrl.isBlank()) {
+            origensPermitidas.add(frontendBaseUrl);
+        }
+        config.setAllowedOriginPatterns(origensPermitidas);
 
         config.setAllowedMethods(List.of(
                 HttpMethod.GET.name(),

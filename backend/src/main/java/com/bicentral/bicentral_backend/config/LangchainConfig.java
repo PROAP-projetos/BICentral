@@ -28,7 +28,7 @@ import java.util.Map;
 public class LangchainConfig {
 
     @Bean
-    public AgenteProiap agenteProiap(@Qualifier("geminiModel") ChatLanguageModel chatLanguageModel) {
+    public AgenteProiap agenteProiap(@Qualifier("openaiLunaModel") ChatLanguageModel chatLanguageModel) {
         ChatMemoryProvider chatMemoryProvider = memoryId -> MessageWindowChatMemory.withMaxMessages(2);
         return AiServices.builder(AgenteProiap.class)
                 .chatLanguageModel(chatLanguageModel)
@@ -37,8 +37,7 @@ public class LangchainConfig {
     }
 
     @Bean
-
-    public AgenteConsultaSql agenteConsultaSql(@Qualifier("geminiModel") ChatLanguageModel chatLanguageModel, ConsultaAcoesTool consultaAcoesTool, RelatorioContextoTool relatorioContextoTool, TarefasTool tarefasTool) {
+    public AgenteConsultaSql agenteConsultaSql(@Qualifier("openaiTerraModel") ChatLanguageModel chatLanguageModel, ConsultaAcoesTool consultaAcoesTool, RelatorioContextoTool relatorioContextoTool, TarefasTool tarefasTool) {
         // 24 em vez de 8: um turno com 2+ chamadas de ferramenta (ex: comparar dois departamentos)
         // já gera mensagem de usuário + assistente(tool_calls) + resultado da tool, x2, + resposta
         // final = 6+ mensagens SÓ desse turno. Com janela pequena, a MessageWindowChatMemory evicta
@@ -56,7 +55,7 @@ public class LangchainConfig {
     }
 
     @Bean
-    public AgenteRelatorio agenteRelatorio(@Qualifier("geminiModel") ChatLanguageModel geminiModel) {
+    public AgenteRelatorio agenteRelatorio(@Qualifier("openaiLunaModel") ChatLanguageModel geminiModel) {
         return AiServices.builder(AgenteRelatorio.class)
                 .chatLanguageModel(geminiModel)
                 .build();

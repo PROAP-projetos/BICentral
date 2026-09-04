@@ -77,8 +77,8 @@ public class AiConfig {
                 .build();
     }
 
-    /*@Bean("openaiLunaModel")
-
+    @Bean("openaiLunaModel")
+    @Primary
     public ChatLanguageModel openaiLunaModel() {
         return OpenAiChatModel.builder()
                 .apiKey(openaiApiKey)
@@ -87,9 +87,9 @@ public class AiConfig {
                         .reasoningEffort("none")
                         .build())
                 .build();
-    }*/
+    }
 
-    /*@Bean("openaiTerraModel")
+    @Bean("openaiTerraModel")
     public ChatLanguageModel openaiTerraModel() {
         return OpenAiChatModel.builder()
                 .apiKey(openaiApiKey)
@@ -98,10 +98,9 @@ public class AiConfig {
                         .reasoningEffort("none")
                         .build())
                 .build();
-    }*/
+    }
 
     @Bean("geminiModel")
-    @Primary
     public ChatLanguageModel geminiModel() {
         return GoogleAiGeminiChatModel.builder()
                 .apiKey(geminiApiKey)

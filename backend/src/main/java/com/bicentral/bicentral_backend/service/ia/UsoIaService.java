@@ -56,6 +56,9 @@ public class UsoIaService {
             )
             """);
         jdbcTemplate.execute("ALTER TABLE interacao_ia_log ADD COLUMN IF NOT EXISTS feedback TEXT");
+        // Liga cada linha à conversa (sessão) de onde veio — sem isso não dá pra reconstituir
+        // quais perguntas fizeram parte da mesma conversa na hora de analisar.
+        jdbcTemplate.execute("ALTER TABLE interacao_ia_log ADD COLUMN IF NOT EXISTS sessao_id TEXT");
 
         jdbcTemplate.execute("""
             CREATE TABLE IF NOT EXISTS testers_proiap (
@@ -79,7 +82,7 @@ public class UsoIaService {
             """);
     }
 
-    public Long registrarUso(Long usuarioId, String pergunta, String respostaResumo, TokenUsage tokenUsage) {
+    public Long registrarUso(Long usuarioId, String sessaoId, String pergunta, String respostaResumo, TokenUsage tokenUsage) {
         int tokensEntrada = (tokenUsage != null && tokenUsage.inputTokenCount() != null) ? tokenUsage.inputTokenCount() : 0;
         int tokensSaida = (tokenUsage != null && tokenUsage.outputTokenCount() != null) ? tokenUsage.outputTokenCount() : 0;
 
@@ -88,14 +91,21 @@ public class UsoIaService {
                 + SOBRETAXA_LUNA_POR_TURNO;
 
         return jdbcTemplate.queryForObject("""
-            INSERT INTO interacao_ia_log (usuario_id, pergunta, resposta_resumo, tokens_entrada, tokens_saida, custo_estimado)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO interacao_ia_log (usuario_id, sessao_id, pergunta, resposta_resumo, tokens_entrada, tokens_saida, custo_estimado)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             RETURNING id
-            """, Long.class, usuarioId, truncar(pergunta), truncar(respostaResumo), tokensEntrada, tokensSaida, custo);
+            """, Long.class, usuarioId, sessaoId, truncar(pergunta), truncar(respostaResumo), tokensEntrada, tokensSaida, custo);
     }
 
-    public void salvarFeedback(Long interacaoId, String comentario) {
-        jdbcTemplate.update("UPDATE interacao_ia_log SET feedback = ? WHERE id = ?", truncar(comentario), interacaoId);
+    // Só atualiza se a interação for do próprio usuário logado — senão dá pra mandar
+    // feedback pra conversa de outra pessoa só adivinhando o ID.
+    public void salvarFeedback(Long interacaoId, String comentario, Long usuarioId) {
+        int linhasAfetadas = jdbcTemplate.update(
+                "UPDATE interacao_ia_log SET feedback = ? WHERE id = ? AND usuario_id = ?",
+                truncar(comentario), interacaoId, usuarioId);
+        if (linhasAfetadas == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Interação não encontrada.");
+        }
     }
 
     // Cada tester tem seu próprio orçamento de US$ 1,00 — um tester gastão não trava os outros.
@@ -247,15 +257,17 @@ public class UsoIaService {
 
     public List<Map<String, Object>> listarInteracoes(int limite) {
         return jdbcTemplate.queryForList("""
-            SELECT id, usuario_id, pergunta, resposta_resumo, feedback, tokens_entrada, tokens_saida, custo_estimado, criado_em
+            SELECT id, usuario_id, sessao_id, pergunta, resposta_resumo, feedback, tokens_entrada, tokens_saida, custo_estimado, criado_em
             FROM interacao_ia_log
             ORDER BY criado_em DESC
             LIMIT ?
             """, limite);
     }
 
+    // Limite bem folgado — é só uma rede de segurança contra input patológico, não deve
+    // cortar pergunta ou resposta reais (a coluna é TEXT, sem limite de banco).
     private String truncar(String texto) {
         if (texto == null) return null;
-        return texto.length() > 2000 ? texto.substring(0, 2000) : texto;
+        return texto.length() > 20_000 ? texto.substring(0, 20_000) : texto;
     }
 }

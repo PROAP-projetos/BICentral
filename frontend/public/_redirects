@@ -1,0 +1,9 @@
+# Proxy transparente: o navegador continua vendo tudo como o mesmo domínio do
+# frontend, sem precisar de CORS. TROQUE a URL abaixo pela URL real do serviço
+# de backend no Render assim que ele existir (ver passo a passo do deploy).
+/api/*  https://SUBSTITUA-PELO-BACKEND.onrender.com/api/:splat  200
+
+# Fallback de rota do Angular (SPA): qualquer caminho que não seja arquivo
+# estático cai no index.html, senão /cadastro, /aceitar-convite etc. dão 404
+# ao atualizar a página ou abrir o link direto.
+/*      /index.html                                              200

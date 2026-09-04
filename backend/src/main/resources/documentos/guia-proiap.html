@@ -48,7 +48,19 @@
     font-family: "Public Sans", ui-sans-serif, system-ui, sans-serif;
     padding: 40px 20px 64px;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .page-num {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    opacity: 0.6;
   }
 
   .sheet {
@@ -287,6 +299,136 @@
     background: linear-gradient(135deg, var(--accent), var(--accent2));
   }
 
+  .eyebrow {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 10px;
+  }
+
+  .rules-list {
+    list-style: none;
+    counter-reset: regra;
+    margin: 0 0 30px;
+    padding: 24px 0 0;
+    border-top: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .rules-list li {
+    counter-increment: regra;
+    position: relative;
+    padding-left: 34px;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--ink);
+  }
+
+  .rules-list li strong {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
+  .rules-list li::before {
+    content: counter(regra);
+    position: absolute;
+    left: 0;
+    top: 1px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--accent2);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Public Sans", sans-serif;
+    font-weight: 700;
+    font-size: 11px;
+  }
+
+  .rules-list .sub {
+    display: block;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--ink-soft);
+  }
+
+  .mockup {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-bottom: 30px;
+  }
+
+  .mockup-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    margin: 0 0 12px;
+  }
+
+  .mockup-bubble {
+    max-width: 380px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 12px 14px;
+  }
+
+  .mockup-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .mockup-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    color: var(--ink-soft);
+    background: var(--bg);
+  }
+
+  .mockup-btn-highlight {
+    color: var(--accent2);
+    background: var(--accent2-tint);
+    box-shadow: 0 0 0 2px var(--accent2);
+  }
+
+  .mockup-callout {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent2);
+    white-space: nowrap;
+  }
+
+  .mockup-text-line {
+    height: 8px;
+    border-radius: 4px;
+    background: var(--line);
+    margin-bottom: 7px;
+  }
+
+  .mockup-text-line.short {
+    width: 55%;
+    margin-bottom: 0;
+  }
+
+  @media print {
+    .sheet + .sheet { page-break-before: always; }
+  }
+
   @media (max-width: 620px) {
     .sheet { padding: 36px 24px 30px; }
     .columns { grid-template-columns: 1fr; gap: 26px 0; }
@@ -366,5 +508,58 @@
   <div class="colophon">
     <span class="tag">BICentral · PROAP</span>
     <span class="credit">Desenvolvido pelos estagiários da PROAP</span>
+  </div>
+  <span class="page-num">1/2</span>
+</div>
+
+<div class="sheet">
+  <span class="page-num">2/2</span>
+  <p class="eyebrow">Antes de começar</p>
+  <h1>O que muda durante o período de teste</h1>
+  <p class="lead">
+    Você foi convidado(a) como tester do proIAp — o que é ótimo, mas também significa que
+    algumas coisas funcionam diferente de um sistema já finalizado. São só três:
+  </p>
+
+  <ol class="rules-list">
+    <li>
+      <strong>Isso é um teste de verdade</strong>
+      <span class="sub">O proIAp ainda está em fase de teste com um grupo pequeno de pessoas. A ideia é achar o que funciona bem e o que precisa ajustar antes de abrir pra todo mundo — encontrar problema agora é o objetivo, não um incômodo.</span>
+    </li>
+    <li>
+      <strong>Suas conversas com ele ficam salvas</strong>
+      <span class="sub">Enquanto dura o teste, as perguntas e respostas trocadas com o proIAp são registradas pra a equipe analisar depois — é assim que a gente enxerga onde ele acerta, onde erra, e o que precisa melhorar.</span>
+    </li>
+    <li>
+      <strong>O botão de feedback é o seu principal canal com a gente</strong>
+      <span class="sub">Do lado do botão de copiar, em toda resposta do agente, tem um ícone de balão de fala. Clica nele sempre que a resposta vier estranha, incompleta, errada — ou até quando ficar muito boa. Um comentário curto já ajuda bastante.</span>
+    </li>
+  </ol>
+
+  <div class="mockup">
+    <p class="mockup-label">Como aparece numa resposta do proIAp:</p>
+    <div class="mockup-bubble">
+      <div class="mockup-actions">
+        <span class="mockup-btn" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
+            <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+          </svg>
+        </span>
+        <span class="mockup-btn mockup-btn-highlight" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+        </span>
+        <span class="mockup-callout">← use esse pra dar feedback</span>
+      </div>
+      <div class="mockup-text-line"></div>
+      <div class="mockup-text-line short"></div>
+    </div>
+  </div>
+
+  <div class="colophon">
+    <span class="tag">BICentral · PROAP</span>
+    <span class="credit">Obrigada por ajudar a testar o proIAp</span>
   </div>
 </div>
