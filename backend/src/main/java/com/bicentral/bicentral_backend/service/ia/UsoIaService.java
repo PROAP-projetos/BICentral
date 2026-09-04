@@ -206,25 +206,17 @@ public class UsoIaService {
         return true;
     }
 
-    // E-mails são "best effort": se o Brevo falhar, o tester já foi gravado no banco e não
-    // deve ficar preso por causa disso — só loga o erro.
+    // Assíncrono (ver EmailService) — a requisição HTTP que adiciona o tester não pode
+    // ficar presa esperando o SMTP do Brevo responder.
     private void enviarAvisoTesterConfirmado(String email, String nome) {
-        try {
-            emailService.sendTesterAddedEmail(email, nome != null && !nome.isBlank() ? nome : email);
-        } catch (Exception e) {
-            logger.error("Falha ao enviar e-mail de tester confirmado para {}", email, e);
-        }
+        emailService.sendTesterAddedEmailAsync(email, nome != null && !nome.isBlank() ? nome : email);
     }
 
     private void enviarConviteTesterPendente(String email) {
-        try {
-            String base = (frontendBaseUrl != null && !frontendBaseUrl.isBlank())
-                    ? frontendBaseUrl.replaceAll("/$", "")
-                    : "http://localhost:4200";
-            emailService.sendTesterInviteEmail(email, base + "/cadastro");
-        } catch (Exception e) {
-            logger.error("Falha ao enviar convite de tester pendente para {}", email, e);
-        }
+        String base = (frontendBaseUrl != null && !frontendBaseUrl.isBlank())
+                ? frontendBaseUrl.replaceAll("/$", "")
+                : "http://localhost:4200";
+        emailService.sendTesterInviteEmailAsync(email, base + "/cadastro");
     }
 
     // Chamado pelo UsuarioController assim que um cadastro é concluído — promove um

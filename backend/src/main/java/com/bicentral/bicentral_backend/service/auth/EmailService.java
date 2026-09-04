@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.lang.NonNull;
 
@@ -380,6 +381,27 @@ public class EmailService {
         anexarGuiaProiap(helper);
 
         mailSender.send(message);
+    }
+
+    // Assíncrono porque quem chama (UsoIaService.adicionarTester) responde ao admin na hora —
+    // o envio do e-mail não pode segurar a requisição enquanto o SMTP do Brevo demora ou trava.
+    @Async
+    public void sendTesterAddedEmailAsync(String toAddress, String nome) {
+        try {
+            sendTesterAddedEmail(toAddress, nome);
+        } catch (Exception e) {
+            logger.error("Falha ao enviar e-mail de tester confirmado para {}", toAddress, e);
+        }
+    }
+
+    // Mesmo motivo do sendTesterAddedEmailAsync acima.
+    @Async
+    public void sendTesterInviteEmailAsync(String toAddress, String cadastroUrl) {
+        try {
+            sendTesterInviteEmail(toAddress, cadastroUrl);
+        } catch (Exception e) {
+            logger.error("Falha ao enviar convite de tester pendente para {}", toAddress, e);
+        }
     }
 
     public void sendTesterInviteEmail(@NonNull String toAddress, @NonNull String cadastroUrl) throws MessagingException, UnsupportedEncodingException {
