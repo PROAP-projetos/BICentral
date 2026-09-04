@@ -6,14 +6,14 @@ import { finalize } from 'rxjs';
 import { GraficoIaComponent } from '../grafico-ia/grafico-ia';
 import { GrafoAtividadesComponent } from '../grafo-atividades/grafo-atividades.component';
 import { LeaderboardUgComponent } from '../leaderboard-ug/leaderboard-ug.component';
-import { AgentService, Notificacao, PainelAtrasos, RelatorioHistoricoItem } from '../services/agent.service';
+import { AgentService, Notificacao, PainelAtrasos, RelatorioHistoricoItem, UsoIa } from '../services/agent.service';
 import { AdminService } from '../services/admin.service';
 import { SafeUrlPipe } from '../pipes/safe-url.pipe';
 
 interface ChatSession {
   id: number;
   titulo: string;
-  messages: { from: 'bot' | 'user'; text?: string; spec?: any; fontes?: string[]; sugestoes?: string[]; salvandoPainel?: boolean; painelSalvo?: boolean }[];
+  messages: { from: 'bot' | 'user'; text?: string; spec?: any; fontes?: string[]; sugestoes?: string[]; salvandoPainel?: boolean; painelSalvo?: boolean; interacaoId?: number; feedbackAberto?: boolean; feedbackTexto?: string; feedbackEnviado?: boolean }[];
 }
 
 @Component({
@@ -29,10 +29,12 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   @ViewChild('promptInput') private promptInput?: ElementRef<HTMLTextAreaElement>;
 
   private static readonly AVISO_API_DISPENSADO_KEY = 'bicentral_aviso_api_openai_dispensado';
+  private static readonly AVISO_TESTER_DISPENSADO_KEY = 'bicentral_aviso_tester_dispensado';
 
   isDarkMode = false;
   painelAtivo: 'chat' | 'ranking' | 'grafo' = 'chat';
   avisoApiVisivel = localStorage.getItem(AgentComponent.AVISO_API_DISPENSADO_KEY) !== '1';
+  avisoTesterVisivel = localStorage.getItem(AgentComponent.AVISO_TESTER_DISPENSADO_KEY) !== '1';
   private scrollPendente = true;
   usuarioLogado = 'dallyla.moraes';
   equipeSelecionada = 'Orçamento';
@@ -55,24 +57,15 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   mensagemBoasVindas = '';
   isAdminSistema = false;
 
-  // ==========================================
-  // SIDEBAR
-  // ==========================================
   private static readonly SIDEBAR_KEY = 'bicentral_sidebar_colapsada';
   sidebarColapsada = false;
 
-  // ==========================================
-  // CONFIGURAÇÕES (aparência)
-  // ==========================================
   private static readonly FONT_SIZE_KEY = 'bicentral_font_size';
   private static readonly FONT_FAMILY_KEY = 'bicentral_font_family';
   mostrarSettings = false;
   fontSize: 'small' | 'medium' | 'large' = 'medium';
   fontFamily: 'default' | 'serif' | 'rounded' = 'default';
 
-  // ==========================================
-  // NOTIFICAÇÕES
-  // ==========================================
   notificacoes: Notificacao[] = [];
   carregandoNotificacoes = false;
   mostrarPainelNotificacoes = false;
@@ -81,9 +74,6 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   painelAtrasos: PainelAtrasos | null = null;
   carregandoPainelAtrasos = false;
 
-  // ==========================================
-  // RELATÓRIO (.docx assíncrono)
-  // ==========================================
   mostrarPainelRelatorio = false;
   meusRelatorios: RelatorioHistoricoItem[] = [];
   carregandoMeusRelatorios = false;
@@ -97,6 +87,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.carregarNotificacoes();
     this.verificarAdminSistema();
     this.verificarTarefasAtrasadas();
+    this.carregarUsoIa();
 
     if (localStorage.getItem('theme') === 'dark') {
       this.isDarkMode = true;
@@ -138,9 +129,24 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     });
   }
 
-  // ==========================================
-  // GETTERS DE INTERFACE
-  // ==========================================
+  usoIa: UsoIa | null = null;
+
+  carregarUsoIa(): void {
+    this.agentService.consultarUsoIa().subscribe({
+      next: (uso) => { this.usoIa = uso; },
+      error: () => { /* silencioso — não é crítico pro chat funcionar */ }
+    });
+  }
+
+  get usoIaPercentual(): number {
+    if (!this.usoIa || this.usoIa.limite <= 0) return 0;
+    return Math.min(100, (this.usoIa.gastoTotal / this.usoIa.limite) * 100);
+  }
+
+  get usoIaCritico(): boolean {
+    return this.usoIaPercentual >= 85;
+  }
+
   get messages() {
     return this.sessaoAtual.messages;
   }
@@ -155,9 +161,6 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     return primeiroNome.charAt(0).toUpperCase() + primeiroNome.slice(1);
   }
 
-  // ==========================================
-  // LÓGICA DE BOAS-VINDAS DINÂMICA
-  // ==========================================
   private gerarMensagemBoasVindas() {
     const hora = new Date().getHours();
     let saudacaoTempo = 'Olá';
@@ -181,9 +184,6 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.mensagemBoasVindas = frases[randomIndex];
   }
 
-  // ==========================================
-  // AÇÕES DO USUÁRIO
-  // ==========================================
   toggleTheme() {
     this.isDarkMode = !this.isDarkMode;
     localStorage.setItem('theme', this.isDarkMode ? 'dark' : 'light');
@@ -215,6 +215,18 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.agendarScrollParaFim();
   }
 
+  private static readonly PALAVRAS_GRAFICO = [
+    'gráfico', 'grafico', 'painel', 'indicador', 'pizza', 'barra',
+    'kpi', 'velocímetro', 'velocimetro', 'combo', 'gauge'
+  ];
+
+  get textoPensando(): string {
+    const ultimaDoUsuario = [...(this.sessaoAtual?.messages || [])].reverse().find(m => m.from === 'user');
+    const texto = (ultimaDoUsuario?.text || '').toLowerCase();
+    const pareceGrafico = AgentComponent.PALAVRAS_GRAFICO.some(p => texto.includes(p));
+    return pareceGrafico ? 'Montando o painel' : 'Pensando';
+  }
+
   send() {
     const text = (this.input || '').trim();
     if (!text || this.carregando) return;
@@ -235,39 +247,37 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.carregando = true;
     this.agendarScrollParaFim();
 
-    // MUDANÇA AQUI: Obtém o ID da sessão atual em formato de String
     const idDaSessao = String(this.sessaoAtual.id);
 
-    // MUDANÇA AQUI: Passa o idDaSessao como quarto parâmetro
     this.agentService.consultar(text, this.equipeId, this.modeloAtivo, idDaSessao)
-      .pipe(finalize(() => this.carregando = false))
+      .pipe(finalize(() => {
+        this.carregando = false;
+        this.carregarUsoIa();
+      }))
       .subscribe({
         next: (resposta: any) => {
 
-          // 1. Se a resposta for um PAINEL (1 ou mais gráficos)
           if (resposta.skill === 'painel') {
             this.sessaoAtual.messages.push({
               from: 'bot',
               text: resposta.mensagemContexto || 'Aqui está a visualização dos dados:',
               spec: resposta,
-              fontes: resposta.fontes // Guarda as fontes lidas
+              fontes: resposta.fontes,
+              interacaoId: resposta.interacaoId
             });
-          }
-          // 2. Se a resposta for um TEXTO NATURAL (RespostaTextual)
-          else if (resposta.texto) {
+          } else if (resposta.texto) {
             this.sessaoAtual.messages.push({
               from: 'bot',
               text: resposta.texto,
-              fontes: resposta.fontes, // Guarda as fontes lidas
-              sugestoes: resposta.sugestoes
+              fontes: resposta.fontes,
+              sugestoes: resposta.sugestoes,
+              interacaoId: resposta.interacaoId
             });
 
             if (resposta.relatorioGerado) {
               this.abrirPainelRelatorios();
             }
-          }
-          // 3. Fallback genérico caso o formato venha diferente
-          else {
+          } else {
             this.sessaoAtual.messages.push({ from: 'bot', text: resposta });
           }
 
@@ -303,9 +313,32 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     });
   }
 
+  alternarFeedback(mensagem: { feedbackAberto?: boolean }): void {
+    mensagem.feedbackAberto = !mensagem.feedbackAberto;
+  }
+
+  enviarFeedback(mensagem: { interacaoId?: number; feedbackTexto?: string; feedbackAberto?: boolean; feedbackEnviado?: boolean }): void {
+    if (!mensagem.interacaoId || !mensagem.feedbackTexto) return;
+
+    this.agentService.enviarFeedbackInteracao(mensagem.interacaoId, mensagem.feedbackTexto).subscribe({
+      next: () => {
+        mensagem.feedbackAberto = false;
+        mensagem.feedbackEnviado = true;
+      },
+      error: () => {
+        this.erro = 'Não foi possível enviar o feedback agora.';
+      }
+    });
+  }
+
   dispensarAvisoApi(): void {
     this.avisoApiVisivel = false;
     localStorage.setItem(AgentComponent.AVISO_API_DISPENSADO_KEY, '1');
+  }
+
+  dispensarAvisoTester(): void {
+    this.avisoTesterVisivel = false;
+    localStorage.setItem(AgentComponent.AVISO_TESTER_DISPENSADO_KEY, '1');
   }
 
   get sugestoesAtuais(): string[] {
@@ -315,9 +348,6 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     return ultima.from === 'bot' && ultima.sugestoes ? ultima.sugestoes : [];
   }
 
-  // ==========================================
-  // CICLO DE VIDA E CARREGAMENTOS
-  // ==========================================
   ngAfterViewInit(): void { this.agendarScrollParaFim(); }
 
   ngOnDestroy(): void {
@@ -348,17 +378,11 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     } catch { }
   }
 
-  // ==========================================
-  // SIDEBAR
-  // ==========================================
   toggleSidebar(): void {
     this.sidebarColapsada = !this.sidebarColapsada;
     localStorage.setItem(AgentComponent.SIDEBAR_KEY, this.sidebarColapsada ? '1' : '0');
   }
 
-  // ==========================================
-  // CONFIGURAÇÕES (aparência)
-  // ==========================================
   toggleSettings(): void {
     this.mostrarSettings = !this.mostrarSettings;
     if (this.mostrarSettings) {
@@ -377,9 +401,6 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     localStorage.setItem(AgentComponent.FONT_FAMILY_KEY, tipo);
   }
 
-  // ==========================================
-  // NOTIFICAÇÕES
-  // ==========================================
   private verificarTarefasAtrasadas(): void {
     this.agentService.buscarMinhasTarefasAtrasadas().subscribe({
       next: (resumo) => {
@@ -446,9 +467,6 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.painelAtrasos = null;
   }
 
-  // ==========================================
-  // RELATÓRIO (.docx assíncrono) — histórico "Meus Relatórios"
-  // ==========================================
   toggleRelatorio(): void {
     this.mostrarPainelRelatorio = !this.mostrarPainelRelatorio;
     if (this.mostrarPainelRelatorio) {

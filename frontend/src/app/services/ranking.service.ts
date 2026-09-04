@@ -17,8 +17,8 @@ export class RankingService {
 
   listarRanking(tipoUnidade?: 'UA' | 'UG'): Observable<RankingDepartamento[]> {
     const url = tipoUnidade
-      ? `http://localhost:8080/api/ranking?tipoUnidade=${tipoUnidade}`
-      : 'http://localhost:8080/api/ranking';
+      ? `/api/ranking?tipoUnidade=${tipoUnidade}`
+      : '/api/ranking';
     return this.http.get<RankingDepartamento[]>(url);
   }
 }

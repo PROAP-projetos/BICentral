@@ -7,7 +7,7 @@
   --color-accent: #00897b; /* Outra cor de destaque secundária */
 
   /* Cores de Destaque */
-  --color-nav-hover-text: #ffff00; /* AMARELO para o hover dos links */
+  --color-nav-hover-text: #bfe0ff; /* Azul claro pro hover dos links — antes era amarelo puro (#ffff00), destoava do resto */
   --color-nav-button-bg: #00b875; /* Fundo do botão Cadastre-se */
   /* Layout e Texto */
   --color-background: #f5f7fa; /* Fundo claro da página */
@@ -305,39 +305,224 @@ footer {
   }
 }
 
-.welcome-mascot {
+/* Showcase do proIAp no onboarding — mockup animado da janela de chat (em vez do
+   mascote estático), pra mostrar na hora o que o agente faz: conversa + gráfico. */
+.welcome-showcase {
   position: relative;
+  overflow: hidden;
   margin-top: 8px;
-  border-radius: 16px;
-  border: 1px solid rgba(62, 109, 154, 0.25);
-  background: radial-gradient(circle at 60% 18%, rgba(151, 244, 255, 0.16), rgba(255, 255, 255, 0.7));
-  padding: 28px 16px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(0, 74, 128, 0.14);
+  background:
+    radial-gradient(circle at 18% 12%, rgba(0, 137, 123, 0.16), transparent 46%),
+    radial-gradient(circle at 82% 84%, rgba(94, 179, 255, 0.16), transparent 50%),
+    linear-gradient(160deg, #0b3554 0%, #123f63 55%, #0d4a63 100%);
+  padding: 26px 20px 22px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 16px;
   min-height: 320px;
 }
 
-.mascote-img {
-  position: relative;
-  z-index: 2;
-  width: min(320px, 88%);
-  max-height: 260px;
-  object-fit: contain;
-  filter: drop-shadow(0 14px 22px rgba(7, 42, 66, 0.3));
+.showcase-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(2px);
+  opacity: 0.55;
+  z-index: 0;
+  animation: showcaseBlobDrift 7s ease-in-out infinite;
 }
 
-.mascot-caption {
+.showcase-blob-1 {
+  width: 160px;
+  height: 160px;
+  top: -40px;
+  left: -30px;
+  background: radial-gradient(circle, rgba(0, 200, 178, 0.5) 0%, transparent 70%);
+}
+
+.showcase-blob-2 {
+  width: 200px;
+  height: 200px;
+  bottom: -60px;
+  right: -50px;
+  background: radial-gradient(circle, rgba(94, 179, 255, 0.4) 0%, transparent 70%);
+  animation-delay: 1.4s;
+}
+
+.showcase-ring {
+  position: absolute;
+  width: 230px;
+  height: 230px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  z-index: 0;
+  animation: showcaseRingSpin 18s linear infinite;
+}
+
+.proiap-window {
   position: relative;
   z-index: 2;
-  margin: 4px 0 0;
-  color: #3b5f79;
+  width: min(300px, 100%);
+  border-radius: 16px;
+  background: rgba(12, 34, 51, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 20px 44px rgba(2, 20, 34, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(6px);
+  overflow: hidden;
+  animation: showcaseWindowFloat 4.2s ease-in-out infinite;
+}
+
+.proiap-window-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.proiap-window-icon {
+  display: flex;
+  color: #ffd873;
+  animation: showcaseIconPulse 3.2s ease-in-out infinite;
+}
+
+.proiap-window-title {
+  color: #eaf3fb;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.proiap-window-dot {
+  margin-left: auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #38d979;
+  box-shadow: 0 0 0 3px rgba(56, 217, 121, 0.18);
+}
+
+.proiap-window-body {
+  padding: 14px 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.proiap-msg {
+  max-width: 82%;
+  padding: 7px 11px;
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.proiap-msg-user {
+  align-self: flex-end;
+  background: rgba(255, 255, 255, 0.14);
+  color: #f2f7fb;
+  border-bottom-right-radius: 4px;
+}
+
+.proiap-msg-bot {
+  align-self: flex-start;
+  background: rgba(0, 200, 178, 0.16);
+  border: 1px solid rgba(0, 200, 178, 0.28);
+  border-bottom-left-radius: 4px;
+  padding: 9px 12px;
+}
+
+.proiap-typing {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.proiap-typing i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #7fe9d8;
+  display: block;
+  animation: showcaseTypingBounce 1.1s ease-in-out infinite;
+}
+
+.proiap-typing i:nth-child(2) { animation-delay: 0.15s; }
+.proiap-typing i:nth-child(3) { animation-delay: 0.3s; }
+
+.proiap-chart {
+  align-self: flex-start;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 64px;
+  padding: 10px 12px 0;
+  margin-left: 2px;
+}
+
+.proiap-bar {
+  width: 12px;
+  border-radius: 4px 4px 1px 1px;
+  background: linear-gradient(180deg, #7fe9d8 0%, #35b1a0 100%);
+  height: var(--h);
+  transform-origin: bottom;
+  animation: showcaseBarGrow 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: var(--d);
+}
+
+.showcase-caption {
+  position: relative;
+  z-index: 2;
+  margin: 2px 0 0;
+  color: #cfe3f2;
   text-align: center;
   font-size: 14px;
   line-height: 1.4;
   max-width: 280px;
+}
+
+@keyframes showcaseBlobDrift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(10px, -14px) scale(1.08); }
+}
+
+@keyframes showcaseRingSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes showcaseWindowFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes showcaseIconPulse {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(180deg) scale(1.15); }
+}
+
+@keyframes showcaseTypingBounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+@keyframes showcaseBarGrow {
+  from { transform: scaleY(0); opacity: 0; }
+  to { transform: scaleY(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .showcase-blob,
+  .showcase-ring,
+  .proiap-window,
+  .proiap-window-icon,
+  .proiap-typing i,
+  .proiap-bar {
+    animation: none;
+  }
 }
 
 .welcome-btn:disabled {
@@ -463,23 +648,43 @@ footer {
   width: min(320px, calc(100% - 88px));
   height: 26px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.24);
+  border: 1px solid rgba(0, 224, 149, 0.4);
   border-radius: 999px;
-  background: rgba(0, 45, 82, 0.62);
+  background: linear-gradient(135deg, rgba(0, 45, 82, 0.8), rgba(0, 89, 66, 0.55));
   color: #ffffff;
   font-size: 0.78rem;
   font-weight: 700;
-  box-shadow: 0 8px 18px rgba(0, 23, 42, 0.2);
+  box-shadow: 0 8px 18px rgba(0, 23, 42, 0.2), 0 0 16px rgba(0, 224, 149, 0.25);
   pointer-events: none;
+  animation: footerSignatureBoxIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .home-footer-signature-marquee span {
   position: absolute;
   top: 50%;
   left: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   white-space: nowrap;
   transform: translate(-105%, -50%);
   animation: footerSignatureMarquee 6.6s linear forwards;
+}
+
+.signature-estrela {
+  flex-shrink: 0;
+  color: #6be8b0;
+  animation: footerSignatureEstrelaTwinkle 1.4s ease-in-out infinite;
+}
+
+@keyframes footerSignatureBoxIn {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes footerSignatureEstrelaTwinkle {
+  0%, 100% { opacity: 0.55; transform: scale(0.85) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1.15) rotate(20deg); }
 }
 
 @keyframes footerSignatureMarquee {
@@ -542,8 +747,9 @@ footer {
     grid-template-columns: 1fr;
   }
 
-  .welcome-mascot {
+  .welcome-showcase {
     margin-top: 12px;
+    min-height: 0;
   }
 
   .welcome-card {

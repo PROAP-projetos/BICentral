@@ -67,7 +67,7 @@ public class ProiapController {
             estadoSessao.setEquipeId(requisicao.equipeId());
         }
 
-        return proiapService.processarPergunta(requisicao.texto(), requisicao.sessaoId(), usuarioEhAdmin);
+        return proiapService.processarPergunta(requisicao.texto(), requisicao.sessaoId(), usuarioEhAdmin, usuario.getId());
     }
 
     @GetMapping("/testar-notificacoes/{usuarioId}")

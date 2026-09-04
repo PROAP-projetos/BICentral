@@ -522,7 +522,8 @@
 
 .message-actions {
   position: absolute;
-  top: -34px;
+  top: 100%;
+  margin-top: 6px;
   right: 0;
   display: flex;
   gap: 4px;
@@ -563,6 +564,105 @@
 .message-action.copied {
   color: #10b981;
   border-color: rgba(16, 185, 129, 0.55);
+}
+
+.message-actions.forcar-aberto {
+  opacity: 1;
+}
+
+.message-action.ativo {
+  color: var(--logo-accent);
+  border-color: var(--logo-accent);
+}
+
+.message-action.enviado {
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.55);
+}
+
+.feedback-painel {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-sidebar);
+}
+
+.feedback-painel label {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.feedback-painel textarea {
+  width: 100%;
+  min-height: 60px;
+  resize: vertical;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-main);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.88rem;
+  padding: 8px 10px;
+  box-sizing: border-box;
+}
+
+.feedback-painel textarea:focus {
+  outline: none;
+  border-color: var(--logo-accent);
+}
+
+.feedback-acoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.btn-feedback {
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 7px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.btn-feedback.cancelar {
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: var(--border-color);
+}
+
+.btn-feedback.cancelar:hover {
+  color: var(--text-primary);
+}
+
+.btn-feedback.enviar {
+  background: var(--logo-accent);
+  color: #ffffff;
+}
+
+.btn-feedback.enviar:hover {
+  opacity: 0.88;
+}
+
+.btn-feedback.enviar:disabled {
+  background: var(--border-color);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+}
+
+.confirmacao {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: #10b981;
 }
 
 .message-text {
@@ -700,7 +800,67 @@
 .send:active:not(:disabled) { transform: scale(0.96); }
 .send:disabled { background: var(--border-color); color: var(--text-secondary); cursor: not-allowed; box-shadow: none; }
 
+.msg-pensando {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  margin-bottom: 24px;
+  max-width: 920px;
+  margin-inline: auto;
+  width: 100%;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.pensando-estrela {
+  flex-shrink: 0;
+  color: var(--logo-accent);
+  transform-origin: center;
+  animation: pensando-girar 1.6s ease-in-out infinite;
+}
+
+@keyframes pensando-girar {
+  0% { transform: scale(0.8) rotate(0deg); opacity: 0.5; }
+  50% { transform: scale(1.15) rotate(180deg); opacity: 1; }
+  100% { transform: scale(0.8) rotate(360deg); opacity: 0.5; }
+}
+
 .agent-error { color: #ef4444; font-size: 0.85rem; text-align: center; margin-bottom: 8px; }
+
+.uso-ia-barra {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.uso-ia-trilho {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border-color);
+  overflow: hidden;
+}
+
+.uso-ia-preenchido {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--logo-accent);
+  transition: width 0.3s ease;
+}
+
+.uso-ia-preenchido.critico {
+  background: #ef4444;
+}
+
+.uso-ia-texto {
+  flex-shrink: 0;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  white-space: nowrap;
+}
 .disclaimer { font-size: 0.75rem; color: var(--text-secondary); text-align: center; margin-top: 12px; }
 .chart-message {
   margin-top: 16px;

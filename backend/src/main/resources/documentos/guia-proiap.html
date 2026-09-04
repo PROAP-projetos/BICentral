@@ -1,0 +1,370 @@
+<title>Guia do proIAp</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400;1,8..60,500&family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --bg: #e9edf0;
+    --paper: #ffffff;
+    --ink: #16232c;
+    --ink-soft: #33474f;
+    --line: rgba(22, 35, 44, 0.16);
+    --accent: #004a80;
+    --accent2: #00897b;
+    --accent2-tint: rgba(0, 137, 123, 0.09);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0c1418;
+      --paper: #f4f6f7;
+      --ink: #16232c;
+      --ink-soft: #33474f;
+      --line: rgba(22, 35, 44, 0.16);
+      --accent: #0d5f9e;
+      --accent2: #1fa593;
+      --accent2-tint: rgba(31, 165, 147, 0.09);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0c1418;
+    --paper: #f4f6f7;
+    --ink: #16232c;
+    --ink-soft: #33474f;
+    --line: rgba(22, 35, 44, 0.16);
+    --accent: #0d5f9e;
+    --accent2: #1fa593;
+    --accent2-tint: rgba(31, 165, 147, 0.09);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background:
+      radial-gradient(circle at 12% 0%, rgba(0, 74, 128, 0.10), transparent 42%),
+      radial-gradient(circle at 92% 100%, rgba(0, 137, 123, 0.09), transparent 46%),
+      var(--bg);
+    color: var(--ink);
+    font-family: "Public Sans", ui-sans-serif, system-ui, sans-serif;
+    padding: 40px 20px 64px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .sheet {
+    position: relative;
+    width: 100%;
+    max-width: 720px;
+    background: var(--paper);
+    box-shadow: 0 1px 2px rgba(8, 20, 25, 0.06), 0 26px 54px -22px rgba(8, 20, 25, 0.32);
+    padding: 58px 58px 40px;
+  }
+
+  .sheet::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, var(--accent) 0 68%, var(--accent2) 68% 100%);
+  }
+
+  .masthead {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .brand-name {
+    font-family: "Public Sans", sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: -0.005em;
+    color: var(--ink);
+  }
+
+  .brand-sub {
+    margin-top: 3px;
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+
+  .doc-meta {
+    text-align: right;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .doc-meta span {
+    display: block;
+    margin-top: 3px;
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--ink-soft);
+    text-transform: none;
+  }
+
+  h1 {
+    font-family: "Source Serif 4", Georgia, serif;
+    font-weight: 600;
+    font-size: 27px;
+    line-height: 1.28;
+    letter-spacing: -0.003em;
+    margin: 26px 0 16px;
+    text-wrap: balance;
+    color: var(--ink);
+    max-width: 30ch;
+  }
+
+  h1 .accent-word {
+    color: var(--accent2);
+  }
+
+  .lead {
+    font-family: "Public Sans", sans-serif;
+    font-size: 15px;
+    line-height: 1.68;
+    color: var(--ink-soft);
+    max-width: 64ch;
+    margin: 0 0 34px;
+  }
+
+  .lead strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 40px;
+    padding-top: 26px;
+    border-top: 1px solid var(--line);
+  }
+
+  .col-b {
+    padding-left: 40px;
+    border-left: 1px solid var(--line);
+  }
+
+  h2 {
+    font-family: "Public Sans", sans-serif;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 16px;
+  }
+
+  .h2-accent2 {
+    color: var(--accent2);
+  }
+
+  .capability-list {
+    list-style: none;
+    counter-reset: capability;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+  }
+
+  .capability-list li {
+    counter-increment: capability;
+    position: relative;
+    padding-left: 30px;
+    min-height: 21px;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--ink);
+  }
+
+  .capability-list li::before {
+    content: counter(capability);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Public Sans", sans-serif;
+    font-weight: 700;
+    font-size: 10.5px;
+  }
+
+  .capability-list .sub {
+    display: block;
+    margin-top: 2px;
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+
+  .prompt-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+  }
+
+  .prompt-list li {
+    font-family: "Source Serif 4", Georgia, serif;
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--ink);
+    background: var(--accent2-tint);
+    border-left: 3px solid var(--accent2);
+    border-radius: 0 6px 6px 0;
+    padding: 8px 12px;
+  }
+
+  .glossary {
+    margin-top: 26px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    line-height: 1.6;
+  }
+
+  .glossary b {
+    color: var(--ink-soft);
+    font-weight: 600;
+  }
+
+  .note {
+    margin-top: 20px;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    max-width: 64ch;
+  }
+
+  .colophon {
+    margin-top: 30px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    font-size: 10.5px;
+    color: var(--ink-soft);
+  }
+
+  .colophon .credit {
+    text-align: right;
+  }
+
+  .colophon .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .colophon .tag::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+  }
+
+  @media (max-width: 620px) {
+    .sheet { padding: 36px 24px 30px; }
+    .columns { grid-template-columns: 1fr; gap: 26px 0; }
+    .col-b { padding-left: 0; border-left: none; padding-top: 22px; border-top: 1px solid var(--line); }
+    .colophon { flex-direction: column; gap: 6px; }
+    .colophon .credit { text-align: left; }
+  }
+
+  @media print {
+    @page { size: A4; margin: 10mm 12mm; }
+    body { background: #fff; padding: 0; }
+    .sheet { box-shadow: none; max-width: none; padding: 28px 38px 22px; }
+    h1 { margin: 20px 0 12px; }
+    .lead { margin-bottom: 24px; }
+    .columns { padding-top: 20px; }
+    .capability-list { gap: 10px; }
+    .prompt-list { gap: 10px; }
+    .glossary { margin-top: 18px; padding-top: 10px; }
+    .colophon { margin-top: 20px; padding-top: 10px; }
+  }
+</style>
+
+<div class="sheet">
+  <div class="masthead">
+    <div>
+      <div class="brand-name">BICentral</div>
+      <div class="brand-sub">PROAP</div>
+    </div>
+    <div class="doc-meta">
+      Guia do tester
+      <span>Setembro de 2026</span>
+    </div>
+  </div>
+
+  <h1><span class="accent-word">proIAp</span>: pergunte, e ele busca nos dados da PROAP</h1>
+  <p class="lead">
+    O <strong>proIAp</strong> é o agente de IA do BICentral. Ele lê os dados reais da PROAP —
+    PDI, PAT, tarefas e desempenho por departamento — e responde na hora, em texto ou em gráfico.
+  </p>
+
+  <div class="columns">
+    <div>
+      <h2>O que você pode pedir</h2>
+      <ol class="capability-list">
+        <li>Relatório de desempenho de um departamento<span class="sub">Gerado em PDF ou DOCX, pronto em segundos</span></li>
+        <li>Ranking de quem está melhor ou pior no PAT</li>
+        <li>As ações mais atrasadas de uma unidade</li>
+        <li>Ações do PDI por código, palavra-chave ou marcador<span class="sub">CPA, Plano de Governo, AUDIN...</span></li>
+        <li>Suas próprias tarefas e pendências</li>
+        <li>Um gráfico ou indicador<span class="sub">KPI, velocímetro, combinado, barras empilhadas</span></li>
+      </ol>
+    </div>
+
+    <div class="col-b">
+      <h2 class="h2-accent2">Exemplos de pergunta</h2>
+      <ul class="prompt-list">
+        <li>Gere um relatório de desempenho da PROGRAD</li>
+        <li>Qual departamento está pior no PAT esse ano?</li>
+        <li>Quais as ações mais atrasadas da PROEST?</li>
+        <li>Quais são minhas tarefas pendentes?</li>
+        <li>Monte um indicador de execução do PAT da PROAP</li>
+        <li>Qual UG tem mais ações no PDI?</li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="glossary">
+    <b>PDI</b> — Plano de Desenvolvimento Institucional (acumulado, 5 anos) · <b>PAT</b> — Plano Anual de Trabalho (ano corrente) · <b>UG/UA</b> — Unidade Gestora / Unidade Administrativa
+  </p>
+
+  <p class="note">
+    Você está testando o proIAp. Cada tester tem um orçamento próprio de uso durante o teste —
+    a barra fica visível direto no chat, sem precisar acompanhar nada à parte. Para começar,
+    entre no BICentral e clique em "Pergunte ao agente".
+  </p>
+
+  <div class="colophon">
+    <span class="tag">BICentral · PROAP</span>
+    <span class="credit">Desenvolvido pelos estagiários da PROAP</span>
+  </div>
+</div>

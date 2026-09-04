@@ -274,6 +274,18 @@
       <button type="button" class="aviso-api-fechar" (click)="dispensarAvisoApi()" aria-label="Fechar aviso" title="Fechar">×</button>
     </div>
 
+    <!-- AVISO: só aparece pra quem está participando do teste com o time (ver UsoIaService) -->
+    <div class="aviso-api-banner aviso-tester-banner" *ngIf="usoIa && usoIa.souTester && avisoTesterVisivel">
+      <span class="aviso-api-icon">🧪</span>
+      <div class="aviso-api-texto">
+        <strong>Você está testando o proIAp de verdade, com dados reais da PROAP.</strong>
+        Pergunte do jeito que perguntaria numa situação real — não existe pergunta errada aqui.
+        Embaixo do campo de escrever tem uma barra mostrando quanto do orçamento reservado pro teste já foi usado; quando ela chegar no limite, o chat avisa e para de responder sozinho — é só uma trava técnica, não precisa se preocupar com isso.
+        Suas perguntas e as respostas ficam salvas pra análise depois, pra ajudar a melhorar o proIAp. Obrigada por participar do teste! 💙
+      </div>
+      <button type="button" class="aviso-api-fechar" (click)="dispensarAvisoTester()" aria-label="Fechar aviso" title="Fechar">×</button>
+    </div>
+
     <!-- O CORPO DA CONVERSA -->
     <div class="chat-body" [class.is-empty]="messages.length === 0" *ngIf="painelAtivo === 'chat'">
 
@@ -286,17 +298,8 @@
       <div class="messages" #messagesContainer *ngIf="messages.length > 0">
         <div *ngFor="let m of messages; let i = index" class="msg" [ngClass]="m.from">
 
-          <div class="avatar bot-avatar" *ngIf="m.from === 'bot'" title="proIAp">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <path
-                d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z">
-              </path>
-            </svg>
-          </div>
-
           <div class="bubble" [class.has-chart]="m.spec">
-            <div class="message-actions" *ngIf="m.text">
+            <div class="message-actions" *ngIf="m.text" [class.forcar-aberto]="m.feedbackAberto || m.feedbackEnviado">
               <button
                 type="button"
                 class="message-action"
@@ -318,6 +321,20 @@
               <button
                 type="button"
                 class="message-action"
+                *ngIf="m.from === 'bot' && m.interacaoId"
+                [class.ativo]="m.feedbackAberto"
+                [class.enviado]="m.feedbackEnviado"
+                (click)="alternarFeedback(m)"
+                aria-label="Dar feedback"
+                title="Dar feedback">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="message-action"
                 *ngIf="m.from === 'user'"
                 (click)="editarPrompt(m.text)"
                 aria-label="Editar prompt"
@@ -331,6 +348,22 @@
             </div>
 
             <div *ngIf="m.text" class="message-text" [innerHTML]="formatarMensagem(m.text)"></div>
+
+            <div class="feedback-painel" *ngIf="m.feedbackAberto">
+              <label>O que achou dessa resposta?</label>
+              <textarea [(ngModel)]="m.feedbackTexto" placeholder="Ex: os números batem, mas queria ver isso num gráfico direto..."></textarea>
+              <div class="feedback-acoes">
+                <button type="button" class="btn-feedback cancelar" (click)="m.feedbackAberto = false">Cancelar</button>
+                <button type="button" class="btn-feedback enviar" [disabled]="!m.feedbackTexto" (click)="enviarFeedback(m)">Enviar</button>
+              </div>
+            </div>
+
+            <div class="confirmacao" *ngIf="m.feedbackEnviado">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 6 9 17l-5-5"></path>
+              </svg>
+              Feedback enviado — obrigado por ajudar a melhorar o proIAp
+            </div>
 
             <div *ngIf="m.spec" class="chart-message">
               <app-grafico-ia *ngFor="let g of m.spec.graficos" [spec]="g"></app-grafico-ia>
@@ -356,6 +389,16 @@
             </div>
 
           </div>
+        </div>
+
+        <!-- Indicador "pensando" — só a estrela da logo animada + texto, sem moldura de balão -->
+        <div class="msg-pensando" *ngIf="carregando">
+          <svg class="pensando-estrela" width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path
+              d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z">
+            </path>
+          </svg>
+          <span class="pensando-texto">{{ textoPensando }}</span>
         </div>
       </div>
 
@@ -387,6 +430,16 @@
           </button>
         </div>
         <p class="disclaimer">O proIAp pode cometer erros. Verifique as informações importantes no sistema.</p>
+
+        <!-- Barra de uso do teste com o time — estimativa, a trava de verdade é o limite da OpenAI -->
+        <div class="uso-ia-barra" *ngIf="usoIa && usoIa.souTester" [title]="'Estimativa — a trava real é o limite configurado na OpenAI'">
+          <div class="uso-ia-trilho">
+            <div class="uso-ia-preenchido" [class.critico]="usoIaCritico" [style.width.%]="usoIaPercentual"></div>
+          </div>
+          <span class="uso-ia-texto">
+            uso do teste: ${{ usoIa.gastoTotal.toFixed(2) }} de ${{ usoIa.limite.toFixed(2) }}
+          </span>
+        </div>
       </div>
 
     </div>
@@ -396,7 +449,7 @@
           <span>Visualizando: {{ arquivoAberto }}</span>
           <button (click)="fecharViewer()">X</button>
         </div>
-        <iframe [src]="'http://localhost:8080/api/documentos/view/' + encodeURIComponent(arquivoAberto) | safeUrl"
+        <iframe [src]="'/api/documentos/view/' + encodeURIComponent(arquivoAberto) | safeUrl"
           width="100%" height="90%"></iframe>
       </div>
     </div>

@@ -68,7 +68,13 @@
 
 <div class="agent-float">
   <a class="agent-btn" routerLink="/agente">
-    <span></span>Pergunte ao agente
+    <span class="agent-btn-icone">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"></path>
+      </svg>
+      <span class="agent-btn-status"></span>
+    </span>
+    Pergunte ao agente
   </a>
 </div>
 
@@ -107,9 +113,42 @@
               </div>
             </div>
 
-            <aside class="welcome-mascot">
-              <img src="/mascote.png" alt="Mascote BICentral" class="mascote-img" />
-              <p class="mascot-caption">Seu robô assistente para organizar e acompanhar painéis no BICentral.</p>
+            <aside class="welcome-showcase">
+              <span class="showcase-blob showcase-blob-1"></span>
+              <span class="showcase-blob showcase-blob-2"></span>
+              <span class="showcase-ring"></span>
+
+              <div class="proiap-window">
+                <div class="proiap-window-bar">
+                  <span class="proiap-window-icon">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"></path>
+                    </svg>
+                  </span>
+                  <span class="proiap-window-title">proIAp</span>
+                  <span class="proiap-window-dot"></span>
+                </div>
+
+                <div class="proiap-window-body">
+                  <div class="proiap-msg proiap-msg-user">Como estão os atrasos essa semana?</div>
+
+                  <div class="proiap-msg proiap-msg-bot">
+                    <span class="proiap-typing"><i></i><i></i><i></i></span>
+                  </div>
+
+                  <div class="proiap-chart" aria-hidden="true">
+                    <span class="proiap-bar" style="--h: 40%; --d: 0s"></span>
+                    <span class="proiap-bar" style="--h: 68%; --d: 0.12s"></span>
+                    <span class="proiap-bar" style="--h: 50%; --d: 0.24s"></span>
+                    <span class="proiap-bar" style="--h: 86%; --d: 0.36s"></span>
+                    <span class="proiap-bar" style="--h: 60%; --d: 0.48s"></span>
+                  </div>
+                </div>
+              </div>
+
+              <p class="showcase-caption">
+                Esse é o <strong>proIAp</strong>: pergunte sobre os dados da PROAP e ele monta o gráfico pra você, na hora.
+              </p>
             </aside>
           </div>
           <button class="welcome-skip corner" type="button" (click)="closeWelcomeOverlay()" [disabled]="isWelcomeClosing">Pular introdução</button>
@@ -246,7 +285,12 @@
         LA NM DM
       </button>
       <div class="home-footer-signature-marquee" *ngIf="showFooterSignature" aria-live="polite">
-        <span>L. Albuquerque · N. Mendes · D. de Moraes</span>
+        <span>
+          <svg class="signature-estrela" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"></path>
+          </svg>
+          L. Albuquerque · N. Mendes · D. de Moraes
+        </span>
       </div>
     </div>
   </footer>

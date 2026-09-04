@@ -10,6 +10,7 @@ import { HomeComponent } from './home/home';
 import { IngestaoIaComponent } from './ingestao-ia/ingestao-ia';
 import { LoginComponent } from './login/login.component';
 import { PainelAdminComponent } from './painel-admin/painel-admin.component';
+import { GestaoTestersComponent } from './painel-admin/gestao-testers.component';
 import { SuporteComponent } from './suporte/suporte.component';
 import { VerificacaoComponent } from './verificacao/verificacao.component';
 
@@ -40,6 +41,7 @@ export const routes: Routes = [
 
   // Outras páginas protegidas
   { path: 'admin', component: PainelAdminComponent, canActivate: [authGuard, adminGuard] },
+  { path: 'admin/testers', component: GestaoTestersComponent, canActivate: [authGuard, adminGuard] },
   { path: 'dashboard', component: DashboardComponent, canActivate: [authGuard] },
 
   // Fallback

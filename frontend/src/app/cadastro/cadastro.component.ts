@@ -1,8 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-cadastro',
@@ -16,7 +16,7 @@ import { RouterLink } from '@angular/router';
   templateUrl: './cadastro.component.html',
   styleUrls: ['./cadastro.component.css']
 })
-export class CadastroComponent {
+export class CadastroComponent implements OnInit {
 
   usuario = {
     username: '',
@@ -29,7 +29,16 @@ export class CadastroComponent {
   showLoginShortcut = false;
   registrationSuccess = false;
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient, private route: ActivatedRoute) { }
+
+  ngOnInit(): void {
+    // Vem de um link tipo /cadastro?email=fulano@uft.edu.br (ex: admin adicionando
+    // um tester cujo e-mail ainda não tem conta) — só pré-preenche, não trava o campo.
+    const emailNaUrl = this.route.snapshot.queryParamMap.get('email');
+    if (emailNaUrl) {
+      this.usuario.email = emailNaUrl;
+    }
+  }
 
   cadastrar() {
     this.message = null;

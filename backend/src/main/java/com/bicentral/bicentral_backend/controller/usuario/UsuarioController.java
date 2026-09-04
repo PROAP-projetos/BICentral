@@ -5,6 +5,7 @@ import com.bicentral.bicentral_backend.exception.RecursoJaExistenteException;
 import com.bicentral.bicentral_backend.model.Usuario;
 import com.bicentral.bicentral_backend.repository.UsuarioRepository;
 import com.bicentral.bicentral_backend.service.auth.UsuarioService;
+import com.bicentral.bicentral_backend.service.ia.UsoIaService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -21,18 +22,28 @@ public class UsuarioController {
 
     private final UsuarioService usuarioService;
     private final UsuarioRepository usuarioRepository;
+    private final UsoIaService usoIaService;
 
-    public UsuarioController(UsuarioService usuarioService, UsuarioRepository usuarioRepository) {
+    public UsuarioController(UsuarioService usuarioService, UsuarioRepository usuarioRepository, UsoIaService usoIaService) {
         this.usuarioService = usuarioService;
         this.usuarioRepository = usuarioRepository;
+        this.usoIaService = usoIaService;
     }
 
     @PostMapping("/cadastro")
     public ResponseEntity<?> cadastrarUsuario(@Valid @RequestBody Usuario usuario, HttpServletRequest request) {
         try {
-            usuarioService.cadastrar(usuario, getSiteURL(request));
+            // Quem já foi convidado como tester do proIAp por e-mail pula a verificação de
+            // e-mail no cadastro (ver UsoIaService.emailTesterPendente).
+            boolean pularVerificacao = usoIaService.emailTesterPendente(usuario.getEmail());
+            Usuario cadastrado = usuarioService.cadastrar(usuario, getSiteURL(request), pularVerificacao);
+            // Se esse e-mail já tinha sido adicionado como tester do proIAp antes de existir
+            // conta, vira tester de verdade agora (ver UsoIaService.promoverPendentesParaTester).
+            usoIaService.promoverPendentesParaTester(cadastrado.getId(), cadastrado.getEmail());
             Map<String, String> response = new HashMap<>();
-            response.put("mensagem", "Cadastro realizado com sucesso! Verifique seu e-mail para ativar sua conta.");
+            response.put("mensagem", pularVerificacao
+                    ? "Cadastro realizado! Você já pode entrar — como tester do proIAp, não precisa verificar o e-mail."
+                    : "Cadastro realizado com sucesso! Verifique seu e-mail para ativar sua conta.");
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (RecursoJaExistenteException e) {
             Map<String, String> response = new HashMap<>();
@@ -67,10 +78,12 @@ public class UsuarioController {
             Usuario usuario = usuarioRepository.findByEmail(loginRequest.getEmail())
                     .orElseThrow(() -> new RuntimeException("Erro ao recuperar dados do usuário."));
 
-            Map<String, String> response = new HashMap<>();
+            Map<String, Object> response = new HashMap<>();
             response.put("token", token);
             response.put("username", usuario.getNomeExibicao());
             response.put("id", usuario.getId().toString());
+            // Tester do proIAp cai direto no agente em vez da Home após o login (ver LoginComponent).
+            response.put("tester", usoIaService.ehTester(usuario.getId()));
             return ResponseEntity.ok(response);
 
         } catch (AutenticacaoException e) {

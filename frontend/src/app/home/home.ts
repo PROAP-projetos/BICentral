@@ -87,18 +87,18 @@ private footerSignatureTimer?: number;
 readonly welcomeSlides = [
   {
     badge: 'Bem-vindo ao BICentral',
-    title: 'Seu centro para organizar os painéis da PROAP',
-    text: 'Aqui você centraliza os links dos painéis, mantém tudo em um único lugar e facilita o acesso diário da equipe.'
+    title: 'O hub de BI da PROAP',
+    text: 'Aqui ficam centralizados os painéis de Power BI da PROAP — um só lugar pra toda a equipe acompanhar os indicadores, sem caçar link espalhado.'
   },
   {
-    badge: 'Como funciona',
-    title: 'Cadastre, visualize e atualize sem complicação',
-    text: 'Use o botão "Adicionar Painel", acompanhe a capa gerada automaticamente e edite os painéis sempre que precisar.'
+    badge: 'Conheça o proIAp',
+    title: 'Peça um gráfico, ele aparece aqui do lado',
+    text: 'O proIAp é o agente de IA do BICentral: converse com ele no chat, peça um indicador sobre os dados da PROAP, e o painel gerado fica salvo bem aqui, junto dos painéis de Power BI.'
   },
   {
     badge: 'Comece agora',
-    title: 'Gerencie seus painéis com mais controle',
-    text: 'Monte sua biblioteca de dashboards e mantenha sua rotina de análise mais rápida e organizada dentro do BICentral.'
+    title: 'Tudo o que você precisa, num só lugar',
+    text: 'Adicione os painéis de Power BI da sua equipe e explore o proIAp pelo botão "Pergunte ao agente" — o BICentral organiza os dois pra você.'
   }
 ];
 

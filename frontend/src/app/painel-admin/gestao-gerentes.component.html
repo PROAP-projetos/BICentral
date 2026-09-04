@@ -50,23 +50,29 @@
   <div class="table">
     <div class="table-row table-head managers-head">
       <div>Usuario</div>
-      <div>Departamento</div>
-      <div style="text-align: right;">Acoes</div>
+      <div>Departamentos</div>
     </div>
 
-    <div class="table-row managers-row" *ngFor="let gerente of gerentes">
+    <div class="table-row managers-row" *ngFor="let grupo of gerentesAgrupados">
       <div class="person-cell">
-        <span class="avatar">{{ (gerente.usuarioNome || gerente.usuarioId).toString().slice(0, 1) | uppercase }}</span>
+        <span class="avatar">{{ (grupo.usuarioNome || grupo.usuarioId).toString().slice(0, 1) | uppercase }}</span>
         <div>
-          <strong>{{ gerente.usuarioNome || ('Usuario ' + gerente.usuarioId) }}</strong>
-          <span>{{ gerente.usuarioEmail || 'Sem e-mail encontrado' }}</span>
+          <strong>{{ grupo.usuarioNome || ('Usuario ' + grupo.usuarioId) }}</strong>
+          <span>{{ grupo.usuarioEmail || 'Sem e-mail encontrado' }}</span>
         </div>
       </div>
-      <div>{{ gerente.departamento }}</div>
-      <div class="actions-col">
-        <button class="btn-icon btn-danger-icon" type="button" title="Remover" (click)="remover(gerente)" [disabled]="salvando">
-          Remover
-        </button>
+      <div class="dept-chips-cell">
+        <div class="dept-chips">
+          <span class="dept-chip" *ngFor="let vinculo of departamentosVisiveis(grupo)">
+            {{ vinculo.departamento }}
+            <button type="button" class="dept-chip-remove" title="Remover" (click)="remover(vinculo)" [disabled]="salvando">×</button>
+          </span>
+        </div>
+        <div class="dept-pager" *ngIf="totalPaginas(grupo) > 1">
+          <button type="button" class="dept-pager-btn" title="Anteriores" (click)="mudarPagina(grupo, -1)">‹</button>
+          <span>{{ paginaAtual(grupo.usuarioId) + 1 }}/{{ totalPaginas(grupo) }}</span>
+          <button type="button" class="dept-pager-btn" title="Proximos" (click)="mudarPagina(grupo, 1)">›</button>
+        </div>
       </div>
     </div>
 

@@ -5,12 +5,17 @@ import com.bicentral.bicentral_backend.model.Role;
 import com.bicentral.bicentral_backend.model.Usuario;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.springframework.lang.NonNull;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -25,12 +30,46 @@ import java.util.Objects;
 @Service
 public class EmailService {
 
+    private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
+
     private static final String FROM_ADDRESS = "bicentraluft@gmail.com";
     private static final String SENDER_NAME = "BI Central";
     private static final DateTimeFormatter INVITE_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm");
+    private static final String GUIA_TESTER_PROIAP_RESOURCE = "/documentos/guia-proiap.pdf";
+    private static final String ROBO_PROIAP_RESOURCE = "/email/proiap-robo.gif";
+    private static final String ROBO_PROIAP_CID = "proiapRobo";
 
     @Autowired
     private JavaMailSender mailSender;
+
+    // Anexo é "best effort": se o guia não estiver empacotado por algum motivo, o e-mail
+    // ainda sai sem ele em vez de falhar o envio inteiro.
+    private void anexarGuiaProiap(MimeMessageHelper helper) {
+        try (InputStream is = getClass().getResourceAsStream(GUIA_TESTER_PROIAP_RESOURCE)) {
+            if (is == null) {
+                logger.warn("Guia do proIAp não encontrado em {}", GUIA_TESTER_PROIAP_RESOURCE);
+                return;
+            }
+            helper.addAttachment("Guia do proIAp.pdf", new ByteArrayResource(is.readAllBytes()));
+        } catch (IOException | MessagingException e) {
+            logger.error("Falha ao anexar o guia do proIAp no e-mail", e);
+        }
+    }
+
+    // Robozinho do proIAp embutido inline (via cid:) — precisa que o helper tenha sido
+    // criado com MULTIPART_MODE_MIXED_RELATED, senão alguns clientes de e-mail mostram
+    // a imagem como anexo em vez de embutida no corpo.
+    private void anexarRoboProiap(MimeMessageHelper helper) {
+        try (InputStream is = getClass().getResourceAsStream(ROBO_PROIAP_RESOURCE)) {
+            if (is == null) {
+                logger.warn("Robô do proIAp não encontrado em {}", ROBO_PROIAP_RESOURCE);
+                return;
+            }
+            helper.addInline(ROBO_PROIAP_CID, new ByteArrayResource(is.readAllBytes()), "image/gif");
+        } catch (IOException | MessagingException e) {
+            logger.error("Falha ao anexar o robô do proIAp no e-mail", e);
+        }
+    }
 
     public void sendVerificationEmail(@NonNull Usuario user, @NonNull String siteURL) throws MessagingException, UnsupportedEncodingException {
         String toAddress = Objects.requireNonNull(user.getEmail(), "user email");
@@ -277,6 +316,142 @@ public class EmailService {
         helper.setTo(email);
         helper.setSubject(assunto);
         helper.setText(content, true);
+
+        mailSender.send(message);
+    }
+
+    public void sendTesterAddedEmail(@NonNull String toAddress, @NonNull String nome) throws MessagingException, UnsupportedEncodingException {
+        String assunto = "Você agora é tester do proIAp";
+        String content = """
+                <!DOCTYPE html>
+                <html lang="pt-BR">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Você agora é tester do proIAp</title>
+                </head>
+                <body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#1a1a1a;">
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%%">
+                        <tr>
+                            <td style="padding:24px 12px;">
+                                <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%%" style="max-width:620px;background:#ffffff;border:1px solid rgba(0,74,128,0.08);border-radius:16px;overflow:hidden;">
+                                    <tr>
+                                        <td style="padding:28px 32px;background:#004a80;color:#ffffff;">
+                                            <div style="font-size:24px;font-weight:700;letter-spacing:0.2px;">BICentral</div>
+                                            <div style="margin-top:8px;font-size:14px;opacity:0.92;">proIAp — agente de IA</div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:22px 32px 0;text-align:center;background:#ffffff;">
+                                            <img src="cid:%s" width="88" height="88" alt="proIAp" style="display:block;margin:0 auto;border:0;outline:none;" />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:32px;">
+                                            <h1 style="margin:0 0 12px;font-size:26px;line-height:1.2;color:#113956;">Olá, %s!</h1>
+                                            <p style="margin:0 0 12px;font-size:16px;line-height:1.65;color:#3b556b;">
+                                                Você foi adicionado(a) como <strong>tester do proIAp</strong>, o agente de IA do BICentral. Ele lê os dados reais da PROAP — PDI, PAT, tarefas e desempenho por departamento — e responde na hora, em texto ou em gráfico.
+                                            </p>
+                                            <p style="margin:0;font-size:16px;line-height:1.65;color:#3b556b;">
+                                                É só entrar no BICentral e clicar em "Pergunte ao agente". Anexamos um guia rápido em PDF com o que ele sabe fazer e exemplos de perguntas pra começar.
+                                            </p>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:20px 32px;border-top:1px solid #e8eef5;font-size:12px;color:#7b8a97;">
+                                            Se você não esperava este e-mail, ignore-o.
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </body>
+                </html>
+                """.formatted(ROBO_PROIAP_CID, nome);
+
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED, "UTF-8");
+        helper.setFrom(FROM_ADDRESS, SENDER_NAME);
+        helper.setTo(toAddress);
+        helper.setSubject(assunto);
+        helper.setText(content, true);
+        anexarRoboProiap(helper);
+        anexarGuiaProiap(helper);
+
+        mailSender.send(message);
+    }
+
+    public void sendTesterInviteEmail(@NonNull String toAddress, @NonNull String cadastroUrl) throws MessagingException, UnsupportedEncodingException {
+        String assunto = "Convite para testar o proIAp";
+        String content = """
+                <!DOCTYPE html>
+                <html lang="pt-BR">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Convite para testar o proIAp</title>
+                </head>
+                <body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#1a1a1a;">
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%%">
+                        <tr>
+                            <td style="padding:24px 12px;">
+                                <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%%" style="max-width:620px;background:#ffffff;border:1px solid rgba(0,74,128,0.08);border-radius:16px;overflow:hidden;">
+                                    <tr>
+                                        <td style="padding:28px 32px;background:#004a80;color:#ffffff;">
+                                            <div style="font-size:24px;font-weight:700;letter-spacing:0.2px;">BICentral</div>
+                                            <div style="margin-top:8px;font-size:14px;opacity:0.92;">proIAp — agente de IA</div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:22px 32px 0;text-align:center;background:#ffffff;">
+                                            <img src="cid:%s" width="88" height="88" alt="proIAp" style="display:block;margin:0 auto;border:0;outline:none;" />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:32px;">
+                                            <div style="display:inline-block;padding:8px 14px;border-radius:999px;background:rgba(0,74,128,0.08);color:#004a80;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;">
+                                                Convite pendente
+                                            </div>
+                                            <h1 style="margin:18px 0 12px;font-size:28px;line-height:1.2;color:#113956;">Você foi convidado(a) para testar o proIAp</h1>
+                                            <p style="margin:0 0 12px;font-size:16px;line-height:1.65;color:#3b556b;">
+                                                O proIAp é o agente de IA do BICentral. Ele lê os dados reais da PROAP — PDI, PAT, tarefas e desempenho por departamento — e responde na hora, em texto ou em gráfico.
+                                            </p>
+                                            <p style="margin:0 0 24px;font-size:16px;line-height:1.65;color:#3b556b;">
+                                                Você ainda não tem uma conta no BICentral com este e-mail. Cadastre-se abaixo e você vira tester automaticamente assim que concluir o cadastro. Anexamos também um guia rápido em PDF com exemplos de perguntas pra você começar.
+                                            </p>
+                                            <table border="0" cellpadding="0" cellspacing="0">
+                                                <tr>
+                                                    <td>
+                                                        <a href="%s" target="_blank" style="display:inline-block;padding:14px 24px;background:#004a80;color:#ffffff;text-decoration:none;font-weight:700;border-radius:10px;">
+                                                            Criar minha conta
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:20px 32px;border-top:1px solid #e8eef5;font-size:12px;color:#7b8a97;">
+                                            Se você não esperava este e-mail, ignore-o.
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </body>
+                </html>
+                """.formatted(ROBO_PROIAP_CID, cadastroUrl);
+
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED, "UTF-8");
+        helper.setFrom(FROM_ADDRESS, SENDER_NAME);
+        helper.setTo(toAddress);
+        helper.setSubject(assunto);
+        helper.setText(content, true);
+        anexarRoboProiap(helper);
+        anexarGuiaProiap(helper);
 
         mailSender.send(message);
     }

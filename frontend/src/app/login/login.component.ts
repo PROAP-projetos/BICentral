@@ -41,14 +41,16 @@ export class LoginComponent {
               token: response.token
             }));
 
-            console.log('Dados salvos no localStorage. Redirecionando para a Home...');
+            // Tester do proIAp cai direto no agente em vez da Home (é pra isso que ela está aqui).
+            const destino = response.tester ? '/agente' : '/';
+            console.log(`Dados salvos no localStorage. Redirecionando para ${destino}...`);
 
             // 3. Força a navegação e verifica se ela ocorreu
-            this.router.navigate(['/']).then(success => {
+            this.router.navigate([destino]).then(success => {
               if (success) {
                 console.log('Navegação concluída com sucesso!');
               } else {
-                console.error('Falha na navegação. Verifique se a rota "/" existe.');
+                console.error(`Falha na navegação. Verifique se a rota "${destino}" existe.`);
               }
             });
           } else {

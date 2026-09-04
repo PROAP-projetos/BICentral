@@ -9,6 +9,7 @@ import com.bicentral.bicentral_backend.dto.ia.AnaliseComandoDTO;
 import com.bicentral.bicentral_backend.dto.ia.ContextoRAGDTO;
 import com.bicentral.bicentral_backend.dto.ia.IntencaoDTO;
 import com.bicentral.bicentral_backend.dto.ia.RespostaTextualDTO;
+import com.bicentral.bicentral_backend.dto.painel.PainelRespostaDTO;
 import com.bicentral.bicentral_backend.dto.painel.PainelSpecDTO;
 import com.bicentral.bicentral_backend.state.EstadoSessao;
 import dev.langchain4j.service.Result;
@@ -24,12 +25,10 @@ public class ProiapService {
     private final EstadoSessao estadoSessao;
     private final EmbeddingService embeddingService;
     private final AgenteConsultaSql agenteConsultaSql;
+    private final UsoIaService usoIaService;
 
     private static final int MAX_SUGESTOES = 3;
 
-    // Uma ferramenta pode render mais de uma sugestão candidata (ex: além do follow-up de sempre,
-    // uma sugestão nova pra descobrir os tipos de gráfico gauge/combo/empilhado, que ninguém
-    // adivinha sozinho que existem).
     private static final Map<String, List<String>> SUGESTOES_POR_FERRAMENTA = Map.of(
         "ranquearDepartamentosPorExecucaoPAT", List.of(
             "Alguma dessas ações é compartilhada entre departamentos?",
@@ -45,8 +44,6 @@ public class ProiapService {
         "compararExecucaoPDIxPAT", List.of("Quero ver essa comparação num gráfico")
     );
 
-    // Mensagem depois de o painel ser confirmado — string fixa em Java, não gerada pela IA, então
-    // sem essa lista sempre sairia idêntica. Sorteia uma a cada confirmação pra variar.
     private static final List<String> MENSAGENS_PAINEL_PRONTO = List.of(
         "Prontinho! Aqui está o painel. Se quiser mudar o formato (ex: pizza) ou o título, é só pedir.",
         "Pronto, montei o painel! Quer ajustar o tipo de gráfico ou o título? É só falar.",
@@ -56,35 +53,37 @@ public class ProiapService {
     );
 
     public ProiapService(AgenteProiap agenteProiap, AgenteConsultaSql agenteConsultaSql, EstadoSessao estadoSessao,
-            EmbeddingService embeddingService) {
+            EmbeddingService embeddingService, UsoIaService usoIaService) {
         this.agenteProiap = agenteProiap;
         this.agenteConsultaSql = agenteConsultaSql;
         this.estadoSessao = estadoSessao;
         this.embeddingService = embeddingService;
+        this.usoIaService = usoIaService;
     }
 
-    public Object processarPergunta(String perguntaUsuario, String sessaoId, boolean usuarioEhAdmin) {
+    public Object processarPergunta(String perguntaUsuario, String sessaoId, boolean usuarioEhAdmin, Long usuarioId) {
 
-        // Limpa qualquer sinal de relatório de uma pergunta anterior antes de processar esta.
+        if (usoIaService.deveBloquear(usuarioId)) {
+            return new RespostaTextualDTO(
+                    "Esse teste atingiu o limite de uso combinado com o time. Muito obrigada por testar! 💙",
+                    null, false, List.of(), null);
+        }
+
         estadoSessao.setRelatorioGerado(false);
 
         System.out.println("\n================================");
         System.out.println("NOVA REQUISIÇÃO");
         System.out.println("Pergunta: " + perguntaUsuario);
-        System.out.println("Sessao ID Front: " + sessaoId); // Logando o ID que veio do Angular
+        System.out.println("Sessao ID Front: " + sessaoId);
         System.out.println("Sessao Hash (Estado): " + System.identityHashCode(estadoSessao));
         System.out.println("Aguardando confirmação: " + estadoSessao.isAguardandoConfirmacaoGrafico());
         System.out.println("Tem painel pendente: " + (estadoSessao.getPainelPendente() != null));
         System.out.println("================================");
 
-        // ================================================================
-        // INTERCEPTA CONFIRMAÇÃO
-        // ================================================================
         if (estadoSessao.isAguardandoConfirmacaoGrafico()) {
 
             System.out.println(">>> ENTROU NO BLOCO DE CONFIRMAÇÃO");
 
-            // Usa memória descartável (UUID) - MANTIDO
             String classificacao = agenteProiap.classificarConfirmacao(UUID.randomUUID().toString(), perguntaUsuario)
                     .trim().toUpperCase();
             System.out.println("IA Classificou a resposta como: " + classificacao);
@@ -92,19 +91,22 @@ public class ProiapService {
             if (classificacao.contains("CONFIRMAR")) {
                 System.out.println(">>> USUÁRIO CONFIRMOU (IA ENTENDEU)");
                 PainelSpecDTO pendente = estadoSessao.getPainelPendente();
+                Long interacaoId = estadoSessao.getInteracaoIdPendente();
 
                 String mensagemPronto = MENSAGENS_PAINEL_PRONTO.get(
                         ThreadLocalRandom.current().nextInt(MENSAGENS_PAINEL_PRONTO.size()));
 
-                PainelSpecDTO painelPronto = new PainelSpecDTO(
+                PainelRespostaDTO painelPronto = new PainelRespostaDTO(
                         pendente.skill(),
                         mensagemPronto,
                         pendente.titulo(),
                         pendente.graficos(),
-                        false);
+                        false,
+                        interacaoId);
 
                 estadoSessao.setAguardandoConfirmacaoGrafico(false);
                 estadoSessao.setPainelPendente(null);
+                estadoSessao.setInteracaoIdPendente(null);
 
                 return painelPronto;
             }
@@ -113,8 +115,9 @@ public class ProiapService {
                 System.out.println(">>> USUÁRIO NEGOU (IA ENTENDEU)");
                 estadoSessao.setAguardandoConfirmacaoGrafico(false);
                 estadoSessao.setPainelPendente(null);
+                estadoSessao.setInteracaoIdPendente(null);
 
-                return new RespostaTextualDTO("Tudo bem! Me diz o que você quer ver e eu busco novamente.", null, false, List.of());
+                return new RespostaTextualDTO("Tudo bem! Me diz o que você quer ver e eu busco novamente.", null, false, List.of(), null);
             }
 
             System.out.println(">>> USUÁRIO REFORMULOU A CONSULTA (IA ENTENDEU)");
@@ -154,9 +157,6 @@ public class ProiapService {
             }
         }
 
-        // ================================================================
-        // BUSCA O CONTEXTO E AS FONTES
-        // ================================================================
         ContextoRAGDTO contextoRAG = usuarioEhAdmin
                    ? embeddingService.buscarContextoSemelhante(termoDeBusca, equipeDaSessao, modelo)
                    : new ContextoRAGDTO("", List.of());
@@ -164,9 +164,6 @@ public class ProiapService {
         System.out.println("DEBUG - Termo usado na busca: " + termoDeBusca);
         System.out.println("DEBUG - Fontes encontradas: " + contextoRAG.fontes());
 
-        // ================================================================
-        // ROTEAMENTO
-        // ================================================================
         if (analise.intencao() == IntencaoDTO.RESPOSTA) {
             
             String memoryId = (sessaoId != null && !sessaoId.isBlank()) 
@@ -176,18 +173,15 @@ public class ProiapService {
             Result<String> resultado = agenteConsultaSql.responderComFerramentas(memoryId, perguntaUsuario,
                     contextoRAG.textoContexto());
             List<String> sugestoes = montarSugestoes(resultado.toolExecutions());
+            Long interacaoId = usoIaService.registrarUso(usuarioId, perguntaUsuario, resultado.content(), resultado.tokenUsage());
 
-            return new RespostaTextualDTO(resultado.content(), contextoRAG.fontes(), estadoSessao.isRelatorioGerado(), sugestoes);
+            return new RespostaTextualDTO(resultado.content(), contextoRAG.fontes(), estadoSessao.isRelatorioGerado(), sugestoes, interacaoId);
             
         } else if (analise.intencao() == IntencaoDTO.GRAFICO) {
 
-            // O painel não pode depender só do contexto de busca semântica em documentos (contextoRAG)
-            // pra números de execução do PAT — isso quase nunca está indexado lá. Busca os dados reais
-            // com as MESMAS ferramentas que a resposta textual usa (ranking, execução por departamento,
-            // tarefas etc.), com memória descartável pra não misturar essa busca interna com a conversa
-            // real do usuário no AgenteConsultaSql.
             Result<String> dadosResultado = agenteConsultaSql.responderComFerramentas(
                     "grafico-" + UUID.randomUUID(), perguntaUsuario, contextoRAG.textoContexto());
+            Long interacaoId = usoIaService.registrarUso(usuarioId, perguntaUsuario, dadosResultado.content(), dadosResultado.tokenUsage());
 
             PainelSpecDTO spec = agenteProiap.gerarPainel(
                     perguntaUsuario,
@@ -200,12 +194,13 @@ public class ProiapService {
 
             estadoSessao.setPainelPendente(spec);
             estadoSessao.setAguardandoConfirmacaoGrafico(true);
+            estadoSessao.setInteracaoIdPendente(interacaoId);
 
             List<String> sugestoes = montarSugestoes(dadosResultado.toolExecutions());
-            return new RespostaTextualDTO(spec.mensagemContexto(), contextoRAG.fontes(), false, sugestoes);
+            return new RespostaTextualDTO(spec.mensagemContexto(), contextoRAG.fontes(), false, sugestoes, interacaoId);
         }
 
-        return new RespostaTextualDTO("Desculpe, não consegui entender a intenção do seu comando.", null, false, List.of());
+        return new RespostaTextualDTO("Desculpe, não consegui entender a intenção do seu comando.", null, false, List.of(), null);
     }
 
     private List<String> montarSugestoes(List<ToolExecution> execucoes) {

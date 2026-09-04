@@ -1,3 +1,92 @@
+.managers-head,
+.managers-row {
+  grid-template-columns: minmax(210px, 1fr) minmax(280px, 2.2fr);
+}
+
+.dept-chips-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.dept-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.dept-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.22rem 0.4rem 0.22rem 0.6rem;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dept-chip-remove {
+  border: none;
+  background: transparent;
+  color: #6366f1;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0 0.15rem;
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+.dept-chip-remove:hover {
+  background: #c7d2fe;
+}
+
+.dept-chip-remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.dept-pager {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.dept-pager-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.dept-pager-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+@media (max-width: 980px) {
+  .dept-chips-cell {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
 .classificar-form {
   margin-top: 0.75rem;
   padding-top: 0.75rem;

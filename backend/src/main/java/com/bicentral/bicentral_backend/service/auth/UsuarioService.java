@@ -36,7 +36,7 @@ public class UsuarioService {
         this.transactionTemplate = transactionTemplate;
     }
 
-    public Usuario cadastrar(Usuario usuarioParaCadastrar, String siteURL) {
+    public Usuario cadastrar(Usuario usuarioParaCadastrar, String siteURL, boolean pularVerificacao) {
         Objects.requireNonNull(siteURL, "siteURL");
 
         String nomeNormalizado = usuarioParaCadastrar.getNome().trim();
@@ -56,8 +56,14 @@ public class UsuarioService {
             usuarioParaCadastrar.setNome(nomeNormalizado);
             usuarioParaCadastrar.setEmail(emailNormalizado);
             usuarioParaCadastrar.setPassword(passwordEncoder.encode(usuarioParaCadastrar.getPassword()));
-            usuarioParaCadastrar.setVerificationToken(UUID.randomUUID().toString());
-            usuarioParaCadastrar.setEnabled(false);
+            if (pularVerificacao) {
+                // Tester convidado por e-mail (ver UsoIaService.emailTesterPendente): já entra
+                // habilitado, sem precisar clicar em link de verificação.
+                usuarioParaCadastrar.setEnabled(true);
+            } else {
+                usuarioParaCadastrar.setVerificationToken(UUID.randomUUID().toString());
+                usuarioParaCadastrar.setEnabled(false);
+            }
 
             try {
                 return usuarioRepository.save(usuarioParaCadastrar);
@@ -81,11 +87,13 @@ public class UsuarioService {
             throw new RuntimeException("Erro ao processar cadastro.");
         }
 
-        try {
-            emailService.sendVerificationEmail(savedUser, siteURL);
-        } catch (Exception e) {
-            logger.error("Falha ao enviar e-mail de verificação", e);
-            throw new RuntimeException("Erro ao enviar e-mail de verificação.");
+        if (!pularVerificacao) {
+            try {
+                emailService.sendVerificationEmail(savedUser, siteURL);
+            } catch (Exception e) {
+                logger.error("Falha ao enviar e-mail de verificação", e);
+                throw new RuntimeException("Erro ao enviar e-mail de verificação.");
+            }
         }
 
         return savedUser;

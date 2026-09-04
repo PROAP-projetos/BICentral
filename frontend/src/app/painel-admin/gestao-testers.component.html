@@ -1,0 +1,93 @@
+<header class="page-header">
+  <a class="logo" routerLink="/">BICentral</a>
+  <nav class="nav-links">
+    <a class="nav-link" routerLink="/">Home</a>
+    <a class="nav-link" routerLink="/admin">Painel Admin</a>
+    <a class="nav-link active" routerLink="/admin/testers">Testers proIAp</a>
+  </nav>
+</header>
+
+<main class="page">
+  <div *ngIf="mensagem" class="feedback-banner" [ngClass]="tipoMensagem">
+    {{ mensagem }}
+    <button class="btn-close" type="button" (click)="mensagem = ''">x</button>
+  </div>
+
+  <section class="hero">
+    <div class="hero-text">
+      <h1>Testers do proIAp</h1>
+      <p class="subtitle">
+        Quem entra aqui passa a ver o agente em modo teste: barra de orçamento no chat e botão de feedback
+        em cada resposta. Cada tester tem US$ 1,00 de uso; ao esgotar, o chat para de responder pra essa pessoa.
+      </p>
+    </div>
+  </section>
+
+  <div *ngIf="carregando" class="loading-panel">
+    Carregando testers...
+  </div>
+
+  <section class="card" *ngIf="!carregando">
+    <div class="card-header">
+      <h2>Testers ativos</h2>
+      <span class="count">{{ testers.length }} total</span>
+    </div>
+
+    <form class="form-compact" (ngSubmit)="adicionar()">
+      <input
+        type="email"
+        name="emailTester"
+        [(ngModel)]="email"
+        placeholder="e-mail da pessoa (não precisa ter conta ainda)"
+        required />
+      <button class="btn btn-primary btn-sm" type="submit" [disabled]="!email.trim() || salvando">
+        Adicionar
+      </button>
+    </form>
+
+    <div class="table">
+      <div class="table-row tester-row table-head">
+        <div>Pessoa</div>
+        <div>Orçamento</div>
+        <div style="text-align: right;">Acoes</div>
+      </div>
+
+      <div class="table-row tester-row" *ngFor="let t of testers">
+        <div class="person-cell">
+          <span class="avatar">{{ (t.nome || t.email || '?').toString().slice(0, 1) | uppercase }}</span>
+          <div>
+            <strong>
+              {{ t.nome || (t.pendente ? 'Convite pendente' : ('Usuario ' + t.usuarioId)) }}
+              <span class="role-chip-small pendente" *ngIf="t.pendente">Aguardando cadastro</span>
+            </strong>
+            <span>{{ t.email || 'Sem e-mail encontrado' }}</span>
+          </div>
+        </div>
+
+        <div class="budget-cell" *ngIf="!t.pendente; else pendenteInfo">
+          <div class="budget-trilho">
+            <div class="budget-preenchido" [class.esgotado]="percentual(t) >= 100"
+              [style.width.%]="percentual(t)"></div>
+          </div>
+          <span class="budget-texto">
+            ${{ t.gastoIndividual.toFixed(2) }} de ${{ t.limite.toFixed(2) }}
+          </span>
+        </div>
+        <ng-template #pendenteInfo>
+          <span class="pendente-texto">Vira tester assim que se cadastrar no BICentral</span>
+        </ng-template>
+
+        <div class="actions-col">
+          <button class="btn-icon btn-danger-icon" type="button" title="Remover"
+            (click)="remover(t)" [disabled]="salvando">
+            Remover
+          </button>
+        </div>
+      </div>
+
+      <div class="table-row tester-row" *ngIf="testers.length === 0">
+        <div class="person-cell"><span>Nenhum tester cadastrado ainda.</span></div>
+      </div>
+    </div>
+  </section>
+</main>
