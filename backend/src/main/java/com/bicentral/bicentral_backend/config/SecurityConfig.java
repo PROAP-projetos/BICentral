@@ -68,6 +68,11 @@ public class SecurityConfig {
                     response.getWriter().write("{\"error\":\"UNAUTHORIZED\"}");
                 }))
                 .authorizeHttpRequests(authorize -> authorize
+                        // Preflight de CORS (OPTIONS) nunca carrega o header Authorization — sem
+                        // isso, toda chamada cross-origin com token (agora que o frontend e o
+                        // backend estão em domínios diferentes no Render) falha no preflight
+                        // antes mesmo de chegar nos headers de CORS.
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

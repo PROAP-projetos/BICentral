@@ -367,9 +367,27 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     } catch { }
   }
 
+  // Mesma chave escopada por usuário que HomeComponent/EquipeComponent usam pra salvar
+  // (ver bug corrigido em Neci/feature/auditoria-convites-membros: chave sem escopo
+  // fazia um usuário herdar a equipe selecionada de outro). Sem isso aqui, essa tela
+  // nunca acha a equipe salva e sempre pede "selecione uma equipe".
+  private getEquipeStorageKey(): string | null {
+    try {
+      const userRaw = localStorage.getItem('user');
+      if (!userRaw) return null;
+      const user = JSON.parse(userRaw) as { id?: string | number };
+      if (!user?.id) return null;
+      return `${AgentComponent.SELECTED_EQUIPE_KEY}:${user.id}`;
+    } catch {
+      return null;
+    }
+  }
+
   private carregarEquipeSelecionada(): void {
     try {
-      const raw = localStorage.getItem(AgentComponent.SELECTED_EQUIPE_KEY);
+      const key = this.getEquipeStorageKey();
+      if (!key) return;
+      const raw = localStorage.getItem(key);
       if (raw) {
         const equipe = JSON.parse(raw);
         this.equipeId = equipe.id;
