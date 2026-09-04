@@ -46,17 +46,25 @@ Se quiser, a gente prioriza esses junto na próxima sessão.
 
 O item 6 (chave de `localStorage` sem escopo) está marcado como **"Status: não corrigido"** no doc, mas pelos commits depois (`533eb80`, `6d8a424`) você corrigiu sim — é a mesma correção do item 1/3 dessa devolutiva. Só falta atualizar o texto do doc pra não ficar parecendo pendência em aberto.
 
-## 6. A troca de modelo de IA — revertida (e por quê)
+## 6. A troca de modelo de IA — revertida, e o código mudou de novo desde então (leia isso antes de mexer)
 
 `AiConfig`/`LangchainConfig` trocaram `agenteProiap`, `agenteConsultaSql` e `agenteRelatorio` de `openaiLunaModel`/`openaiTerraModel` pra `geminiModel`, com os beans OpenAI comentados. Pelo que entendi, foi porque você não tinha a chave da OpenAI configurada localmente pra rodar/testar.
 
 Já reverti isso de volta pro OpenAI Luna/Terra em `develop`, porque o cálculo de orçamento dos testers do proIAp depende do preço desse modelo específico. **Ainda não consigo te passar a chave da OpenAI agora** — então, até isso resolver, roda com Gemini de novo, mas só **na sua máquina**, sem commitar essa parte.
 
-### Passo a passo pra voltar ao Gemini localmente
+### Descoberta nova, do deploy real no Render: `@Bean` roda mesmo sem ninguém usar
+
+Isso aconteceu de verdade e quase travou o deploy: `groqModel`, `cerebrasModel`, `sambanovaModel` e o próprio `geminiModel` não são usados por nenhum `@Qualifier` hoje (só `openaiLunaModel`/`openaiTerraModel` são) — mas o Spring **instancia todo `@Bean` singleton no boot, usado ou não**. Cada um desses builders valida a própria chave e lança exceção se estiver em branco, então o app não subia por causa da chave de um provedor que **ninguém estava usando**.
+
+Corrigi marcando esses quatro como `@Lazy` (`groqModel`, `cerebrasModel`, `sambanovaModel`, `geminiModel`, e também `ollamaModel` por consistência) — com isso, o Spring só cria o bean (e só exige a chave) se algum `@Qualifier` pedir ele de verdade. `openaiLunaModel`/`openaiTerraModel` **continuam sem `@Lazy` de propósito** — são os que rodam em produção, então é melhor falhar rápido no boot se a chave deles estiver errada, em vez de descobrir só na primeira pergunta de um usuário.
+
+**O que isso muda pro seu passo a passo:** menos um passo. Como o `geminiModel` já é `@Lazy`, não precisa mais adicionar `@Primary` nele — isso só importava quando havia dependência implícita de qual bean era "o padrão"; hoje todo mundo usa `@Qualifier` explícito, então `@Primary` não faz diferença nenhuma. Ignora qualquer instrução antiga (inclusive uma versão anterior desse mesmo documento) que mandava mexer nisso.
+
+### Passo a passo atualizado pra rodar com Gemini localmente
 
 **Arquivo 1:** `backend/src/main/java/com/bicentral/bicentral_backend/config/AiConfig.java`
 
-Comenta de novo os dois métodos abaixo (igual você já tinha feito antes) — procura por `openaiLunaModel` e `openaiTerraModel` no arquivo, e transforma isso:
+Comenta os dois métodos abaixo (eles **não são** `@Lazy` de propósito — se ficarem ativos sem a chave da OpenAI, o boot quebra igual quebrou no Render):
 
 ```java
 @Bean("openaiLunaModel")
@@ -83,39 +91,17 @@ public ChatLanguageModel openaiTerraModel() {
 }
 ```
 
-nisso (repara que o `@Primary` também sai daqui, já que sem chave da OpenAI esse bean não pode ser o "padrão"):
-
-```java
-/*@Bean("openaiLunaModel")
-
-public ChatLanguageModel openaiLunaModel() {
-    return OpenAiChatModel.builder()
-            .apiKey(openaiApiKey)
-            .modelName("gpt-5.6-luna")
-            .defaultRequestParameters(OpenAiChatRequestParameters.builder()
-                    .reasoningEffort("none")
-                    .build())
-            .build();
-}*/
-
-/*@Bean("openaiTerraModel")
-public ChatLanguageModel openaiTerraModel() {
-    return OpenAiChatModel.builder()
-            .apiKey(openaiApiKey)
-            .modelName("gpt-5.6-terra")
-            .defaultRequestParameters(OpenAiChatRequestParameters.builder()
-                    .reasoningEffort("none")
-                    .build())
-            .build();
-}*/
-```
-
-Logo abaixo tem o `geminiModel`. Adiciona `@Primary` nele de volta:
+**Não precisa mexer no `geminiModel`** — ele já está pronto do jeito certo (`@Lazy`, sem `@Primary`, sem precisar de nenhum ajuste):
 
 ```java
 @Bean("geminiModel")
-@Primary
+@Lazy
 public ChatLanguageModel geminiModel() {
+    return GoogleAiGeminiChatModel.builder()
+            .apiKey(geminiApiKey)
+            .modelName("gemini-3.7-flash")
+            .build();
+}
 ```
 
 **Arquivo 2:** `backend/src/main/java/com/bicentral/bicentral_backend/config/LangchainConfig.java`
