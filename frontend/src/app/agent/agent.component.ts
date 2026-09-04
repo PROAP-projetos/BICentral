@@ -220,12 +220,23 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     'kpi', 'velocímetro', 'velocimetro', 'combo', 'gauge'
   ];
 
+  private acordandoServidor = false;
+
   get textoPensando(): string {
+    if (this.acordandoServidor) {
+      return 'Servidor estava inativo, reconectando (pode levar até 1 minuto)';
+    }
     const ultimaDoUsuario = [...(this.sessaoAtual?.messages || [])].reverse().find(m => m.from === 'user');
     const texto = (ultimaDoUsuario?.text || '').toLowerCase();
     const pareceGrafico = AgentComponent.PALAVRAS_GRAFICO.some(p => texto.includes(p));
     return pareceGrafico ? 'Montando o painel' : 'Pensando';
   }
+
+  // Render (free tier) derruba o backend depois de um tempo sem uso — a primeira
+  // mensagem depois disso costuma falhar (500/502/503/timeout) e só funciona ao
+  // reenviar, porque aí o servidor já acordou. Em vez de mostrar erro assustador pro
+  // tester de cara, tenta de novo uma vez, silenciosamente, antes de desistir.
+  private static readonly STATUS_PROVAVEL_SERVIDOR_DORMINDO = [0, 500, 502, 503, 504];
 
   send() {
     const text = (this.input || '').trim();
@@ -248,14 +259,20 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.agendarScrollParaFim();
 
     const idDaSessao = String(this.sessaoAtual.id);
+    this.enviarConsulta(text, idDaSessao, false);
+  }
 
-    this.agentService.consultar(text, this.equipeId, this.modeloAtivo, idDaSessao)
+  private enviarConsulta(text: string, idDaSessao: string, isRetry: boolean) {
+    this.agentService.consultar(text, this.equipeId!, this.modeloAtivo, idDaSessao)
       .pipe(finalize(() => {
-        this.carregando = false;
-        this.carregarUsoIa();
+        if (!this.acordandoServidor) {
+          this.carregando = false;
+          this.carregarUsoIa();
+        }
       }))
       .subscribe({
         next: (resposta: any) => {
+          this.acordandoServidor = false;
 
           if (resposta.skill === 'painel') {
             this.sessaoAtual.messages.push({
@@ -284,6 +301,16 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
           this.agendarScrollParaFim();
         },
         error: (err) => {
+          const provavelServidorDormindo = AgentComponent.STATUS_PROVAVEL_SERVIDOR_DORMINDO.includes(err?.status);
+
+          if (!isRetry && provavelServidorDormindo) {
+            this.acordandoServidor = true;
+            setTimeout(() => this.enviarConsulta(text, idDaSessao, true), 3000);
+            return;
+          }
+
+          this.acordandoServidor = false;
+          this.carregando = false;
           const mensagem = err?.error?.mensagem || 'Não foi possível consultar o agente agora.';
           this.erro = mensagem;
           this.sessaoAtual.messages.push({ from: 'bot', text: mensagem });

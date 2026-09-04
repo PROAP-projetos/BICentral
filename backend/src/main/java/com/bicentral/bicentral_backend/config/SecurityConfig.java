@@ -35,7 +35,8 @@ public class SecurityConfig {
             "/api/usuarios/verify",
             "/auth/**", //removi api/convites/aceitar
             "/error",
-            "/favicon.ico"
+            "/favicon.ico",
+            "/api/health"
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;

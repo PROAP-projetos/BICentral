@@ -1,3 +1,11 @@
+# AVISO (confirmado em 04/09): esse arquivo NÃO FAZ NADA no Render. Static Site do
+# Render não suporta o formato _redirects (é coisa do Netlify) — ele só serve esse
+# arquivo como um estático qualquer (content-type binary/octet-stream), sem aplicar
+# nenhuma regra. O fallback de rota do Angular (SPA) e qualquer redirect/rewrite têm
+# que ser configurados direto no dashboard: Settings > Redirects/Rewrites, regra
+# Source "/*" > Destination "/index.html" > Action "Rewrite". Mantido aqui só de
+# referência/histórico (e caso um dia troquem de host pra um que suporte o formato).
+
 # O proxy de /api/* pra URL externa foi removido daqui: o Render (Static Site)
 # não repassa corretamente corpo/resposta de requisições POST nesse tipo de regra
 # (confirmado: POST via essa regra voltava 200 com corpo vazio). As chamadas à
