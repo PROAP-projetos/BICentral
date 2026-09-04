@@ -1,7 +1,8 @@
-# Proxy transparente: o navegador continua vendo tudo como o mesmo domínio do
-# frontend, sem precisar de CORS. TROQUE a URL abaixo pela URL real do serviço
-# de backend no Render assim que ele existir (ver passo a passo do deploy).
-/api/*  https://bicentral-backend.onrender.com/api/:splat  200
+# O proxy de /api/* pra URL externa foi removido daqui: o Render (Static Site)
+# não repassa corretamente corpo/resposta de requisições POST nesse tipo de regra
+# (confirmado: POST via essa regra voltava 200 com corpo vazio). As chamadas à
+# API agora vão direto pro backend (URL absoluta) via auth.interceptor.ts,
+# usando CORS em vez de proxy — ver SecurityConfig.corsConfigurationSource.
 
 # Fallback de rota do Angular (SPA): qualquer caminho que não seja arquivo
 # estático cai no index.html, senão /cadastro, /aceitar-convite etc. dão 404
