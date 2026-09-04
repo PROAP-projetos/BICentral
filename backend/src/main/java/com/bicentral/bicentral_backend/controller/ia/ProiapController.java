@@ -70,8 +70,12 @@ public class ProiapController {
         return proiapService.processarPergunta(requisicao.texto(), requisicao.sessaoId(), usuarioEhAdmin, usuario.getId());
     }
 
+    // Endpoint de debug (deixa ver a notificação de qualquer usuário, não só a sua) —
+    // por isso exige admin, mesmo já exigindo login por padrão em todo /api/proiap/**.
     @GetMapping("/testar-notificacoes/{usuarioId}")
-    public List<NotificacaoDTO> testarNotificacoes(@PathVariable Long usuarioId) {
+    public List<NotificacaoDTO> testarNotificacoes(@PathVariable Long usuarioId, @AuthenticationPrincipal UserDetails userDetails) {
+        Usuario usuarioLogado = usuarioService.buscarPorEmail(userDetails.getUsername());
+        adminService.exigirAdmin(usuarioLogado.getId());
         return notificacaoService.gerarNotificacoes(usuarioId);
     }
 

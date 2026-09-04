@@ -9,6 +9,7 @@ import com.bicentral.bicentral_backend.service.ia.UsoIaService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,6 +25,13 @@ public class UsuarioController {
     private final UsuarioRepository usuarioRepository;
     private final UsoIaService usoIaService;
 
+    // Enquanto o deploy for só pro período de teste, só quem já foi convidado como
+    // tester (ver UsoIaService.emailTesterPendente) consegue completar o cadastro —
+    // ninguém de fora descobre o link e cria conta sozinho. Desliga isso (via env var
+    // no Render, sem precisar mexer em código) quando abrir cadastro pra todo mundo.
+    @Value("${app.cadastro-restrito-a-testers:true}")
+    private boolean cadastroRestritoATesters;
+
     public UsuarioController(UsuarioService usuarioService, UsuarioRepository usuarioRepository, UsoIaService usoIaService) {
         this.usuarioService = usuarioService;
         this.usuarioRepository = usuarioRepository;
@@ -36,6 +44,13 @@ public class UsuarioController {
             // Quem já foi convidado como tester do proIAp por e-mail pula a verificação de
             // e-mail no cadastro (ver UsoIaService.emailTesterPendente).
             boolean pularVerificacao = usoIaService.emailTesterPendente(usuario.getEmail());
+
+            if (cadastroRestritoATesters && !pularVerificacao) {
+                Map<String, String> bloqueado = new HashMap<>();
+                bloqueado.put("mensagem", "Cadastro disponível só por convite durante o período de teste do proIAp. Peça pra um admin te adicionar como tester.");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(bloqueado);
+            }
+
             Usuario cadastrado = usuarioService.cadastrar(usuario, getSiteURL(request), pularVerificacao);
             // Se esse e-mail já tinha sido adicionado como tester do proIAp antes de existir
             // conta, vira tester de verdade agora (ver UsoIaService.promoverPendentesParaTester).

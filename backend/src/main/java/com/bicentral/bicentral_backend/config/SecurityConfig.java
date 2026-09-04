@@ -35,7 +35,6 @@ public class SecurityConfig {
             "/api/usuarios/verify",
             "/auth/**", //removi api/convites/aceitar
             "/error",
-            "/api/proiap/**",
             "/favicon.ico"
     };
 
