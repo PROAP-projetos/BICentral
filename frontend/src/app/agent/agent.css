@@ -1544,7 +1544,7 @@
     top: 0;
     left: 0;
     z-index: 300;
-    width: min(82vw, 300px);
+    width: min(70vw, 250px);
     height: 100vh;
     box-shadow: 8px 0 24px rgba(0, 0, 0, 0.22);
     transition: transform 0.22s ease;
@@ -1593,6 +1593,9 @@
   .settings-panel-floating {
     left: 10px;
     bottom: 64px;
+    /* Tem que ficar por CIMA da sidebar (z-index:300) e do backdrop (290) — sem isso o painel
+       de configurações renderiza atrás da sidebar em vez de sobrepor ela. */
+    z-index: 310;
   }
 
   .painel-atrasos-content {
