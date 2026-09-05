@@ -769,11 +769,18 @@ footer {
 
 @media (max-width: 640px) {
   .home-footer {
-    padding: 20px 16px 40px;
+    padding: 14px 16px 20px;
+    font-size: 0.8rem;
+    font-weight: 400;
+    border-top-width: 2px;
   }
 
   .home-footer-content {
     gap: 8px;
+  }
+
+  .home-footer-brand {
+    font-weight: 700;
   }
 
   .home-footer-divider {

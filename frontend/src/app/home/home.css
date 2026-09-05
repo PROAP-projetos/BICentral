@@ -966,7 +966,11 @@ label {
     display: inline-flex;
   }
 
-  nav {
+  /* "header nav" (não só "nav") de propósito — a página também tem um <nav
+     class="sub-nav-button-container"> FORA do header (Ingestão IA / Adicionar Painel), e um
+     seletor "nav" genérico pegava ele também, jogando esse segundo nav pra position:absolute
+     em cima do conteúdo (era o "texto em conflito com a navbar"). */
+  header nav {
     display: none;
     position: absolute;
     top: 60px;
@@ -983,23 +987,23 @@ label {
     z-index: 200;
   }
 
-  nav.mobile-nav-open {
+  header nav.mobile-nav-open {
     display: flex;
   }
 
-  nav ul {
+  header nav ul {
     flex-direction: column;
     height: auto;
     width: 100%;
     align-items: stretch;
   }
 
-  nav ul li {
+  header nav ul li {
     height: auto;
     width: 100%;
   }
 
-  nav ul li a {
+  header nav ul li a {
     height: auto;
     width: 100%;
     padding: 0.85rem 1.25rem;
@@ -1038,10 +1042,30 @@ label {
     padding: 16px 14px;
   }
 
+  /* Em vez de empilhar (1 coluna cabendo na tela), os painéis viram um carrossel horizontal
+     que se arrasta — mais rápido de escanear no dedo do que rolar a página inteira pra baixo. */
   .dashboard-grid,
   .paineis-ia-grid {
-    padding: 0 14px;
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    padding: 4px 14px 10px;
     gap: 12px;
+  }
+
+  .dashboard-card-link {
+    flex: 0 0 auto;
+    width: 78vw;
+    max-width: 260px;
+    scroll-snap-align: start;
+  }
+
+  .painel-ia-card {
+    flex: 0 0 auto;
+    width: 78vw;
+    max-width: 260px;
+    scroll-snap-align: start;
   }
 
   h2,
