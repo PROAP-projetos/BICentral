@@ -36,7 +36,8 @@ public class SecurityConfig {
             "/auth/**", //removi api/convites/aceitar
             "/error",
             "/favicon.ico",
-            "/api/health"
+            "/api/health",
+            "/email/**" // imagens usadas dentro de e-mails (Brevo) — clientes de e-mail não mandam JWT
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;

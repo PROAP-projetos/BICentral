@@ -41,6 +41,9 @@ public class EmailService {
     @Value("${brevo.api.key:}")
     private String brevoApiKey;
 
+    @Value("${app.backend-base-url:http://localhost:8080}")
+    private String backendBaseUrl;
+
     public EmailService(RestClient.Builder restClientBuilder) {
         this.restClient = restClientBuilder
                 .baseUrl("https://api.brevo.com/v3/smtp/email")
@@ -87,19 +90,11 @@ public class EmailService {
         }
     }
 
-    // Embutido como data URI direto no HTML — a API do Brevo não tem um equivalente ao
-    // cid: do MIME multipart/related, então em vez de anexo+referência a imagem vai inline.
-    private String roboProiapDataUri() {
-        try (InputStream is = getClass().getResourceAsStream(ROBO_PROIAP_RESOURCE)) {
-            if (is == null) {
-                logger.warn("Robô do proIAp não encontrado em {}", ROBO_PROIAP_RESOURCE);
-                return "";
-            }
-            return "data:image/gif;base64," + Base64.getEncoder().encodeToString(is.readAllBytes());
-        } catch (IOException e) {
-            logger.error("Falha ao ler o robô do proIAp", e);
-            return "";
-        }
+    // URL pública de verdade (ver EmailAssetController) — data URI embutido no HTML foi
+    // tentado antes e é bloqueado silenciosamente pela maioria dos clientes de e-mail (Gmail
+    // incluso), aparecendo como imagem quebrada.
+    private String roboProiapUrl() {
+        return backendBaseUrl + ROBO_PROIAP_RESOURCE;
     }
 
     public void sendVerificationEmail(Usuario user, String siteURL) {
@@ -357,7 +352,7 @@ public class EmailService {
                     </table>
                 </body>
                 </html>
-                """.formatted(roboProiapDataUri(), nome);
+                """.formatted(roboProiapUrl(), nome);
 
         enviarEmail(toAddress, null, assunto, content, null, null, guiaProiapAnexo());
     }
@@ -443,7 +438,7 @@ public class EmailService {
                     </table>
                 </body>
                 </html>
-                """.formatted(roboProiapDataUri(), cadastroUrl);
+                """.formatted(roboProiapUrl(), cadastroUrl);
 
         enviarEmail(toAddress, null, assunto, content, null, null, guiaProiapAnexo());
     }
