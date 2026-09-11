@@ -23,6 +23,7 @@ export class CadastroComponent implements OnInit {
     email: '',
     password: ''
   };
+  confirmarSenha = '';
   message: string | null = null;
   messageType: 'error' | 'success' | 'info' = 'info';
   alertTitle = 'Atenção';
@@ -49,6 +50,15 @@ export class CadastroComponent implements OnInit {
     this.messageType = 'info';
     this.alertTitle = 'Atenção';
     this.showLoginShortcut = false;
+
+    // Confere aqui pra evitar que um typo na senha (digitada só uma vez) crie uma conta
+    // com senha diferente da que a pessoa acha que colocou, e ela não conseguir mais entrar.
+    if (this.usuario.password !== this.confirmarSenha) {
+      this.messageType = 'error';
+      this.alertTitle = 'Atenção';
+      this.message = 'As senhas digitadas não são iguais.';
+      return;
+    }
 
     this.http.post<{ mensagem?: string }>('/api/usuarios/cadastro', this.usuario)
       .subscribe({

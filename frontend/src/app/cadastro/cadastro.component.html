@@ -31,6 +31,10 @@
         <label for="password">Senha</label>
         <input type="password" id="password" [(ngModel)]="usuario.password" name="password" required>
       </div>
+      <div class="form-group">
+        <label for="confirmarSenha">Confirmar senha</label>
+        <input type="password" id="confirmarSenha" [(ngModel)]="confirmarSenha" name="confirmarSenha" required>
+      </div>
       <button type="submit" class="btn btn-primary">Cadastrar</button>
       <div class="footer-link">
         <a routerLink="/">Voltar para a Home</a>
