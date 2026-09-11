@@ -22,7 +22,10 @@
       </div>
       <div class ="form-group">
         <label for="email">Email</label>
-        <input type="email" id="email" [(ngModel)]="usuario.email" name ="email" required>
+        <input type="email" id="email" [(ngModel)]="usuario.email" name="email" required [readonly]="emailTravado">
+        <p class="email-travado-aviso" *ngIf="emailTravado">
+          Esse cadastro é só pro e-mail convidado — não é possível trocar. Se esse não for o seu e-mail, peça pra um admin te convidar com o e-mail certo.
+        </p>
       </div>
       <div class="form-group">
         <label for="password">Senha</label>

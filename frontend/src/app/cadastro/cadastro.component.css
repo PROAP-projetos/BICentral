@@ -65,6 +65,19 @@ input[type="password"]:focus {
   box-shadow: 0 0 0 2px rgba(0, 74, 128, 0.25); /* Sombra de foco */
 }
 
+input[type="email"][readonly] {
+  background: #f3f5f7;
+  color: #555;
+  cursor: not-allowed;
+}
+
+.email-travado-aviso {
+  margin: 6px 0 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: #8a6d00;
+}
+
 /* --- 5. Botão de Ação --- */
 
 .btn {

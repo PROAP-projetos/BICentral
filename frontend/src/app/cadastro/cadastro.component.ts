@@ -28,15 +28,19 @@ export class CadastroComponent implements OnInit {
   alertTitle = 'Atenção';
   showLoginShortcut = false;
   registrationSuccess = false;
+  emailTravado = false;
 
   constructor(private http: HttpClient, private route: ActivatedRoute) { }
 
   ngOnInit(): void {
-    // Vem de um link tipo /cadastro?email=fulano@uft.edu.br (ex: admin adicionando
-    // um tester cujo e-mail ainda não tem conta) — só pré-preenche, não trava o campo.
+    // Vem de um link tipo /cadastro?email=fulano@uft.edu.br (convite de tester mandado pelo
+    // admin) — trava o campo pra pessoa não trocar sem querer (ou de propósito) pra outro
+    // e-mail que não foi convidado. O backend também recusa no fim, mas travar aqui evita
+    // a pessoa preencher tudo e só descobrir o bloqueio depois de enviar.
     const emailNaUrl = this.route.snapshot.queryParamMap.get('email');
     if (emailNaUrl) {
       this.usuario.email = emailNaUrl;
+      this.emailTravado = true;
     }
   }
 

@@ -15,11 +15,19 @@ export class LoginComponent {
   credentials = { email: '', password: '' };
   message: string | null = null;
   messageType: 'error' | 'success' | 'info' = 'error';
+  mostrarSenha = false;
+  carregando = false;
 
   constructor(private http: HttpClient, private router: Router) { }
 
+  alternarMostrarSenha(): void {
+    this.mostrarSenha = !this.mostrarSenha;
+  }
+
   login() {
+    if (this.carregando) return;
     this.message = null;
+    this.carregando = true;
     console.log('Iniciando tentativa de login...');
     this.http.post('/api/usuarios/login', this.credentials)
       .subscribe({
@@ -54,10 +62,12 @@ export class LoginComponent {
               }
             });
           } else {
+            this.carregando = false;
             console.warn('Backend respondeu, mas sem o campo token esperado.');
           }
         },
         error: (error) => {
+          this.carregando = false;
           this.messageType = 'error';
           this.message = this.extractErrorMessage(error);
           console.error('Erro detalhado no login:', error);
