@@ -44,14 +44,95 @@
     </button>
 
     <div class="chat-history">
-      <p class="section-title">Hoje</p>
+      <ng-container *ngIf="sessoesFixadas.length > 0">
+        <p class="section-title">Fixada</p>
+        <ul>
+          <li *ngFor="let sessao of sessoesFixadas" [class.active]="sessao.id === sessaoAtual.id"
+            (click)="selecionarChat(sessao)">
+            <ng-container *ngTemplateOutlet="itemSessao; context: { $implicit: sessao }"></ng-container>
+          </li>
+        </ul>
+      </ng-container>
+
+      <p class="section-title">Recentes</p>
       <ul>
-        <li *ngFor="let sessao of sessoes" [class.active]="sessao.id === sessaoAtual.id"
+        <li *ngFor="let sessao of sessoesRecentes" [class.active]="sessao.id === sessaoAtual.id"
           (click)="selecionarChat(sessao)">
-          {{ sessao.titulo }}
+          <ng-container *ngTemplateOutlet="itemSessao; context: { $implicit: sessao }"></ng-container>
         </li>
       </ul>
     </div>
+
+    <ng-template #itemSessao let-sessao>
+      <ng-container *ngIf="renomeandoId === sessao.id; else tituloNormal">
+        <input
+          type="text"
+          class="chat-history-rename-input"
+          [(ngModel)]="tituloEditando"
+          (click)="$event.stopPropagation()"
+          (keydown.enter)="confirmarRenomear(sessao)"
+          (keydown.escape)="cancelarRenomear()"
+          (blur)="confirmarRenomear(sessao)" />
+      </ng-container>
+      <ng-template #tituloNormal>
+        <span class="chat-history-titulo">
+          <svg *ngIf="sessao.fixado" class="chat-history-pin-icon" width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 2a1 1 0 0 1 1 1v6.5l3.4 5.6a1 1 0 0 1-.85 1.5H13v4.4a1 1 0 1 1-2 0V16.6H8.45a1 1 0 0 1-.85-1.5L11 9.5V3a1 1 0 0 1 1-1z"></path>
+          </svg>
+          {{ sessao.titulo }}
+        </span>
+      </ng-template>
+
+      <div class="chat-history-menu-wrapper">
+        <button
+          type="button"
+          class="chat-history-menu-btn"
+          [class.forcar-aberto]="menuAbertoId === sessao.id"
+          (click)="toggleMenuSessao(sessao, $event)"
+          aria-label="Mais opções"
+          title="Mais opções">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <circle cx="5" cy="12" r="2"></circle>
+            <circle cx="12" cy="12" r="2"></circle>
+            <circle cx="19" cy="12" r="2"></circle>
+          </svg>
+        </button>
+
+        <div class="chat-history-menu" *ngIf="menuAbertoId === sessao.id" (click)="$event.stopPropagation()">
+          <button type="button" (click)="compartilharChat(sessao, $event)" [disabled]="compartilhandoId === sessao.id">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"></path>
+              <polyline points="16 6 12 2 8 6"></polyline>
+              <line x1="12" y1="2" x2="12" y2="15"></line>
+            </svg>
+            {{ compartilhandoId === sessao.id ? 'Gerando link...' : 'Compartilhar' }}
+          </button>
+          <button type="button" (click)="iniciarRenomear(sessao, $event)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+            </svg>
+            Renomear
+          </button>
+          <button type="button" (click)="toggleFixar(sessao, $event)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 17v5"></path>
+              <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"></path>
+            </svg>
+            {{ sessao.fixado ? 'Desafixar chat' : 'Fixar chat' }}
+          </button>
+          <div class="chat-history-menu-divider"></div>
+          <button type="button" class="chat-history-menu-excluir" (click)="pedirExclusao(sessao, $event)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18"></path>
+              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+            </svg>
+            Excluir
+          </button>
+        </div>
+      </div>
+    </ng-template>
 
     <div class="sidebar-footer">
       <div class="user-config">
@@ -484,5 +565,35 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal customizado de confirmação de exclusão (não usa o confirm() nativo do navegador) -->
+    <div class="confirm-overlay" *ngIf="sessaoParaExcluir" (click)="cancelarExclusao()">
+      <div class="confirm-card" (click)="$event.stopPropagation()">
+        <h3>Excluir conversa?</h3>
+        <p>"{{ sessaoParaExcluir.titulo }}" vai ser apagada pra sempre, junto com todas as mensagens.</p>
+        <div class="confirm-acoes">
+          <button type="button" class="btn-confirm cancelar" (click)="cancelarExclusao()">Cancelar</button>
+          <button type="button" class="btn-confirm excluir" (click)="confirmarExclusao()">Excluir</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal com o link gerado ao compartilhar uma conversa -->
+    <div class="confirm-overlay" *ngIf="linkCompartilhado" (click)="fecharCompartilhar()">
+      <div class="confirm-card" (click)="$event.stopPropagation()">
+        <h3>Link de compartilhamento</h3>
+        <p>Qualquer pessoa com esse link consegue ver essa conversa, mesmo sem conta no BICentral.</p>
+        <div class="compartilhar-link-row">
+          <input type="text" [value]="linkCompartilhado" readonly (click)="selecionarTudo($event)" />
+          <button type="button" class="btn-copiar-link" (click)="copiarLinkCompartilhado()">
+            {{ linkCopiado ? 'Copiado ✓' : 'Copiar' }}
+          </button>
+        </div>
+        <div class="confirm-acoes">
+          <button type="button" class="btn-confirm cancelar" (click)="fecharCompartilhar()">Fechar</button>
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>

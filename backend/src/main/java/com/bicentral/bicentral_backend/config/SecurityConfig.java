@@ -37,7 +37,8 @@ public class SecurityConfig {
             "/error",
             "/favicon.ico",
             "/api/health",
-            "/email/**" // imagens usadas dentro de e-mails (Brevo) — clientes de e-mail não mandam JWT
+            "/email/**", // imagens usadas dentro de e-mails (Brevo) — clientes de e-mail não mandam JWT
+            "/api/proiap/compartilhado/**" // link público de conversa compartilhada — sem login
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;

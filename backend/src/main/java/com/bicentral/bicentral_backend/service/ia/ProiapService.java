@@ -26,6 +26,7 @@ public class ProiapService {
     private final EmbeddingService embeddingService;
     private final AgenteConsultaSql agenteConsultaSql;
     private final UsoIaService usoIaService;
+    private final ChatHistoricoService chatHistoricoService;
 
     private static final int MAX_SUGESTOES = 3;
 
@@ -53,12 +54,13 @@ public class ProiapService {
     );
 
     public ProiapService(AgenteProiap agenteProiap, AgenteConsultaSql agenteConsultaSql, EstadoSessao estadoSessao,
-            EmbeddingService embeddingService, UsoIaService usoIaService) {
+            EmbeddingService embeddingService, UsoIaService usoIaService, ChatHistoricoService chatHistoricoService) {
         this.agenteProiap = agenteProiap;
         this.agenteConsultaSql = agenteConsultaSql;
         this.estadoSessao = estadoSessao;
         this.embeddingService = embeddingService;
         this.usoIaService = usoIaService;
+        this.chatHistoricoService = chatHistoricoService;
     }
 
     public Object processarPergunta(String perguntaUsuario, String sessaoId, boolean usuarioEhAdmin, Long usuarioId) {
@@ -108,6 +110,8 @@ public class ProiapService {
                 estadoSessao.setPainelPendente(null);
                 estadoSessao.setInteracaoIdPendente(null);
 
+                chatHistoricoService.salvarUser(sessaoId, usuarioId, perguntaUsuario);
+                chatHistoricoService.salvarBot(sessaoId, usuarioId, mensagemPronto, painelPronto, null, null, interacaoId);
                 return painelPronto;
             }
 
@@ -117,7 +121,10 @@ public class ProiapService {
                 estadoSessao.setPainelPendente(null);
                 estadoSessao.setInteracaoIdPendente(null);
 
-                return new RespostaTextualDTO("Tudo bem! Me diz o que você quer ver e eu busco novamente.", null, false, List.of(), null);
+                String mensagemNegar = "Tudo bem! Me diz o que você quer ver e eu busco novamente.";
+                chatHistoricoService.salvarUser(sessaoId, usuarioId, perguntaUsuario);
+                chatHistoricoService.salvarBot(sessaoId, usuarioId, mensagemNegar, null, null, null, null);
+                return new RespostaTextualDTO(mensagemNegar, null, false, List.of(), null);
             }
 
             System.out.println(">>> USUÁRIO REFORMULOU A CONSULTA (IA ENTENDEU)");
@@ -147,7 +154,7 @@ public class ProiapService {
         }
 
         Long equipeDaSessao = estadoSessao.getEquipeId() != null ? estadoSessao.getEquipeId() : 1L;
-        String modelo = estadoSessao.getModelo() != null ? estadoSessao.getModelo() : "Llama 3 (Groq)";
+        String modelo = estadoSessao.getModelo() != null ? estadoSessao.getModelo() : "Gemini 2.5 Flash";
         String termoDeBusca = perguntaUsuario;
 
         if (analise.intencao() == IntencaoDTO.GRAFICO) {
@@ -175,6 +182,8 @@ public class ProiapService {
             List<String> sugestoes = montarSugestoes(resultado.toolExecutions());
             Long interacaoId = usoIaService.registrarUso(usuarioId, sessaoId, perguntaUsuario, resultado.content(), resultado.tokenUsage());
 
+            chatHistoricoService.salvarUser(sessaoId, usuarioId, perguntaUsuario);
+            chatHistoricoService.salvarBot(sessaoId, usuarioId, resultado.content(), null, contextoRAG.fontes(), sugestoes, interacaoId);
             return new RespostaTextualDTO(resultado.content(), contextoRAG.fontes(), estadoSessao.isRelatorioGerado(), sugestoes, interacaoId);
             
         } else if (analise.intencao() == IntencaoDTO.GRAFICO) {
@@ -197,6 +206,8 @@ public class ProiapService {
             estadoSessao.setInteracaoIdPendente(interacaoId);
 
             List<String> sugestoes = montarSugestoes(dadosResultado.toolExecutions());
+            chatHistoricoService.salvarUser(sessaoId, usuarioId, perguntaUsuario);
+            chatHistoricoService.salvarBot(sessaoId, usuarioId, spec.mensagemContexto(), null, contextoRAG.fontes(), sugestoes, interacaoId);
             return new RespostaTextualDTO(spec.mensagemContexto(), contextoRAG.fontes(), false, sugestoes, interacaoId);
         }
 

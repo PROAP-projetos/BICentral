@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewChecked, AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { AfterViewChecked, AfterViewInit, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
@@ -11,8 +11,10 @@ import { AdminService } from '../services/admin.service';
 import { SafeUrlPipe } from '../pipes/safe-url.pipe';
 
 interface ChatSession {
-  id: number;
+  id: string;
   titulo: string;
+  carregada?: boolean;
+  fixado?: boolean;
   messages: { from: 'bot' | 'user'; text?: string; spec?: any; fontes?: string[]; sugestoes?: string[]; salvandoPainel?: boolean; painelSalvo?: boolean; interacaoId?: number; feedbackAberto?: boolean; feedbackTexto?: string; feedbackEnviado?: boolean }[];
 }
 
@@ -40,11 +42,11 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   equipeSelecionada = 'Orçamento';
   equipeId?: number;
 
-  modelos = ['Llama 3 (Groq)', 'Gemini 2.5 Flash', 'Ollama Local'];
+  modelos = ['Gemini 2.5 Flash', 'Ollama Local'];
   modeloAtivoIndex = 0;
 
   sessoes: ChatSession[] = [
-    { id: Date.now(), titulo: 'Nova Conversa', messages: [] }
+    { id: String(Date.now()), titulo: 'Nova Conversa', messages: [] }
   ];
   sessaoAtual: ChatSession = this.sessoes[0];
 
@@ -113,6 +115,173 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
 
   ngOnInit() {
     this.gerarMensagemBoasVindas();
+    this.carregarSessoes();
+  }
+
+  private carregarSessoes(): void {
+    this.agentService.listarSessoes().subscribe({
+      next: (lista) => {
+        if (lista.length === 0) return; // sem histórico ainda, mantém a "Nova Conversa" padrão
+        this.sessoes = lista.map((s) => ({ id: s.id, titulo: s.titulo, fixado: s.fixado, messages: [], carregada: false }));
+        this.selecionarChat(this.sessoes[0]);
+      },
+      error: () => { /* silencioso — começa do zero se falhar */ }
+    });
+  }
+
+  // ==========================================
+  // MENU "..." DE CADA CONVERSA (renomear / fixar / compartilhar / excluir)
+  // ==========================================
+  menuAbertoId: string | null = null;
+  renomeandoId: string | null = null;
+  tituloEditando = '';
+  sessaoParaExcluir: ChatSession | null = null;
+  compartilhandoId: string | null = null;
+  linkCompartilhado: string | null = null;
+  linkCopiado = false;
+
+  get sessoesFixadas(): ChatSession[] {
+    return this.sessoes.filter((s) => s.fixado);
+  }
+
+  get sessoesRecentes(): ChatSession[] {
+    return this.sessoes.filter((s) => !s.fixado);
+  }
+
+  // Fecha o menu "..." se o clique foi fora dele — os botões que abrem/agem nesse menu chamam
+  // stopPropagation(), então só chega aqui clique em qualquer outro lugar da tela.
+  @HostListener('document:click')
+  aoClicarFora(): void {
+    this.menuAbertoId = null;
+  }
+
+  toggleMenuSessao(sessao: ChatSession, event: MouseEvent): void {
+    event.stopPropagation();
+    this.menuAbertoId = this.menuAbertoId === sessao.id ? null : sessao.id;
+  }
+
+  iniciarRenomear(sessao: ChatSession, event: MouseEvent): void {
+    event.stopPropagation();
+    this.menuAbertoId = null;
+    this.renomeandoId = sessao.id;
+    this.tituloEditando = sessao.titulo;
+
+    // O input só existe no DOM depois que o Angular processar essa mudança — por isso o foco
+    // é agendado pro próximo frame, em vez de tentar focar antes dele existir. Seleciona tudo
+    // de propósito: digitar já substitui o título inteiro, sem precisar apagar na mão antes.
+    window.requestAnimationFrame(() => {
+      const input = document.querySelector<HTMLInputElement>('.chat-history-rename-input');
+      input?.focus();
+      input?.select();
+    });
+  }
+
+  confirmarRenomear(sessao: ChatSession): void {
+    const novoTitulo = this.tituloEditando.trim();
+    this.renomeandoId = null;
+    if (!novoTitulo || novoTitulo === sessao.titulo) return;
+
+    sessao.titulo = novoTitulo;
+    this.agentService.renomearSessao(sessao.id, novoTitulo).subscribe({
+      error: () => { this.erro = 'Não foi possível renomear a conversa agora.'; }
+    });
+  }
+
+  cancelarRenomear(): void {
+    this.renomeandoId = null;
+  }
+
+  toggleFixar(sessao: ChatSession, event: MouseEvent): void {
+    event.stopPropagation();
+    this.menuAbertoId = null;
+    const novoValor = !sessao.fixado;
+    sessao.fixado = novoValor;
+    this.agentService.fixarSessao(sessao.id, novoValor).subscribe({
+      error: () => {
+        sessao.fixado = !novoValor;
+        this.erro = 'Não foi possível fixar a conversa agora.';
+      }
+    });
+  }
+
+  compartilharChat(sessao: ChatSession, event: MouseEvent): void {
+    event.stopPropagation();
+    this.menuAbertoId = null;
+
+    if (sessao.messages.length === 0 && !sessao.carregada) {
+      this.erro = 'Envie ao menos uma mensagem antes de compartilhar essa conversa.';
+      return;
+    }
+
+    this.compartilhandoId = sessao.id;
+    this.agentService.compartilharSessao(sessao.id).subscribe({
+      next: ({ token }) => {
+        this.compartilhandoId = null;
+        this.linkCopiado = false;
+        this.linkCompartilhado = `${window.location.origin}/chat-compartilhado/${token}`;
+      },
+      error: () => {
+        this.compartilhandoId = null;
+        this.erro = 'Não foi possível gerar o link agora.';
+      }
+    });
+  }
+
+  copiarLinkCompartilhado(): void {
+    if (!this.linkCompartilhado) return;
+    navigator.clipboard?.writeText(this.linkCompartilhado)
+      .then(() => {
+        this.linkCopiado = true;
+        window.setTimeout(() => (this.linkCopiado = false), 1800);
+      })
+      .catch(() => { /* clipboard indisponível — o link já está visível pra copiar manualmente */ });
+  }
+
+  fecharCompartilhar(): void {
+    this.linkCompartilhado = null;
+  }
+
+  selecionarTudo(event: Event): void {
+    (event.target as HTMLInputElement).select();
+  }
+
+  pedirExclusao(sessao: ChatSession, event: MouseEvent): void {
+    event.stopPropagation();
+    this.menuAbertoId = null;
+    this.sessaoParaExcluir = sessao;
+  }
+
+  cancelarExclusao(): void {
+    this.sessaoParaExcluir = null;
+  }
+
+  confirmarExclusao(): void {
+    const sessao = this.sessaoParaExcluir;
+    if (!sessao) return;
+    this.sessaoParaExcluir = null;
+
+    // Uma "Nova Conversa" sem nenhuma mensagem ainda não existe no banco (só é criada lá na
+    // primeira mensagem) — nesse caso só remove localmente, sem chamar o backend à toa.
+    if (sessao.messages.length === 0 && !sessao.carregada) {
+      this.removerSessaoLocal(sessao);
+      return;
+    }
+
+    this.agentService.excluirSessao(sessao.id).subscribe({
+      next: () => this.removerSessaoLocal(sessao),
+      error: () => { this.erro = 'Não foi possível excluir a conversa agora.'; }
+    });
+  }
+
+  private removerSessaoLocal(sessao: ChatSession): void {
+    this.sessoes = this.sessoes.filter((s) => s.id !== sessao.id);
+    if (this.sessaoAtual.id === sessao.id) {
+      if (this.sessoes.length > 0) {
+        this.selecionarChat(this.sessoes[0]);
+      } else {
+        this.iniciarNovoChat();
+      }
+    }
   }
 
   sair(): void {
@@ -198,7 +367,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
 
   iniciarNovoChat() {
     const novaSessao: ChatSession = {
-      id: Date.now(),
+      id: String(Date.now()),
       titulo: 'Nova Conversa',
       messages: []
     };
@@ -216,6 +385,25 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.sessaoAtual = sessao;
     this.erro = '';
     this.agendarScrollParaFim();
+
+    if (sessao.carregada) return;
+
+    this.agentService.listarMensagens(sessao.id).subscribe({
+      next: (mensagens) => {
+        sessao.messages = mensagens.map((m) => ({
+          from: m.remetente,
+          text: m.texto,
+          spec: m.spec,
+          fontes: m.fontes || undefined,
+          sugestoes: m.sugestoes || undefined,
+          interacaoId: m.interacaoId || undefined,
+          feedbackEnviado: m.feedbackEnviado
+        }));
+        sessao.carregada = true;
+        this.agendarScrollParaFim();
+      },
+      error: () => { /* mantém a sessão vazia se falhar */ }
+    });
   }
 
   private static readonly PALAVRAS_GRAFICO = [
@@ -245,11 +433,6 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     const text = (this.input || '').trim();
     if (!text || this.carregando) return;
 
-    if (!this.equipeId) {
-      this.erro = 'Selecione uma equipe antes de consultar o agente.';
-      return;
-    }
-
     if (this.sessaoAtual.titulo === 'Nova Conversa') {
       this.sessaoAtual.titulo = text.substring(0, 25) + (text.length > 25 ? '...' : '');
     }
@@ -266,7 +449,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   }
 
   private enviarConsulta(text: string, idDaSessao: string, isRetry: boolean) {
-    this.agentService.consultar(text, this.equipeId!, this.modeloAtivo, idDaSessao)
+    this.agentService.consultar(text, this.equipeId ?? null, this.modeloAtivo, idDaSessao)
       .pipe(finalize(() => {
         if (!this.acordandoServidor) {
           this.carregando = false;

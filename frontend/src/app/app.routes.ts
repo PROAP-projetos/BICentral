@@ -4,6 +4,7 @@ import { AceitarConviteComponent } from './aceitar-convite/aceitar-convite.compo
 import { AddPainelComponent } from './add-painel/add-painel.component';
 import { AgentComponent } from './agent/agent.component';
 import { CadastroComponent } from './cadastro/cadastro.component';
+import { ChatCompartilhadoComponent } from './chat-compartilhado/chat-compartilhado.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { EquipeComponent } from './equipe/equipe.component';
 import { HomeComponent } from './home/home';
@@ -26,6 +27,7 @@ export const routes: Routes = [
   { path: 'cadastro', component: CadastroComponent },
   { path: 'verificar-email', component: VerificacaoComponent },
   { path: 'aceitar-convite', component: AceitarConviteComponent },
+  { path: 'chat-compartilhado/:token', component: ChatCompartilhadoComponent },
 
   // Equipes
   { path: 'equipe', component: EquipeComponent, canActivate: [authGuard] },

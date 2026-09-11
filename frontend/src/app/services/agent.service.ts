@@ -96,6 +96,28 @@ export interface UsoIa {
   souTester: boolean;
 }
 
+export interface SessaoResumo {
+  id: string;
+  titulo: string;
+  criadoEm: string;
+  fixado: boolean;
+}
+
+export interface MensagemHistorico {
+  remetente: 'user' | 'bot';
+  texto: string;
+  spec: any;
+  fontes: string[] | null;
+  sugestoes: string[] | null;
+  interacaoId: number | null;
+  feedbackEnviado: boolean;
+}
+
+export interface SessaoCompartilhada {
+  titulo: string;
+  mensagens: MensagemHistorico[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -104,7 +126,7 @@ export class AgentService {
 
   constructor(private http: HttpClient) { }
 
-  consultar(texto: string, equipeId: number, modelo: string, sessaoId: string): Observable<any> {
+  consultar(texto: string, equipeId: number | null, modelo: string, sessaoId: string): Observable<any> {
     const urlNova = '/api/proiap/perguntar';
 
     const body = {
@@ -117,6 +139,35 @@ export class AgentService {
     return this.http.post(urlNova, body, {
       withCredentials: true
     });
+  }
+
+  listarSessoes(): Observable<SessaoResumo[]> {
+    return this.http.get<SessaoResumo[]>('/api/proiap/sessoes', { withCredentials: true });
+  }
+
+  listarMensagens(sessaoId: string): Observable<MensagemHistorico[]> {
+    return this.http.get<MensagemHistorico[]>(`/api/proiap/sessoes/${sessaoId}/mensagens`, { withCredentials: true });
+  }
+
+  renomearSessao(sessaoId: string, titulo: string): Observable<void> {
+    return this.http.patch<void>(`/api/proiap/sessoes/${sessaoId}/titulo`, { titulo }, { withCredentials: true });
+  }
+
+  fixarSessao(sessaoId: string, valor: boolean): Observable<void> {
+    return this.http.patch<void>(`/api/proiap/sessoes/${sessaoId}/fixar`, { valor }, { withCredentials: true });
+  }
+
+  compartilharSessao(sessaoId: string): Observable<{ token: string }> {
+    return this.http.post<{ token: string }>(`/api/proiap/sessoes/${sessaoId}/compartilhar`, {}, { withCredentials: true });
+  }
+
+  // Rota pública — quem abre o link não precisa estar logado, por isso sem withCredentials.
+  buscarSessaoCompartilhada(token: string): Observable<SessaoCompartilhada> {
+    return this.http.get<SessaoCompartilhada>(`/api/proiap/compartilhado/${token}`);
+  }
+
+  excluirSessao(sessaoId: string): Observable<void> {
+    return this.http.delete<void>(`/api/proiap/sessoes/${sessaoId}`, { withCredentials: true });
   }
 
   listarFontes(equipeId: number): Observable<FontesAgenteResponse> {

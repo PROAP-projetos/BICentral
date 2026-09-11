@@ -46,11 +46,13 @@ export class CadastroComponent implements OnInit {
     this.alertTitle = 'Atenção';
     this.showLoginShortcut = false;
 
-    this.http.post('/api/usuarios/cadastro', this.usuario)
+    this.http.post<{ mensagem?: string }>('/api/usuarios/cadastro', this.usuario)
       .subscribe({
         next: (response) => {
           this.registrationSuccess = true;
-          this.message = 'Cadastro realizado com sucesso! Por favor, verifique seu e-mail para ativar sua conta.';
+          // O backend já diferencia tester (pula verificação) de cadastro normal — usa a
+          // mensagem dele em vez de um texto fixo que sempre manda "verifique seu e-mail".
+          this.message = response?.mensagem || 'Cadastro realizado com sucesso!';
           this.messageType = 'success';
           this.alertTitle = 'Sucesso';
           this.showLoginShortcut = false;

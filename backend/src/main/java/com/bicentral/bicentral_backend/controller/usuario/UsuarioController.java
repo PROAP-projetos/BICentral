@@ -90,7 +90,7 @@ public class UsuarioController {
         try {
             String token = usuarioService.login(loginRequest.getEmail(), loginRequest.getPassword());
 
-            Usuario usuario = usuarioRepository.findByEmail(loginRequest.getEmail())
+            Usuario usuario = usuarioRepository.findByEmail(loginRequest.getEmail().trim().toLowerCase())
                     .orElseThrow(() -> new RuntimeException("Erro ao recuperar dados do usuário."));
 
             Map<String, Object> response = new HashMap<>();

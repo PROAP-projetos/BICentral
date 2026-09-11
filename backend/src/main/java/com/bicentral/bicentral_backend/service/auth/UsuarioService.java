@@ -113,7 +113,11 @@ public class UsuarioService {
 
     @Transactional
     public String login(String email, String senhaPlana) { // Retorna String (o JWT)
-        Usuario usuario = usuarioRepository.findByEmail(email)
+        // Cadastro sempre salva o e-mail em minúsculo (ver cadastrar()) — sem normalizar aqui
+        // também, um e-mail digitado com maiúscula diferente (ou vindo de autocomplete) não
+        // encontra o usuário e cai no mesmo erro genérico de "senha inválida".
+        String emailNormalizado = email.trim().toLowerCase();
+        Usuario usuario = usuarioRepository.findByEmail(emailNormalizado)
                 .orElseThrow(() -> new AutenticacaoException("Email ou senha inválidos."));
 
         if (passwordEncoder.matches(senhaPlana, usuario.getPassword())) {
