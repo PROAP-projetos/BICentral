@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
@@ -216,7 +218,11 @@ public class UsoIaService {
         String base = (frontendBaseUrl != null && !frontendBaseUrl.isBlank())
                 ? frontendBaseUrl.replaceAll("/$", "")
                 : "http://localhost:4200";
-        emailService.sendTesterInviteEmailAsync(email, base + "/cadastro");
+        // Sem o e-mail na URL, o /cadastro abre destravado e a pessoa pode digitar
+        // qualquer e-mail ali (foi o que causou o cadastro com e-mail errado) — o
+        // front usa esse parâmetro pra travar o campo (ver CadastroComponent.emailTravado).
+        String emailCodificado = URLEncoder.encode(email, StandardCharsets.UTF_8);
+        emailService.sendTesterInviteEmailAsync(email, base + "/cadastro?email=" + emailCodificado);
     }
 
     // Chamado pelo UsuarioController assim que um cadastro é concluído — promove um
