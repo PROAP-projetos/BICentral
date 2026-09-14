@@ -8,6 +8,8 @@ import com.bicentral.bicentral_backend.dto.painel.PainelSpecDTO;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.concurrent.Future;
+
 @Component
 @SessionScope
 @Getter
@@ -27,26 +29,40 @@ public class EstadoSessao {
     private Long interacaoIdPendente = null;
     private boolean relatorioGerado = false;
 
-    public void setAguardandoConfirmacaoGrafico(boolean valor) {
-        System.out.println(
-            "\n[DEBUG ESTADO] setAguardandoConfirmacaoGrafico(" + valor + ")"
-        );
+    // Rastreia a execução de pergunta em andamento nessa sessão, pro botão de "parar"
+    // conseguir cancelar de verdade (ver ProiapController). "transient" porque isso é só
+    // controle de concorrência do processo atual — nunca deve ir pra serialização de sessão.
+    private transient volatile Future<?> execucaoAtual;
 
-        Thread.dumpStack();
-
-        this.aguardandoConfirmacaoGrafico = valor;
+    public void registrarExecucao(Future<?> execucao) {
+        this.execucaoAtual = execucao;
     }
 
-    public void setPainelPendente(PainelSpecDTO painel) {
-        System.out.println(
-            "\n[DEBUG ESTADO] setPainelPendente(" +
-            (painel != null ? "OBJETO" : "NULL") +
-            ")"
-        );
+    // Chamado pelo endpoint /cancelar: pede a interrupção da thread que está processando a
+    // pergunta atual e espera ela realmente terminar de desligar antes de devolver — sem
+    // esse espera, uma pergunta nova poderia começar enquanto a cancelada ainda está mexendo
+    // nesse mesmo EstadoSessao (aguardandoConfirmacaoGrafico, painelPendente etc.), que não
+    // tem nenhuma trava própria.
+    public void cancelarExecucaoAtual() {
+        Future<?> execucao = this.execucaoAtual;
+        if (execucao == null || execucao.isDone()) return;
+        execucao.cancel(true);
+        aguardarTerminoSeAtivo();
+    }
 
-        Thread.dumpStack();
-
-        this.painelPendente = painel;
+    // Chamado no início de toda pergunta nova: se a pergunta anterior dessa sessão ainda não
+    // terminou de desligar (por exemplo, acabou de ser cancelada), espera aqui antes de
+    // começar uma execução nova — garante que nunca haja duas threads mexendo nesse mesmo
+    // EstadoSessao ao mesmo tempo.
+    public void aguardarTerminoSeAtivo() {
+        Future<?> execucao = this.execucaoAtual;
+        if (execucao == null) return;
+        try {
+            execucao.get();
+        } catch (Exception ignorado) {
+            // CancellationException, InterruptedException, ExecutionException — não importa
+            // o motivo aqui, só precisamos garantir que ela realmente terminou.
+        }
     }
 
     @Override

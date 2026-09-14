@@ -71,6 +71,31 @@ public class UsuarioController {
         }
     }
 
+    public record EsqueciSenhaRequest(String email) {}
+
+    @PostMapping("/esqueci-senha")
+    public ResponseEntity<?> esqueciSenha(@RequestBody EsqueciSenhaRequest requisicao, HttpServletRequest request) {
+        Map<String, String> response = new HashMap<>();
+        response.put("mensagem", "Se esse e-mail tiver uma conta no BICentral, você vai receber um link de redefinição em instantes.");
+
+        if (requisicao.email() == null || requisicao.email().isBlank()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+
+        usuarioService.solicitarRedefinicaoSenha(requisicao.email(), getSiteURL(request));
+        return ResponseEntity.ok(response);
+    }
+
+    public record RedefinirSenhaRequest(String token, String novaSenha) {}
+
+    @PostMapping("/redefinir-senha")
+    public ResponseEntity<?> redefinirSenha(@RequestBody RedefinirSenhaRequest requisicao) {
+        usuarioService.redefinirSenha(requisicao.token(), requisicao.novaSenha());
+        Map<String, String> response = new HashMap<>();
+        response.put("mensagem", "Senha redefinida com sucesso! Você já pode entrar com a nova senha.");
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/verify")
     public ResponseEntity<?> verifyUser(@RequestParam("code") String code) {
         if (usuarioService.verify(code)) {

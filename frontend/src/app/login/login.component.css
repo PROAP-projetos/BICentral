@@ -229,6 +229,20 @@ input:-webkit-autofill:focus {
   color: #333;
 }
 
+.esqueci-senha-link {
+  display: block;
+  margin-top: 8px;
+  text-align: right;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.esqueci-senha-link:hover {
+  text-decoration: underline;
+}
+
 /* --- 5. Botão de ação --- */
 
 .btn {

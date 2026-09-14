@@ -7,6 +7,8 @@ import { CadastroComponent } from './cadastro/cadastro.component';
 import { ChatCompartilhadoComponent } from './chat-compartilhado/chat-compartilhado.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { EquipeComponent } from './equipe/equipe.component';
+import { EsqueciSenhaComponent } from './esqueci-senha/esqueci-senha.component';
+import { RedefinirSenhaComponent } from './redefinir-senha/redefinir-senha.component';
 import { HomeComponent } from './home/home';
 import { IngestaoIaComponent } from './ingestao-ia/ingestao-ia';
 import { LoginComponent } from './login/login.component';
@@ -25,6 +27,8 @@ export const routes: Routes = [
   // Auth
   { path: 'login', component: LoginComponent },
   { path: 'cadastro', component: CadastroComponent },
+  { path: 'esqueci-senha', component: EsqueciSenhaComponent },
+  { path: 'redefinir-senha', component: RedefinirSenhaComponent },
   { path: 'verificar-email', component: VerificacaoComponent },
   { path: 'aceitar-convite', component: AceitarConviteComponent },
   { path: 'chat-compartilhado/:token', component: ChatCompartilhadoComponent },

@@ -442,4 +442,69 @@ public class EmailService {
 
         enviarEmail(toAddress, null, assunto, content, null, null, guiaProiapAnexo());
     }
+
+    // Assíncrono: o controller responde a mesma mensagem genérica pra e-mail existente ou
+    // não (evita confirmar por timing se aquele e-mail tem conta) — o envio de verdade não
+    // pode segurar essa resposta.
+    @Async
+    public void sendPasswordResetEmailAsync(Usuario user, String resetUrl) {
+        try {
+            sendPasswordResetEmail(user, resetUrl);
+        } catch (Exception e) {
+            logger.error("Falha ao enviar e-mail de redefinição de senha para {}", user.getEmail(), e);
+        }
+    }
+
+    public void sendPasswordResetEmail(Usuario user, String resetUrl) {
+        String toAddress = Objects.requireNonNull(user.getEmail(), "user email");
+        String assunto = "Redefinição de senha — BICentral";
+        String content = """
+                <!DOCTYPE html>
+                <html lang="pt-BR">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Redefinição de senha</title>
+                </head>
+                <body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#1a1a1a;">
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%%">
+                        <tr>
+                            <td style="padding:24px 12px;">
+                                <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%%" style="max-width:620px;background:#ffffff;border:1px solid rgba(0,74,128,0.08);border-radius:16px;overflow:hidden;">
+                                    <tr>
+                                        <td style="padding:28px 32px;background:#004a80;color:#ffffff;">
+                                            <div style="font-size:24px;font-weight:700;letter-spacing:0.2px;">BICentral</div>
+                                            <div style="margin-top:8px;font-size:14px;opacity:0.92;">Redefinição de senha</div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:32px;">
+                                            <h1 style="margin:0 0 12px;font-size:26px;line-height:1.2;color:#113956;">Olá, %s!</h1>
+                                            <p style="margin:0 0 12px;font-size:16px;line-height:1.65;color:#3b556b;">
+                                                Pediram a redefinição da senha desta conta. Clique no botão abaixo pra escolher uma senha nova. Este link expira em <strong>1 hora</strong>.
+                                            </p>
+                                            <table border="0" cellpadding="0" cellspacing="0">
+                                                <tr>
+                                                    <td>
+                                                        <a href="%s" target="_blank" style="display:inline-block;padding:14px 24px;background:#004a80;color:#ffffff;text-decoration:none;font-weight:700;border-radius:10px;">
+                                                            Redefinir senha
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                            <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#7b8a97;">
+                                                Se você não pediu isso, pode ignorar este e-mail — sua senha continua a mesma.
+                                            </p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </body>
+                </html>
+                """.formatted(user.getNomeExibicao(), resetUrl);
+
+        enviarEmail(toAddress, null, assunto, content, null, null, null);
+    }
 }

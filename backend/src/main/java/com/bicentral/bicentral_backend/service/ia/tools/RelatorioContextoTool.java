@@ -10,6 +10,7 @@ import com.bicentral.bicentral_backend.dto.relatorio.RelatorioEstruturadoDTO;
 import com.bicentral.bicentral_backend.service.auth.UsuarioService;
 import com.bicentral.bicentral_backend.service.ia.RelatorioService;
 import com.bicentral.bicentral_backend.state.EstadoSessao;
+import com.bicentral.bicentral_backend.state.StatusExecucaoAgente;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
@@ -24,12 +25,14 @@ public class RelatorioContextoTool {
     private final UsuarioService usuarioService;
     private final RelatorioService relatorioService;
     private final EstadoSessao estadoSessao;
+    private final StatusExecucaoAgente statusExecucao;
 
-    public RelatorioContextoTool(JdbcTemplate jdbcTemplate, UsuarioService usuarioService, RelatorioService relatorioService, EstadoSessao estadoSessao) {
+    public RelatorioContextoTool(JdbcTemplate jdbcTemplate, UsuarioService usuarioService, RelatorioService relatorioService, EstadoSessao estadoSessao, StatusExecucaoAgente statusExecucao) {
         this.jdbcTemplate = jdbcTemplate;
         this.usuarioService = usuarioService;
         this.relatorioService = relatorioService;
         this.estadoSessao = estadoSessao;
+        this.statusExecucao = statusExecucao;
     }
 
     @Tool("Solicita a geração de um relatório de desempenho completo em DOCX para um departamento. Use quando o usuário pedir para 'gerar', 'criar' ou 'fazer' um relatório. O relatório demora cerca de 20-30 segundos para ficar pronto e ficará disponível no ícone de documentos no topo da tela; nesse histórico o usuário também pode abrir uma versão PDF para visualização.")
@@ -38,6 +41,7 @@ public class RelatorioContextoTool {
             @P(value = "'PAT' para execução do ano corrente, 'PDI' para acumulado de 5 anos, 'COMPARATIVO' para os dois. Se o usuário não especificar, use 'PAT'.", required = false) String tipo) {
 
         String tipoFinal = (tipo == null || tipo.isBlank()) ? "PAT" : tipo.toUpperCase().trim();
+        statusExecucao.definir("Solicitando o relatório de " + departamento + "...");
         System.out.println(">>> TOOL CHAMADA: solicitarGeracaoRelatorio(departamento=" + departamento + ", tipo=" + tipoFinal + ")");
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -51,6 +55,7 @@ public class RelatorioContextoTool {
 
     @Tool("Busca o texto completo do último relatório de desempenho que o usuário atual gerou. Use quando o usuário perguntar algo sobre 'o relatório que gerei', 'aquele relatório', ou pedir para comentar/explicar/aprofundar algo do relatório recém-criado.")
     public String buscarUltimoRelatorioGerado() {
+        statusExecucao.definir("Recuperando seu último relatório...");
         System.out.println(">>> TOOL CHAMADA: buscarUltimoRelatorioGerado()");
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();

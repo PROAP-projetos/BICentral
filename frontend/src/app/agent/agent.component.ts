@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { AfterViewChecked, AfterViewInit, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { finalize } from 'rxjs';
+import { finalize, interval, Subscription, switchMap } from 'rxjs';
 import { GraficoIaComponent } from '../grafico-ia/grafico-ia';
 import { GrafoAtividadesComponent } from '../grafo-atividades/grafo-atividades.component';
 import { LeaderboardUgComponent } from '../leaderboard-ug/leaderboard-ug.component';
@@ -78,6 +78,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
 
   painelAtrasos: PainelAtrasos | null = null;
   carregandoPainelAtrasos = false;
+  erroPainelAtrasos = false;
 
   mostrarPainelRelatorio = false;
   meusRelatorios: RelatorioHistoricoItem[] = [];
@@ -346,10 +347,18 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     const frases = [
       `${saudacaoTempo}, ${nome}. O que vamos analisar hoje?`,
       `${saudacaoTempo}, ${nome}! Quais as ideias criativas para hoje?`,
-      `Pronta para explorar os dados da PROAP, ${nome}?`,
+      `Vamos explorar os dados da PROAP, ${nome}?`,
       `${saudacaoTempo}! Qual indicador vamos investigar agora, ${nome}?`,
       `${nome}, que dados vamos transformar em conhecimento hoje?`,
-      `Como posso otimizar o seu planejamento hoje, ${nome}?`
+      `Como posso otimizar o seu planejamento hoje, ${nome}?`,
+      `${saudacaoTempo}, ${nome}! Bora dar uma olhada nos números da PROAP?`,
+      `${nome}, precisa de um gráfico rápido ou prefere só bater um papo com os dados?`,
+      `${saudacaoTempo}! Sobre o que a gente conversa hoje, ${nome}?`,
+      `${nome}, quer ver como anda o ranking das unidades hoje?`,
+      `Tem algum indicador te tirando o sono, ${nome}? Bora resolver.`,
+      `${saudacaoTempo}, ${nome}. Posso ajudar com o PAT, relatórios ou algum painel — é só pedir.`,
+      `${nome}, bora transformar dado bruto em decisão?`,
+      `Diz aí, ${nome}: o que você precisa saber sobre a PROAP agora?`
     ];
 
     const randomIndex = Math.floor(Math.random() * frases.length);
@@ -359,10 +368,6 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   toggleTheme() {
     this.isDarkMode = !this.isDarkMode;
     localStorage.setItem('theme', this.isDarkMode ? 'dark' : 'light');
-  }
-
-  mudarModelo() {
-    this.modeloAtivoIndex = (this.modeloAtivoIndex + 1) % this.modelos.length;
   }
 
   iniciarNovoChat() {
@@ -412,15 +417,45 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   ];
 
   private acordandoServidor = false;
+  private consultaSub?: Subscription;
+  private acordarServidorTimer?: number;
+
+  // etapaAtual vem do polling no backend (qual ferramenta está rodando agora — ver
+  // iniciarPollingStatus) e tem prioridade sobre o palpite por palavra-chave abaixo, que
+  // só serve de fallback pro instante antes da primeira resposta do polling chegar.
+  etapaAtual: string | null = null;
+  private statusPollingSub?: Subscription;
 
   get textoPensando(): string {
     if (this.acordandoServidor) {
       return 'Servidor estava inativo, reconectando (pode levar até 1 minuto)';
     }
+    if (this.etapaAtual) {
+      return this.etapaAtual;
+    }
     const ultimaDoUsuario = [...(this.sessaoAtual?.messages || [])].reverse().find(m => m.from === 'user');
     const texto = (ultimaDoUsuario?.text || '').toLowerCase();
     const pareceGrafico = AgentComponent.PALAVRAS_GRAFICO.some(p => texto.includes(p));
     return pareceGrafico ? 'Montando o painel' : 'Pensando';
+  }
+
+  // Faz polling no backend enquanto carregando=true pra saber qual ferramenta está rodando
+  // agora (ver StatusExecucaoAgente) — não é streaming de tokens, é streaming "de etapa": dá
+  // pra mostrar "Consultando o PAT da AUDIN..." em vez de um "Pensando" parado sem contexto.
+  private iniciarPollingStatus(): void {
+    this.pararPollingStatus();
+    this.statusPollingSub = interval(800)
+      .pipe(switchMap(() => this.agentService.consultarStatusExecucao()))
+      .subscribe({
+        next: (resposta) => this.etapaAtual = resposta.etapa,
+        error: () => { } // falha no polling não trava o chat, só perde o texto específico
+      });
+  }
+
+  private pararPollingStatus(): void {
+    this.statusPollingSub?.unsubscribe();
+    this.statusPollingSub = undefined;
+    this.etapaAtual = null;
   }
 
   // Render (free tier) derruba o backend depois de um tempo sem uso — a primeira
@@ -442,17 +477,37 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.agendarAjusteAlturaPrompt();
     this.erro = '';
     this.carregando = true;
+    this.iniciarPollingStatus();
     this.agendarScrollParaFim();
 
     const idDaSessao = String(this.sessaoAtual.id);
     this.enviarConsulta(text, idDaSessao, false);
   }
 
+  // Some o botão de enviar e mostra um de parar enquanto carregando — clicar nele cancela
+  // a chamada HTTP em andamento (unsubscribe aborta o request), avisa o backend pra tentar
+  // interromper de verdade a geração em andamento (best-effort, ver AgentService.
+  // cancelarGeracao) e, se estava no meio do retry silencioso de servidor dormindo, cancela
+  // o setTimeout também.
+  pararGeracao(): void {
+    if (this.acordarServidorTimer) {
+      window.clearTimeout(this.acordarServidorTimer);
+      this.acordarServidorTimer = undefined;
+    }
+    this.consultaSub?.unsubscribe();
+    this.consultaSub = undefined;
+    this.agentService.cancelarGeracao().subscribe({ error: () => {} });
+    this.acordandoServidor = false;
+    this.carregando = false;
+    this.pararPollingStatus();
+  }
+
   private enviarConsulta(text: string, idDaSessao: string, isRetry: boolean) {
-    this.agentService.consultar(text, this.equipeId ?? null, this.modeloAtivo, idDaSessao)
+    this.consultaSub = this.agentService.consultar(text, this.equipeId ?? null, this.modeloAtivo, idDaSessao)
       .pipe(finalize(() => {
         if (!this.acordandoServidor) {
           this.carregando = false;
+          this.pararPollingStatus();
           this.carregarUsoIa();
         }
       }))
@@ -491,7 +546,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
 
           if (!isRetry && provavelServidorDormindo) {
             this.acordandoServidor = true;
-            setTimeout(() => this.enviarConsulta(text, idDaSessao, true), 3000);
+            this.acordarServidorTimer = window.setTimeout(() => this.enviarConsulta(text, idDaSessao, true), 3000);
             return;
           }
 
@@ -565,6 +620,9 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
 
   ngOnDestroy(): void {
     this.pararPollingRelatorio();
+    if (this.acordarServidorTimer) window.clearTimeout(this.acordarServidorTimer);
+    this.consultaSub?.unsubscribe();
+    this.statusPollingSub?.unsubscribe();
   }
 
   ngAfterViewChecked(): void {
@@ -686,11 +744,15 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   abrirPainelAtrasos(departamento: string): void {
     this.mostrarPainelNotificacoes = false;
     this.carregandoPainelAtrasos = true;
+    this.erroPainelAtrasos = false;
     this.agentService.buscarPainelAtrasos(departamento)
       .pipe(finalize(() => this.carregandoPainelAtrasos = false))
       .subscribe({
         next: (painel) => this.painelAtrasos = painel,
-        error: () => this.painelAtrasos = null
+        error: () => {
+          this.painelAtrasos = null;
+          this.erroPainelAtrasos = true;
+        }
       });
   }
 

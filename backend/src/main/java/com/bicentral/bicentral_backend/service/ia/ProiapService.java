@@ -30,19 +30,22 @@ public class ProiapService {
 
     private static final int MAX_SUGESTOES = 3;
 
-    private static final Map<String, List<String>> SUGESTOES_POR_FERRAMENTA = Map.of(
-        "ranquearDepartamentosPorExecucaoPAT", List.of(
+    private static final Map<String, List<String>> SUGESTOES_POR_FERRAMENTA = Map.ofEntries(
+        Map.entry("ranquearDepartamentosPorExecucaoPAT", List.of(
             "Alguma dessas ações é compartilhada entre departamentos?",
-            "Quero ver a distribuição de status dessas unidades num gráfico"),
-        "buscarExecucaoPATPorDepartamento", List.of("Quero um relatório completo dessa unidade"),
-        "buscarDetalhamentoDesempenhoDepartamento", List.of(
+            "Quero ver a distribuição de status dessas unidades num gráfico")),
+        Map.entry("buscarExecucaoPATPorDepartamento", List.of("Quero um relatório completo dessa unidade")),
+        Map.entry("buscarDetalhamentoDesempenhoDepartamento", List.of(
             "Essas ações têm outros departamentos envolvidos?",
-            "Quero ver a execução média num indicador visual"),
-        "rastrearGargaloEmAcaoCompartilhada", List.of("Quero um relatório da unidade mais atrasada"),
-        "contarAcoesPorDepartamentoPAT", List.of("Qual o desempenho dessas unidades no PAT?"),
-        "buscarMinhasTarefas", List.of("Quais dessas estão atrasadas?"),
-        "buscarTarefasPorDepartamento", List.of("Quero o relatório completo dessa unidade"),
-        "compararExecucaoPDIxPAT", List.of("Quero ver essa comparação num gráfico")
+            "Quero ver a execução média num indicador visual")),
+        Map.entry("rastrearGargaloEmAcaoCompartilhada", List.of("Quero um relatório da unidade mais atrasada")),
+        Map.entry("contarAcoesPorDepartamentoPAT", List.of("Qual o desempenho dessas unidades no PAT?")),
+        Map.entry("buscarMinhasTarefas", List.of("Quais dessas estão atrasadas?")),
+        Map.entry("buscarTarefasPorDepartamento", List.of("Quero o relatório completo dessa unidade")),
+        Map.entry("compararExecucaoPDIxPAT", List.of("Quero ver essa comparação num gráfico")),
+        Map.entry("contarAcoesUnicasPAT", List.of("Qual departamento tem mais ações no PAT?")),
+        Map.entry("buscarTarefasAtrasadasPorDepartamento", List.of("Quero um relatório completo dessa unidade")),
+        Map.entry("buscarTarefaPorPalavraChave", List.of("Essa tarefa está atrasada?"))
     );
 
     private static final List<String> MENSAGENS_PAINEL_PRONTO = List.of(

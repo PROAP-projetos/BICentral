@@ -18,7 +18,10 @@
   justify-content: center;
 }
 
-.form-container > div {
+/* :not(.card) é essencial aqui — .card (a tela de sucesso) também é filho direto de
+   .form-container, e display:flex nele quebraria o empilhamento vertical dos próprios
+   filhos dele (h2, mensagem, link), virando tudo uma linha só em vez de empilhado. */
+.form-container > div:not(.card) {
   width: 100%;
   display: flex;
   justify-content: center;

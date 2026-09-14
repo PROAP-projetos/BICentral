@@ -430,12 +430,6 @@
   height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 1.5rem;
 }
 
-.model-selector {
-  display: flex; align-items: center; gap: 6px; cursor: pointer;
-  font-weight: 600; font-size: 1.1rem; color: var(--text-secondary);
-  padding: 8px; border-radius: 8px;
-}
-.model-selector:hover { background: var(--bg-sidebar-hover); color: var(--text-primary); }
 .top-nav-links a { color: var(--text-secondary); text-decoration: none; font-size: 0.9rem; }
 .top-nav-links a:hover { color: var(--text-primary); }
 
@@ -816,11 +810,23 @@
 :host ::ng-deep .message-text h3,
 :host ::ng-deep .message-text h4,
 :host ::ng-deep .message-text h5 {
-  margin: 0 0 0.55rem;
-  font-size: 0.98rem;
+  margin: 1rem 0 0.4rem;
   line-height: 1.3;
   font-weight: 700;
+  color: var(--text-primary);
 }
+
+/* Sem isso, todo título que abre a resposta (o caso mais comum) ganha um respiro em cima
+   que não faz sentido — ele já é a primeira coisa dentro da bolha. */
+:host ::ng-deep .message-text h3:first-child,
+:host ::ng-deep .message-text h4:first-child,
+:host ::ng-deep .message-text h5:first-child {
+  margin-top: 0;
+}
+
+:host ::ng-deep .message-text h3 { font-size: 1.15rem; }
+:host ::ng-deep .message-text h4 { font-size: 1.08rem; }
+:host ::ng-deep .message-text h5 { font-size: 1.02rem; }
 
 :host ::ng-deep .message-table-wrap {
   width: 100%;
@@ -919,6 +925,10 @@
 .send:hover:not(:disabled) { transform: scale(1.05); }
 .send:active:not(:disabled) { transform: scale(0.96); }
 .send:disabled { background: var(--border-color); color: var(--text-secondary); cursor: not-allowed; box-shadow: none; }
+
+/* Enquanto carregando, o botão de enviar vira botão de parar (cancela a chamada em
+   andamento) — precisa continuar clicável, diferente do :disabled de "sem texto". */
+.send.stop { background: var(--text-primary); color: var(--bg-main); cursor: pointer; }
 
 .msg-pensando {
   display: flex;
@@ -1381,6 +1391,12 @@
   margin: 0;
 }
 
+.notif-erro-painel {
+  color: #ef4444;
+  font-size: 0.8rem;
+  margin: 4px 0 0;
+}
+
 /* ==========================================
    RELATÓRIO (formulário dentro do painel)
    ========================================== */
@@ -1691,13 +1707,6 @@
 
   .chat-header {
     padding: 0 1rem;
-  }
-
-  /* "Gemini 2.5 Flash" no tamanho de desktop quebra em 2 linhas ao lado dos ícones
-     no header estreito do celular — menor e sem quebrar deixa a faixa de cima limpa. */
-  .model-selector {
-    font-size: 0.92rem;
-    white-space: nowrap;
   }
 
   /* Frase de boas-vindas grande demais colada embaixo do header no celular. */

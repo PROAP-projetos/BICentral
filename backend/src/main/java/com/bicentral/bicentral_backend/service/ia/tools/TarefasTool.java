@@ -1,6 +1,7 @@
 package com.bicentral.bicentral_backend.service.ia.tools;
 
 import com.bicentral.bicentral_backend.service.auth.UsuarioService;
+import com.bicentral.bicentral_backend.state.StatusExecucaoAgente;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -15,14 +16,17 @@ public class TarefasTool {
 
     private final JdbcTemplate jdbcTemplate;
     private final UsuarioService usuarioService;
+    private final StatusExecucaoAgente statusExecucao;
 
-    public TarefasTool(JdbcTemplate jdbcTemplate, UsuarioService usuarioService) {
+    public TarefasTool(JdbcTemplate jdbcTemplate, UsuarioService usuarioService, StatusExecucaoAgente statusExecucao) {
         this.jdbcTemplate = jdbcTemplate;
         this.usuarioService = usuarioService;
+        this.statusExecucao = statusExecucao;
     }
 
     @Tool("Busca as tarefas do PAT sob responsabilidade do usuário atualmente logado no chat. Use quando o usuário perguntar 'minhas tarefas', 'o que eu tenho pra fazer', 'como estão minhas pendências', ou pedir um panorama pessoal do próprio trabalho.")
     public String buscarMinhasTarefas() {
+        statusExecucao.definir("Buscando suas tarefas...");
         System.out.println(">>> TOOL CHAMADA: buscarMinhasTarefas()");
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -88,6 +92,7 @@ public class TarefasTool {
 
     @Tool("Busca até 10 tarefas (as com menor percentual de conclusão primeiro) de um departamento específico no PAT, com título da tarefa, título da ação, responsável, percentual de execução da AÇÃO (agregado do PAT) e percentual de conclusão da TAREFA individual. Use para perguntas sobre pendências operacionais de uma unidade, ou quando o usuário pedir o mapeamento de responsáveis por ação, mais granular que o relatório de desempenho. Deixe claro ao usuário que é uma amostra (as mais críticas), não a lista completa, se o departamento puder ter mais tarefas.")
     public String buscarTarefasPorDepartamento(@P("nome do departamento") String departamento) {
+        statusExecucao.definir("Buscando tarefas de " + departamento + "...");
         System.out.println(">>> TOOL CHAMADA: buscarTarefasPorDepartamento(departamento=" + departamento + ")");
 
         List<Map<String, Object>> tarefas = jdbcTemplate.queryForList("""
@@ -134,6 +139,100 @@ public class TarefasTool {
               .append(" | ").append(t.get("responsavel"))
               .append(" | ").append(percentualAcao == null ? "não disponível no PAT" : formatarPercentualEnxuto(percentualAcao) + "%")
               .append(" | ").append(formatarPercentualEnxuto(t.get("percentual_tarefa"))).append("%")
+              .append(" | ").append(formatarData(t.get("data_final")))
+              .append(" |\n");
+        }
+        return sb.toString();
+    }
+
+    @Tool("Busca as tarefas ATRASADAS (prazo já vencido e não concluídas) de um departamento específico no PAT. Use para perguntas tipo 'quantas tarefas atrasadas tem a AUDIN', 'quais tarefas venceram no departamento X', ou pra detalhar o que aparece no painel de atrasos das notificações. Retorna até 30 tarefas, as mais antigas primeiro, e o total real mesmo quando maior que 30.")
+    public String buscarTarefasAtrasadasPorDepartamento(@P("nome ou parte do nome do departamento") String departamento) {
+        statusExecucao.definir("Verificando tarefas atrasadas de " + departamento + "...");
+        System.out.println(">>> TOOL CHAMADA: buscarTarefasAtrasadasPorDepartamento(departamento=" + departamento + ")");
+
+        Integer totalAtrasadas = jdbcTemplate.queryForObject("""
+            SELECT COUNT(*) FROM pat_tarefas
+            WHERE departamento ILIKE ?
+                AND to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') < CURRENT_DATE
+                AND NULLIF(regexp_replace(dados_completos->>'% Concluído', '[^0-9.,]', '', 'g'), '')::numeric < 100
+            """, Integer.class, "%" + departamento.trim() + "%");
+
+        if (totalAtrasadas == null || totalAtrasadas == 0) {
+            return "Nenhuma tarefa atrasada encontrada para o departamento '" + departamento + "'.";
+        }
+
+        List<Map<String, Object>> tarefas = jdbcTemplate.queryForList("""
+            SELECT
+                dados_completos->>'TÍTULO DA TAREFA' AS titulo_tarefa,
+                dados_completos->>'Responsável' AS responsavel,
+                to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') AS data_final,
+                (CURRENT_DATE - to_date(dados_completos->>'Data Final', 'DD/MM/YYYY')) AS dias_atraso
+            FROM pat_tarefas
+            WHERE departamento ILIKE ?
+                AND to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') < CURRENT_DATE
+                AND NULLIF(regexp_replace(dados_completos->>'% Concluído', '[^0-9.,]', '', 'g'), '')::numeric < 100
+            ORDER BY data_final ASC NULLS LAST
+            LIMIT 30
+            """, "%" + departamento.trim() + "%");
+
+        System.out.println(">>> TOOL RESULTADO: " + totalAtrasadas + " tarefa(s) atrasada(s), mostrando " + tarefas.size());
+
+        boolean truncado = totalAtrasadas > tarefas.size();
+        StringBuilder sb = new StringBuilder();
+        sb.append(totalAtrasadas).append(" tarefa(s) atrasada(s) no departamento '").append(departamento).append("'")
+          .append(truncado ? " (mostrando as " + tarefas.size() + " mais antigas)" : "").append(":\n\n");
+        sb.append("| Tarefa | Responsável | Prazo | Dias de atraso |\n");
+        sb.append("|---|---|---|---|\n");
+        for (Map<String, Object> t : tarefas) {
+            sb.append("| ").append(t.get("titulo_tarefa"))
+              .append(" | ").append(t.get("responsavel") != null ? t.get("responsavel") : "Sem responsável")
+              .append(" | ").append(formatarData(t.get("data_final")))
+              .append(" | ").append(t.get("dias_atraso"))
+              .append(" |\n");
+        }
+        return sb.toString();
+    }
+
+    @Tool("Busca tarefas do PAT por palavra-chave no título, em qualquer departamento (ou só num departamento específico, se informado). Use quando o usuário souber parte do nome/assunto da tarefa mas não souber de qual departamento ou ação ela é.")
+    public String buscarTarefaPorPalavraChave(
+            @P("palavra-chave a buscar no título da tarefa") String palavraChave,
+            @P(value = "nome do departamento pra restringir a busca, opcional", required = false) String departamento) {
+        statusExecucao.definir("Procurando tarefas sobre '" + palavraChave + "'...");
+        System.out.println(">>> TOOL CHAMADA: buscarTarefaPorPalavraChave(palavraChave=" + palavraChave + ", departamento=" + departamento + ")");
+
+        boolean filtrarDepto = departamento != null && !departamento.isBlank();
+        String sql = """
+            SELECT
+                dados_completos->>'TÍTULO DA TAREFA' AS titulo_tarefa,
+                departamento,
+                dados_completos->>'Responsável' AS responsavel,
+                NULLIF(regexp_replace(dados_completos->>'% Concluído', '[^0-9.,]', '', 'g'), '')::numeric AS percentual,
+                to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') AS data_final
+            FROM pat_tarefas
+            WHERE dados_completos->>'TÍTULO DA TAREFA' ILIKE ?
+            """ + (filtrarDepto ? "AND departamento ILIKE ? " : "") + """
+            LIMIT 15
+            """;
+
+        List<Map<String, Object>> tarefas = filtrarDepto
+            ? jdbcTemplate.queryForList(sql, "%" + palavraChave.trim() + "%", "%" + departamento.trim() + "%")
+            : jdbcTemplate.queryForList(sql, "%" + palavraChave.trim() + "%");
+
+        System.out.println(">>> TOOL RESULTADO: " + tarefas.size() + " tarefa(s)");
+
+        if (tarefas.isEmpty()) {
+            return "Nenhuma tarefa encontrada com o termo '" + palavraChave + "'"
+                 + (filtrarDepto ? " no departamento '" + departamento + "'" : "") + ".";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("| Tarefa | Departamento | Responsável | % | Prazo |\n");
+        sb.append("|---|---|---|---|---|\n");
+        for (Map<String, Object> t : tarefas) {
+            sb.append("| ").append(t.get("titulo_tarefa"))
+              .append(" | ").append(t.get("departamento"))
+              .append(" | ").append(t.get("responsavel") != null ? t.get("responsavel") : "—")
+              .append(" | ").append(formatarPercentualEnxuto(t.get("percentual"))).append("%")
               .append(" | ").append(formatarData(t.get("data_final")))
               .append(" |\n");
         }

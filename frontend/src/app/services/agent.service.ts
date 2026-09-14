@@ -141,6 +141,18 @@ export class AgentService {
     });
   }
 
+  // Best-effort: pede pro backend interromper a pergunta em andamento dessa sessão
+  // (ver ProiapController.cancelarPergunta / EstadoSessao.cancelarExecucaoAtual).
+  cancelarGeracao(): Observable<void> {
+    return this.http.post<void>('/api/proiap/cancelar', {}, { withCredentials: true });
+  }
+
+  // Polling: dá o texto de qual ferramenta está rodando agora, pro "Pensando" do chat não
+  // ficar parado (ver StatusExecucaoAgente/ProiapController.obterStatusExecucao no backend).
+  consultarStatusExecucao(): Observable<{ etapa: string }> {
+    return this.http.get<{ etapa: string }>('/api/proiap/status-execucao', { withCredentials: true });
+  }
+
   listarSessoes(): Observable<SessaoResumo[]> {
     return this.http.get<SessaoResumo[]>('/api/proiap/sessoes', { withCredentials: true });
   }

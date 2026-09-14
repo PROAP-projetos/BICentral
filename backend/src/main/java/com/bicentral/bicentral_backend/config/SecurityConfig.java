@@ -33,6 +33,8 @@ public class SecurityConfig {
             "/api/usuarios/cadastro",
             "/api/usuarios/login",
             "/api/usuarios/verify",
+            "/api/usuarios/esqueci-senha",
+            "/api/usuarios/redefinir-senha",
             "/auth/**", //removi api/convites/aceitar
             "/error",
             "/favicon.ico",
@@ -61,7 +63,16 @@ public class SecurityConfig {
 
                 .headers(headers -> headers
                         .frameOptions(frameOptions -> frameOptions.disable()))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // sessionFixation().none(): por padrão, o Spring troca o ID da sessão a cada
+                // autenticação bem-sucedida (proteção contra session fixation). Como aqui a
+                // autenticação é 100% via JWT stateless (não tem "login" que crie sessão), isso
+                // acontecia em TODA requisição autenticada — cada uma trocava o ID e "perdia" a
+                // sessão anterior do navegador, quebrando qualquer @SessionScope bean
+                // (EstadoSessao, StatusExecucaoAgente) que dependa da mesma sessão persistir
+                // entre requisições diferentes.
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                        .sessionFixation().none())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
                     // Esse é o log que você vê quando dá 401
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);

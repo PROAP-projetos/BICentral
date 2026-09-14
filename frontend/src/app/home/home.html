@@ -39,6 +39,8 @@
     <div class="nav-right-section">
       <a class="nav-text-link" routerLink="/suporte" (click)="mobileNavOpen = false">Suporte</a>
 
+      <a class="nav-text-link" routerLink="/admin" *ngIf="isAdminSistema" (click)="mobileNavOpen = false">Admin</a>
+
       <span *ngIf="isLoggedIn" class="user-greeting">Olá, {{ userName }}</span>
 
       <a *ngIf="!isLoggedIn" routerLink="/login" class="nav-text-link" (click)="mobileNavOpen = false">Login</a>
@@ -59,11 +61,6 @@
 
 <nav class="sub-nav-button-container">
   <div class="sub-nav-actions">
-    <a class="sub-nav-agent-link" routerLink="/ingestao-ia" *ngIf="isAdminSistema">
-      <span>IA</span>
-      Ingestão
-    </a>
-
     <button
       type="button"
       class="sub-nav-button"
