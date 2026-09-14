@@ -1693,12 +1693,38 @@
     padding: 0 1rem;
   }
 
+  /* "Gemini 2.5 Flash" no tamanho de desktop quebra em 2 linhas ao lado dos ícones
+     no header estreito do celular — menor e sem quebrar deixa a faixa de cima limpa. */
+  .model-selector {
+    font-size: 0.92rem;
+    white-space: nowrap;
+  }
+
+  /* Frase de boas-vindas grande demais colada embaixo do header no celular. */
+  .empty-title {
+    margin-bottom: 1.25rem;
+  }
+
+  .empty-title h2 {
+    font-size: 1.15rem;
+    line-height: 1.4;
+  }
+
   .messages {
     padding: 1rem;
   }
 
   .composer {
     padding: 0.75rem;
+  }
+
+  /* Com --font-size-base (1rem) o placeholder "Pergunte ao proIAp sobre os dados da
+     PROAP..." quebra em 2 linhas dentro da caixa de 1 linha (rows="1") e fica cortado/
+     rolável até a pessoa digitar algo (só aí o ajustarAlturaPrompt() cresce a caixa).
+     Menor ainda quebra em 2 linhas, então dá min-height pras 2 linhas caberem sem cortar. */
+  .agent-input-container textarea {
+    font-size: 0.9rem;
+    min-height: 54px;
   }
 
   .notif-panel,
