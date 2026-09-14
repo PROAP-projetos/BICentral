@@ -262,6 +262,13 @@ constructor(
           this.equipeSelecionada = null;
           this.currentRole = 'VIEWER';
         }
+
+        // Primeiro login (nunca escolheu equipe) ou a equipe salva não existe mais: entra
+        // direto na primeira em vez de obrigar a pessoa a escolher manualmente toda vez —
+        // quem só faz parte de uma equipe nem precisa saber que esse menu existe.
+        if (!this.equipeSelecionada && this.equipesMenu.length > 0) {
+          this.selecionarEquipeDoMenu(this.equipesMenu[0]);
+        }
       },
       error: () => {
         this.equipesMenu = [];
@@ -817,10 +824,11 @@ constructor(
 
   logout(): void {
     this.pararPolling();
-    const equipeKey = this.getEquipeStorageKey();
+    // A chave de equipe selecionada é por usuário (bicentral_selected_equipe:{id}) justamente
+    // pra sobreviver ao logout — apagar ela aqui fazia a pessoa ter que escolher a equipe de
+    // novo toda vez que logava. Só a chave antiga (sem escopo de usuário) precisa ser limpa.
     localStorage.removeItem('user');
     localStorage.removeItem('token');
-    if (equipeKey) localStorage.removeItem(equipeKey);
     localStorage.removeItem(HomeComponent.SELECTED_EQUIPE_KEY); // limpeza da chave antiga não escopada
     this.isLoggedIn = false;
     this.userName = null;

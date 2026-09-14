@@ -85,6 +85,53 @@
     flex-direction: column;
     align-items: flex-start;
   }
+
+  /* Precisa estar aqui (não basta a regra equivalente em styles.css): o encapsulamento de
+     estilos do Angular dá um atributo de escopo pro CSS do componente, que empata ou ganha
+     em especificidade da regra global — sem isso .managers-row nunca colapsa e os chips de
+     departamento empurram a página inteira pra largura maior que a tela no celular. */
+  .managers-head {
+    display: none;
+  }
+
+  .managers-row {
+    /* minmax(0, 1fr), não só 1fr — mesmo motivo do .admin-layout em painel-admin.component.css:
+       um track "1fr" sozinho tem mínimo implícito "auto" e não encolhe abaixo do conteúdo. */
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  /* Os controles desse form têm min-width fixo (select-departamento-largo: 260px,
+     multi-select-wrap/select: 150px) que juntos não cabem numa tela de celular — o
+     flex-wrap sozinho não resolve porque cada controle individual já estoura a largura
+     disponível. Empilhando em coluna, cada um vira 100% da largura, sem estouro. */
+  .manager-form,
+  .classificar-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .manager-form select,
+  .classificar-form select,
+  .multi-select-wrap,
+  .select-departamento-largo {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .classificar-label {
+    white-space: normal;
+  }
+
+  /* Nome de departamento longo (ex: "Pró-Reitoria de Administração e Finanças - PROAD")
+     num chip com nowrap estoura sozinho, mesmo com flex-wrap na fileira de chips —
+     deixando quebrar linha dentro do próprio chip resolve. */
+  .dept-chip {
+    white-space: normal;
+    max-width: 100%;
+  }
 }
 
 .classificar-form {

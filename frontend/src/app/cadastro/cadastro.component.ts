@@ -29,6 +29,38 @@ export class CadastroComponent implements OnInit {
   showLoginShortcut = false;
   registrationSuccess = false;
   emailTravado = false;
+  mostrarSenha = false;
+  mostrarConfirmarSenha = false;
+
+  requisitosSenha = {
+    tamanho: false,
+    letra: false,
+    numero: false,
+    especial: false
+  };
+
+  alternarMostrarSenha(): void {
+    this.mostrarSenha = !this.mostrarSenha;
+  }
+
+  alternarMostrarConfirmarSenha(): void {
+    this.mostrarConfirmarSenha = !this.mostrarConfirmarSenha;
+  }
+
+  atualizarRequisitosSenha(): void {
+    const senha = this.usuario.password;
+    this.requisitosSenha = {
+      tamanho: senha.length >= 8,
+      letra: /[a-zA-Z]/.test(senha),
+      numero: /[0-9]/.test(senha),
+      especial: /[^a-zA-Z0-9]/.test(senha)
+    };
+  }
+
+  get senhaAtendeRequisitos(): boolean {
+    const r = this.requisitosSenha;
+    return r.tamanho && r.letra && r.numero && r.especial;
+  }
 
   constructor(private http: HttpClient, private route: ActivatedRoute) { }
 
@@ -49,6 +81,13 @@ export class CadastroComponent implements OnInit {
     this.messageType = 'info';
     this.alertTitle = 'Atenção';
     this.showLoginShortcut = false;
+
+    if (!this.senhaAtendeRequisitos) {
+      this.messageType = 'error';
+      this.alertTitle = 'Atenção';
+      this.message = 'A senha precisa ter no mínimo 8 caracteres, com letra, número e caractere especial.';
+      return;
+    }
 
     // Confere aqui pra evitar que um typo na senha (digitada só uma vez) crie uma conta
     // com senha diferente da que a pessoa acha que colocou, e ela não conseguir mais entrar.

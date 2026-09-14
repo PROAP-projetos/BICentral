@@ -8,6 +8,18 @@
   box-sizing: border-box;
 }
 
+/* .form-container não tem width próprio — dentro do flex do :host ele encolhe pro
+   tamanho do conteúdo (shrink-to-fit), e nesse caso o width:100% do .login-shell não
+   tem uma referência de verdade pra resolver contra, então ele também encolhe (vira
+   um retângulo fino em vez de ocupar a tela). Dando width:100% aqui, resolve a cadeia
+   inteira; o justify-content:center repete o que o :host fazia, porque agora que esse
+   elemento ocupa 100% do espaço não sobra nada pro :host centralizar. */
+.form-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
 /* --- 1. Estrutura em dois painéis --- */
 
 .login-shell {

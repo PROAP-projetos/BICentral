@@ -83,6 +83,46 @@
 
 @media (max-width: 980px) {
   .admin-layout {
-    grid-template-columns: 1fr;
+    /* minmax(0, 1fr) e não só 1fr: um track "1fr" sozinho tem mínimo implícito "auto",
+       ou seja, não encolhe abaixo do conteúdo — em telas estreitas isso força a coluna
+       (e a página inteira) a ficar mais larga que a tela, mesmo já sendo 1 coluna só. */
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .page-header {
+    padding: 0 1rem;
+    height: auto;
+    min-height: 56px;
+    flex-wrap: wrap;
+    gap: 0.5rem 0;
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+  }
+
+  .nav-links {
+    flex-wrap: wrap;
+    gap: 0.5rem 0.9rem;
+    font-size: 0.85rem;
+  }
+
+  .page {
+    padding: 1rem 1rem 1.5rem;
+  }
+
+  .hero {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .hero-text h1 {
+    font-size: 1.5rem;
+  }
+
+  .hero a.btn {
+    width: 100%;
+    text-align: center;
   }
 }
