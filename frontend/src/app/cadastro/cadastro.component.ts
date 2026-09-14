@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
@@ -10,7 +10,6 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
   imports: [
     CommonModule,
     FormsModule,
-    HttpClientModule,
     RouterLink
   ],
   templateUrl: './cadastro.component.html',

@@ -9,7 +9,7 @@
 }
 
 form, .card {
-  width: 500px;
+  width: 100%;
   max-width: 500px; /* Largura máxima da caixa */
   padding: 50px;
   background: white; /* Cor da caixa */
@@ -230,4 +230,21 @@ input[type="email"][readonly] {
 .premium-alert.info .alert-icon,
 .premium-alert.info .alert-title {
   color: var(--color-info);
+}
+
+/* --- 8. Responsivo --- */
+
+@media (max-width: 600px) {
+  :host {
+    padding: 12px;
+  }
+
+  form, .card {
+    padding: 28px 22px;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+    margin-bottom: 24px;
+  }
 }
