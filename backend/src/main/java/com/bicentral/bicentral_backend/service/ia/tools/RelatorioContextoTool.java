@@ -38,8 +38,11 @@ public class RelatorioContextoTool {
     @Tool("Solicita a geração de um relatório de desempenho completo em DOCX para um departamento. Use quando o usuário pedir para 'gerar', 'criar' ou 'fazer' um relatório. O relatório demora cerca de 20-30 segundos para ficar pronto e ficará disponível no ícone de documentos no topo da tela; nesse histórico o usuário também pode abrir uma versão PDF para visualização.")
     public String solicitarGeracaoRelatorio(
             @P("nome do departamento, ex: PROEST") String departamento,
-            @P(value = "'PAT' para execução do ano corrente, 'PDI' para acumulado de 5 anos, 'COMPARATIVO' para os dois. Se o usuário não especificar, use 'PAT'.", required = false) String tipo) {
+            @P(value = "sempre 'PAT' por enquanto — é o único tipo disponível (execução do ano corrente). Relatório de PDI/acumulado ainda não está disponível, mesma limitação das ferramentas de consulta.", required = false) String tipo) {
 
+        // RelatorioService.solicitarRelatorio já força "PAT" internamente independente do que
+        // vier aqui (defesa em profundidade, cobre também o endpoint REST direto) — mas nem
+        // oferece a opção pro LLM pedir, pra não fingir uma capacidade que não existe de verdade.
         String tipoFinal = (tipo == null || tipo.isBlank()) ? "PAT" : tipo.toUpperCase().trim();
         statusExecucao.definir("Solicitando o relatório de " + departamento + "...");
         System.out.println(">>> TOOL CHAMADA: solicitarGeracaoRelatorio(departamento=" + departamento + ", tipo=" + tipoFinal + ")");

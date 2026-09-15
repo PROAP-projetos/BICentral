@@ -41,11 +41,12 @@ public class ProiapService {
         Map.entry("rastrearGargaloEmAcaoCompartilhada", List.of("Quero um relatório da unidade mais atrasada")),
         Map.entry("contarAcoesPorDepartamentoPAT", List.of("Qual o desempenho dessas unidades no PAT?")),
         Map.entry("buscarMinhasTarefas", List.of("Quais dessas estão atrasadas?")),
-        Map.entry("buscarTarefasPorDepartamento", List.of("Quero o relatório completo dessa unidade")),
-        Map.entry("compararExecucaoPDIxPAT", List.of("Quero ver essa comparação num gráfico")),
+        Map.entry("buscarTarefas", List.of(
+            "Quero um relatório completo dessa unidade",
+            "E as que estão atrasadas?")),
         Map.entry("contarAcoesUnicasPAT", List.of("Qual departamento tem mais ações no PAT?")),
-        Map.entry("buscarTarefasAtrasadasPorDepartamento", List.of("Quero um relatório completo dessa unidade")),
-        Map.entry("buscarTarefaPorPalavraChave", List.of("Essa tarefa está atrasada?"))
+        Map.entry("buscarAcoesPorMarcador", List.of("Quero um relatório completo desse departamento")),
+        Map.entry("contarTarefasPorDepartamento", List.of("Qual departamento tem mais tarefas atrasadas?"))
     );
 
     private static final List<String> MENSAGENS_PAINEL_PRONTO = List.of(

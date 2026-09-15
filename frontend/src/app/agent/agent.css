@@ -195,10 +195,37 @@
 .logo-mark {
   flex-shrink: 0;
   color: var(--text-primary);
+  transform-origin: center;
+}
+
+/* Toca só quando VERSAO_AGENTE muda (ver agent.component.ts) — iteration-count finito de
+   propósito, pra ser um "oi, mudei!" rápido e não um ícone piscando pra sempre. */
+.logo-mark.gracejo {
+  animation: logo-gracejo 0.7s ease-in-out 2;
+}
+
+@keyframes logo-gracejo {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  20% { transform: scale(1.18) rotate(-14deg); }
+  45% { transform: scale(0.92) rotate(10deg); }
+  70% { transform: scale(1.1) rotate(-6deg); }
 }
 
 .logo-accent {
   color: var(--logo-accent);
+}
+
+.versao-badge {
+  flex-shrink: 0;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+  background: var(--bg-sidebar-hover);
+  border-radius: 999px;
+  padding: 1px 6px;
+  margin-left: 1px;
+  align-self: center;
 }
 
 .sidebar-collapse-btn {
@@ -512,6 +539,29 @@
   color: #fff3cf;
 }
 
+/* Banner de "o agente mudou desde sua última visita" — mesma estrutura do aviso-api-banner,
+   mas com paleta própria (roxo/azul) pra não parecer um aviso de warning igual o amarelo. */
+.aviso-atualizacao-banner {
+  background: linear-gradient(90deg, #f0ecff, #e6defe);
+  border-color: #b9a4f5;
+  border-left-color: #7c5cea;
+  box-shadow: 0 2px 8px rgba(124, 92, 234, 0.15);
+}
+.aviso-atualizacao-banner .aviso-api-texto { color: #4a3a80; }
+.aviso-atualizacao-banner .aviso-api-texto strong { color: #3a2c66; }
+.aviso-atualizacao-banner .aviso-api-fechar { color: #7c5cea; }
+.aviso-atualizacao-banner .aviso-api-fechar:hover { color: #4a3a80; }
+
+.dark-theme .aviso-atualizacao-banner {
+  background: linear-gradient(90deg, #362a52, #2c2044);
+  border-color: #6b4fc4;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+.dark-theme .aviso-atualizacao-banner .aviso-api-texto { color: #dcd2f7; }
+.dark-theme .aviso-atualizacao-banner .aviso-api-texto strong { color: #f0eaff; }
+.dark-theme .aviso-atualizacao-banner .aviso-api-fechar { color: #c3b3ee; }
+.dark-theme .aviso-atualizacao-banner .aviso-api-fechar:hover { color: #f0eaff; }
+
 .chat-body {
   flex-grow: 1; display: flex; flex-direction: column;
   overflow: hidden; align-items: center; width: 100%;
@@ -594,15 +644,30 @@
 
 .chat-body.is-empty { justify-content: center; }
 
+/* No estado vazio, a saudação e o input formam um bloco só, centralizado na tela — igual
+   ao Claude. Sem isso, o margin-top:auto do .composer (que existe pra grudar ele embaixo
+   quando já tem mensagens) ignora o justify-content:center do container e empurra o input
+   pro fundo mesmo assim, deixando saudação e input longe um do outro. */
+.chat-body.is-empty .composer {
+  margin-top: 0;
+}
+
 .empty-title {
-  margin-bottom: 2rem; 
+  margin-bottom: 1.75rem;
   text-align: center;
+  animation: empty-title-entrada 0.4s ease;
 }
 .empty-title h2 {
-  font-size: 1.5rem; 
-  font-weight: 600; 
-  color: var(--text-primary); 
+  font-size: 1.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
   margin: 0;
+  letter-spacing: -0.01em;
+}
+
+@keyframes empty-title-entrada {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .messages {

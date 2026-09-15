@@ -5,7 +5,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -47,7 +46,6 @@ import java.util.concurrent.Future;
 
 @RestController
 @RequestMapping("/api/proiap")
-@CrossOrigin(origins = "*")
 public class ProiapController {
 
     // Compartilhado entre requisições (não por sessão) só pra rodar a pergunta numa thread

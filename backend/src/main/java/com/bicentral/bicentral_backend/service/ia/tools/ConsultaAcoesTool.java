@@ -46,7 +46,8 @@ public class ConsultaAcoesTool {
                 substring(p.dados_completos->>'Título' from '[A-Z]+ [0-9]+(?:\\.[0-9]+)*') AS codigo_acao,
                 p.dados_completos->>'Título' AS titulo_acao,
                 NULLIF(replace(p.dados_completos->>'%', ',', '.'), '')::numeric / 100 AS percentual_execucao,
-                COALESCE(dt.tipo_unidade, gd.tipo_unidade) AS tipo_unidade
+                COALESCE(dt.tipo_unidade, gd.tipo_unidade) AS tipo_unidade,
+                p.dados_completos->>'marcadores' AS marcadores
             FROM pat_dados p
             LEFT JOIN departamento_tipo dt ON dt.departamento = p.departamento
             LEFT JOIN (
@@ -81,7 +82,18 @@ public class ConsultaAcoesTool {
         }
     }
 
-    @Tool("Busca um item do PDI (Eixo, Objetivo Estratégico, Objetivo Tático ou Ação) pelo código exato, ex: 1.1.1.3")
+    // ---------------------------------------------------------------------------------------
+    // FERRAMENTAS DE PDI DESATIVADAS (sem @Tool, não expostas ao agente) — a tabela acoes_pdi
+    // hoje é uma carga estática feita à mão (não a integração real da API), e a Dallyla está
+    // segurando de propósito a integração de verdade até fazer mais sentido nos 5 anos
+    // acumulados do PDI (ainda estamos no ano 1). O prompt do sistema (AgenteConsultaSql) já
+    // instrui o agente a recusar perguntas de PDI — manter essas 6 ferramentas visíveis mesmo
+    // assim só infla o schema de function-calling em toda requisição à toa. Código mantido
+    // funcional de propósito: quando a integração real acontecer, é só devolver o @Tool(...)
+    // (o texto original está comentado logo acima de cada método) e atualizar o prompt.
+    // ---------------------------------------------------------------------------------------
+
+    // @Tool("Busca um item do PDI (Eixo, Objetivo Estratégico, Objetivo Tático ou Ação) pelo código exato, ex: 1.1.1.3")
     public String buscarPorCodigo(@P("código exato do item, ex: 1.1.1.3") String codigo) {
         statusExecucao.definir("Buscando o item " + codigo + " no PDI...");
         System.out.println(">>> TOOL CHAMADA: buscarPorCodigo(codigo=" + codigo + ")");
@@ -95,7 +107,7 @@ public class ConsultaAcoesTool {
         return formatarItemUnico(resultado.get(0));
     }
 
-    @Tool("Lista todos os itens filhos diretos de um código pai no PDI. Ex: código pai 1.1.1 retorna as ações 1.1.1.1, 1.1.1.2 etc")
+    // @Tool("Lista todos os itens filhos diretos de um código pai no PDI. Ex: código pai 1.1.1 retorna as ações 1.1.1.1, 1.1.1.2 etc")
     public String buscarFilhosPorCodigoPai(@P("código pai, ex: 1.1.1") String codigoPai) {
         statusExecucao.definir("Listando os itens do PDI abaixo de " + codigoPai + "...");
         System.out.println(">>> TOOL CHAMADA: buscarFilhosPorCodigoPai(codigoPai=" + codigoPai + ")");
@@ -113,7 +125,7 @@ public class ConsultaAcoesTool {
         return sb.toString();
     }
 
-    @Tool("Busca ações do PDI cuja data final seja um ano específico. Use para perguntas tipo 'existe ação que termina em [ano]?'")
+    // @Tool("Busca ações do PDI cuja data final seja um ano específico. Use para perguntas tipo 'existe ação que termina em [ano]?'")
     public String buscarPorAnoFinal(@P("ano de referência, ex: 2028") int ano) {
         statusExecucao.definir("Procurando ações do PDI que terminam em " + ano + "...");
         System.out.println(">>> TOOL CHAMADA: buscarPorAnoFinal(ano=" + ano + ")");
@@ -132,7 +144,7 @@ public class ConsultaAcoesTool {
         return sb.toString();
     }
 
-    @Tool("Conta ações do PDI filtrando por marcador (ex: 'CPA', 'Plano de Governo', 'AUDIN') e, opcionalmente, percentual mínimo de execução")
+    // @Tool("Conta ações do PDI filtrando por marcador (ex: 'CPA', 'Plano de Governo', 'AUDIN') e, opcionalmente, percentual mínimo de execução")
     public String contarPorMarcador(
             @P("marcador a buscar, ex: CPA") String marcador,
             @P(value = "percentual mínimo de execução (0 a 100), opcional", required = false) Double percentualMinimo) {
@@ -146,7 +158,7 @@ public class ConsultaAcoesTool {
                (percentualMinimo != null ? " e execução >= " + minimo + "%" : "");
     }
 
-    @Tool("Busca ações do PDI por palavra-chave no título, quando o usuário não sabe o código exato")
+    // @Tool("Busca ações do PDI por palavra-chave no título, quando o usuário não sabe o código exato")
     public String buscarPorTitulo(@P("palavra-chave a buscar no título da ação") String palavraChave) {
         statusExecucao.definir("Buscando ações do PDI com '" + palavraChave + "'...");
         System.out.println(">>> TOOL CHAMADA: buscarPorTitulo(palavraChave=" + palavraChave + ")");
@@ -201,6 +213,61 @@ public class ConsultaAcoesTool {
               .append(" | ").append(formatarPercentualEnxuto(item.get("media_execucao_pct"))).append("%")
               .append(" | ").append(item.get("qtd_acoes"))
               .append(" |\n");
+        }
+        return sb.toString();
+    }
+
+    @Tool("Busca e LISTA ações do PAT (ano corrente) marcadas com um marcador/tag específico (ex: 'risco', 'CPA', 'AUDIN', 'Plano de Governo'), opcionalmente filtrando por departamento. Use quando o usuário pedir pra 'relacionar', 'listar' ou 'mostrar' ações com esse marcador — diferente de rankings ou relatórios gerais, que não usam marcador.")
+    public String buscarAcoesPorMarcador(
+            @P("marcador/tag a buscar, ex: risco, CPA, AUDIN, Plano de Governo") String marcador,
+            @P(value = "nome do departamento pra restringir a busca, opcional", required = false) String departamento) {
+        boolean filtrarDepto = departamento != null && !departamento.isBlank();
+        statusExecucao.definir("Buscando ações com o marcador '" + marcador + "'" + (filtrarDepto ? " em " + departamento : "") + "...");
+        System.out.println(">>> TOOL CHAMADA: buscarAcoesPorMarcador(marcador=" + marcador + ", departamento=" + departamento + ")");
+
+        String sql = "SELECT departamento, codigo_acao, titulo_acao, ROUND(percentual_execucao * 100, 2) AS percentual " +
+                     "FROM pat_execucao_departamento " +
+                     "WHERE marcadores ILIKE ? " +
+                     (filtrarDepto ? "AND departamento ILIKE ? " : "") +
+                     "ORDER BY departamento, percentual_execucao ASC " +
+                     "LIMIT 30";
+
+        List<Map<String, Object>> resultado = filtrarDepto
+            ? jdbcTemplate.queryForList(sql, "%" + marcador.trim() + "%", "%" + departamento.trim() + "%")
+            : jdbcTemplate.queryForList(sql, "%" + marcador.trim() + "%");
+
+        System.out.println(">>> TOOL RESULTADO: " + resultado.size() + " ação(ões)");
+
+        if (resultado.isEmpty()) {
+            return "Nenhuma ação encontrada com o marcador '" + marcador + "'"
+                 + (filtrarDepto ? " no departamento '" + departamento + "'" : "") + ".";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        if (resultado.size() >= 30) {
+            sb.append("Mostrando as 30 primeiras ações com o marcador '").append(marcador).append("' (pode haver mais).\n\n");
+        }
+        // Departamento só entra na tabela quando a busca não já filtrou por um só — senão toda
+        // linha repetiria o mesmo valor à toa (mesmo ajuste feito em contarTarefasPorDepartamento).
+        if (filtrarDepto) {
+            sb.append("| Ação | Título | % Execução |\n");
+            sb.append("|---|---|---|\n");
+            for (Map<String, Object> item : resultado) {
+                sb.append("| ").append(formatarCodigo(item.get("codigo_acao")))
+                  .append(" | ").append(truncarTituloSemCodigo((String) item.get("titulo_acao")))
+                  .append(" | ").append(formatarPercentualEnxuto(item.get("percentual"))).append("%")
+                  .append(" |\n");
+            }
+        } else {
+            sb.append("| Ação | Título | Departamento | % Execução |\n");
+            sb.append("|---|---|---|---|\n");
+            for (Map<String, Object> item : resultado) {
+                sb.append("| ").append(formatarCodigo(item.get("codigo_acao")))
+                  .append(" | ").append(truncarTituloSemCodigo((String) item.get("titulo_acao")))
+                  .append(" | ").append(item.get("departamento"))
+                  .append(" | ").append(formatarPercentualEnxuto(item.get("percentual"))).append("%")
+                  .append(" |\n");
+            }
         }
         return sb.toString();
     }
@@ -320,7 +387,7 @@ public class ConsultaAcoesTool {
         return semDepartamento.replaceFirst("^[A-Za-zÀ-ÿ]+ [0-9]+(?:\\.[0-9]+)*\\s*-\\s*", "");
     }
 
-    @Tool("Conta quantas ações do PDI cada departamento/UG é responsável, ranqueando por quantidade. Use para perguntas tipo 'qual UG tem menos/mais ações no PDI'. Uma ação pode ter vários departamentos responsáveis; esta ferramenta conta corretamente cada departamento separadamente. Permite filtrar só por UG ou só por UA, usando a classificação já conhecida do PAT.")
+    // @Tool("Conta quantas ações do PDI cada departamento/UG é responsável, ranqueando por quantidade. Use para perguntas tipo 'qual UG tem menos/mais ações no PDI'. Uma ação pode ter vários departamentos responsáveis; esta ferramenta conta corretamente cada departamento separadamente. Permite filtrar só por UG ou só por UA, usando a classificação já conhecida do PAT.")
     public String contarAcoesPorDepartamentoPDI(
             @P("'menos' para ranquear do menor para o maior número de ações, 'mais' para o maior primeiro") String ordem,
             @P(value = "'UG' para filtrar só Unidades Gestoras, 'UA' para só Unidades Acadêmicas, deixe null para todas", required = false) String tipoUnidade,
@@ -331,6 +398,11 @@ public class ConsultaAcoesTool {
         statusExecucao.definir("Contando ações do PDI por departamento...");
         System.out.println(">>> TOOL CHAMADA: contarAcoesPorDepartamentoPDI(ordem=" + ordem + ", tipoUnidade=" + tipoUnidade + ", limite=" + qtd + ")");
 
+        // Texto SOMENTE em text block (""") até aqui — um text block corta espaço em branco no
+        // fim de cada linha automaticamente (whitespace incidental), então concatenar variável
+        // logo após um " """ na mesma linha gruda a palavra sem espaço nenhum na SQL final
+        // (virava "qtd_acoesDESCLIMIT ?", erro de sintaxe). O trecho ORDER BY/LIMIT sai do
+        // text block e usa string normal, com o espaço explícito, igual contarAcoesPorDepartamentoPAT.
         String sql = """
             WITH pdi_deptos AS (
                 SELECT TRIM(depto) AS departamento, COUNT(*) AS qtd_acoes
@@ -344,10 +416,10 @@ public class ConsultaAcoesTool {
             SELECT p.departamento, m.tipo_unidade, p.qtd_acoes
             FROM pdi_deptos p
             LEFT JOIN mapeamento m ON m.departamento = p.departamento
-            """ + (filtrarTipo ? "WHERE m.tipo_unidade = ? " : "") + """
-            ORDER BY p.qtd_acoes """ + direcao + """
-            LIMIT ?
-            """;
+            """
+            + (filtrarTipo ? "WHERE m.tipo_unidade = ? " : "")
+            + "ORDER BY p.qtd_acoes " + direcao + " "
+            + "LIMIT ?";
 
         List<Map<String, Object>> resultado = filtrarTipo
             ? jdbcTemplate.queryForList(sql, tipoUnidade.toUpperCase(), qtd)
@@ -403,13 +475,25 @@ public class ConsultaAcoesTool {
         sb.append("Contagem de ações do PAT por departamento")
           .append(filtrarTipo ? " (filtrado por " + tipoUnidade.toUpperCase() + ")" : "")
           .append(":\n\n");
-        sb.append("| Departamento | Tipo | Qtd Ações |\n");
-        sb.append("|---|---|---|\n");
-        for (Map<String, Object> item : resultado) {
-            sb.append("| ").append(item.get("departamento"))
-              .append(" | ").append(item.get("tipo_unidade"))
-              .append(" | ").append(item.get("qtd_acoes"))
-              .append(" |\n");
+        // Coluna "Tipo" só agrega informação quando a lista mistura UA e UG — filtrado por um
+        // tipo só, toda linha repetiria o mesmo valor, redundante.
+        if (filtrarTipo) {
+            sb.append("| Departamento | Qtd Ações |\n");
+            sb.append("|---|---|\n");
+            for (Map<String, Object> item : resultado) {
+                sb.append("| ").append(item.get("departamento"))
+                  .append(" | ").append(item.get("qtd_acoes"))
+                  .append(" |\n");
+            }
+        } else {
+            sb.append("| Departamento | Tipo | Qtd Ações |\n");
+            sb.append("|---|---|---|\n");
+            for (Map<String, Object> item : resultado) {
+                sb.append("| ").append(item.get("departamento"))
+                  .append(" | ").append(item.get("tipo_unidade"))
+                  .append(" | ").append(item.get("qtd_acoes"))
+                  .append(" |\n");
+            }
         }
         return sb.toString();
     }
@@ -446,7 +530,8 @@ public class ConsultaAcoesTool {
              + qtdPorTipo.getOrDefault("UG", 0) + " ação(ões) com UG responsável.";
     }
 
-    @Tool("Compara a execução de uma mesma ação entre o PDI (acumulado dos 5 anos) e o PAT (ano corrente), usando o código da ação. Use quando o usuário quiser entender se uma ação está adiantada ou atrasada em relação ao plano de longo prazo.")
+    // @Tool("Compara a execução de uma mesma ação entre o PDI (acumulado dos 5 anos) e o PAT (ano corrente), usando o código da ação. Use quando o usuário quiser entender se uma ação está adiantada ou atrasada em relação ao plano de longo prazo.")
+    // Desativada junto com as outras 6 ferramentas de PDI acima — mesma razão (ver comentário lá).
     public String compararExecucaoPDIxPAT(@P("código exato da ação, ex: 1.1.1.3") String codigo) {
         statusExecucao.definir("Comparando PAT e PDI da ação " + codigo + "...");
         System.out.println(">>> TOOL CHAMADA: compararExecucaoPDIxPAT(codigo=" + codigo + ")");

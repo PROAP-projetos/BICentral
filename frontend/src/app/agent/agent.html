@@ -13,10 +13,11 @@
   <aside class="sidebar">
     <div class="sidebar-header">
       <a class="logo" routerLink="/" aria-label="proIAp">
-        <svg class="logo-mark" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <svg class="logo-mark" [class.gracejo]="houveAtualizacao" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"></path>
         </svg>
         <span class="logo-text">pro<span class="logo-accent">IA</span>p</span>
+        <span class="versao-badge" [title]="'Versão ' + versaoAgente">{{ versaoAgente }}</span>
       </a>
       <button class="sidebar-collapse-btn" type="button" (click)="toggleSidebar()" aria-label="Fechar barra lateral" title="Fechar barra lateral">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -362,6 +363,17 @@
         Suas perguntas e as respostas ficam salvas pra análise depois, pra ajudar a melhorar o proIAp. Obrigada por participar do teste! 💙
       </div>
       <button type="button" class="aviso-api-fechar" (click)="dispensarAvisoTester()" aria-label="Fechar aviso" title="Fechar">×</button>
+    </div>
+
+    <!-- AVISO: aparece uma vez quando VERSAO_AGENTE muda (ver constructor) — avisa quem já
+         testou antes que teve mudança desde a última vez, sem precisar ela perguntar no grupo. -->
+    <div class="aviso-api-banner aviso-atualizacao-banner" *ngIf="houveAtualizacaoVisivel">
+      <span class="aviso-api-icon">✨</span>
+      <div class="aviso-api-texto">
+        <strong>O proIAp mudou desde a última vez que você testou!</strong>
+        Corrigi alguns furos que vocês encontraram e deixei algumas respostas mais espertas. Bom teste de novo — e se achar algo estranho, me conta 💙
+      </div>
+      <button type="button" class="aviso-api-fechar" (click)="dispensarAvisoAtualizacao()" aria-label="Fechar aviso" title="Fechar">×</button>
     </div>
 
     <!-- O CORPO DA CONVERSA -->

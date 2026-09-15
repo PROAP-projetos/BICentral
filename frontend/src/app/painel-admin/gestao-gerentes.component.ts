@@ -36,8 +36,13 @@ export class GestaoGerentesComponent {
   readonly DEPARTAMENTOS_POR_PAGINA = 6;
   private paginaPorUsuario = new Map<number, number>();
 
+  // Só esconde um departamento se o usuário selecionado no formulário JÁ é gerente dele
+  // (evita duplicar o mesmo vínculo) — um departamento pode ter vários gerentes diferentes,
+  // então não filtra pelos vínculos de todo mundo, só pelos do usuário sendo escolhido agora.
   get departamentosDisponiveis(): string[] {
-    const jaCadastrados = new Set(this.gerentes.map((g) => g.departamento));
+    const jaCadastrados = new Set(
+      this.gerentes.filter((g) => g.usuarioId === this.usuarioId).map((g) => g.departamento)
+    );
     return this.departamentos.filter((dep) => !jaCadastrados.has(dep));
   }
 

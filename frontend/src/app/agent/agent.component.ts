@@ -33,10 +33,19 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   private static readonly AVISO_API_DISPENSADO_KEY = 'bicentral_aviso_api_openai_dispensado';
   private static readonly AVISO_TESTER_DISPENSADO_KEY = 'bicentral_aviso_tester_dispensado';
 
+  // Sobe esse número (e a data no comentário) a cada leva de mudança que valha avisar os
+  // testers — o "gracejo" do logo e o banner de atualização aparecem sozinhos, uma vez só,
+  // pra quem já tinha usado o chat antes com uma versão diferente (ver VERSAO_VISTA_KEY).
+  static readonly VERSAO_AGENTE = '1.1'; // 2026-09-15 — buscarTarefas, marcador, limpeza PDI
+  private static readonly VERSAO_VISTA_KEY = 'bicentral_versao_vista';
+
   isDarkMode = false;
   painelAtivo: 'chat' | 'ranking' | 'grafo' = 'chat';
   avisoApiVisivel = localStorage.getItem(AgentComponent.AVISO_API_DISPENSADO_KEY) !== '1';
   avisoTesterVisivel = localStorage.getItem(AgentComponent.AVISO_TESTER_DISPENSADO_KEY) !== '1';
+  versaoAgente = AgentComponent.VERSAO_AGENTE;
+  houveAtualizacao = false;
+  houveAtualizacaoVisivel = false;
   private scrollPendente = true;
   usuarioLogado = 'dallyla.moraes';
   equipeSelecionada = 'Orçamento';
@@ -112,6 +121,15 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     if (tipoSalvo === 'default' || tipoSalvo === 'serif' || tipoSalvo === 'rounded') {
       this.fontFamily = tipoSalvo;
     }
+
+    // Só avisa se já existia uma versão vista ANTES e ela é diferente da atual — na primeira
+    // visita de todas (sem nada salvo ainda) não tem "atualização" nenhuma pra anunciar.
+    const versaoVista = localStorage.getItem(AgentComponent.VERSAO_VISTA_KEY);
+    if (versaoVista && versaoVista !== AgentComponent.VERSAO_AGENTE) {
+      this.houveAtualizacao = true;
+      this.houveAtualizacaoVisivel = true;
+    }
+    localStorage.setItem(AgentComponent.VERSAO_VISTA_KEY, AgentComponent.VERSAO_AGENTE);
   }
 
   ngOnInit() {
@@ -607,6 +625,10 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   dispensarAvisoTester(): void {
     this.avisoTesterVisivel = false;
     localStorage.setItem(AgentComponent.AVISO_TESTER_DISPENSADO_KEY, '1');
+  }
+
+  dispensarAvisoAtualizacao(): void {
+    this.houveAtualizacaoVisivel = false;
   }
 
   get sugestoesAtuais(): string[] {

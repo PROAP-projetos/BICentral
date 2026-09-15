@@ -18,7 +18,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 // Endpoint REST puro (sem passar pelo agente de IA) pra expor as tarefas de um departamento —
 // usado pelo grafo de atividades do frontend. A mesma consulta já existe como ferramenta da IA
-// em TarefasTool.buscarTarefasPorDepartamento, mas aquela só o agente consegue chamar.
+// em TarefasTool.buscarTarefas (filtrando por departamento), mas aquela só o agente consegue chamar.
 @RestController
 @RequestMapping("/api/tarefas")
 public class TarefasController {
