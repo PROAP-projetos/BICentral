@@ -84,12 +84,11 @@ public class ConsultaAcoesTool {
 
     // ---------------------------------------------------------------------------------------
     // FERRAMENTAS DE PDI DESATIVADAS (sem @Tool, não expostas ao agente) — a tabela acoes_pdi
-    // hoje é uma carga estática feita à mão (não a integração real da API), e a Dallyla está
-    // segurando de propósito a integração de verdade até fazer mais sentido nos 5 anos
-    // acumulados do PDI (ainda estamos no ano 1). O prompt do sistema (AgenteConsultaSql) já
-    // instrui o agente a recusar perguntas de PDI — manter essas 6 ferramentas visíveis mesmo
-    // assim só infla o schema de function-calling em toda requisição à toa. Código mantido
-    // funcional de propósito: quando a integração real acontecer, é só devolver o @Tool(...)
+    // hoje é uma carga estática feita à mão, não a integração real da API do PDI, que ainda não
+    // foi ligada. O prompt do sistema (AgenteConsultaSql) já instrui o agente a recusar
+    // perguntas de PDI — manter essas 6 ferramentas visíveis mesmo assim só infla o schema de
+    // function-calling em toda requisição à toa. Código mantido funcional de propósito: quando
+    // a integração real acontecer, é só devolver o @Tool(...)
     // (o texto original está comentado logo acima de cada método) e atualizar o prompt.
     // ---------------------------------------------------------------------------------------
 

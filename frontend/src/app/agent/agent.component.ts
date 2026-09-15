@@ -6,7 +6,7 @@ import { finalize, interval, Subscription, switchMap } from 'rxjs';
 import { GraficoIaComponent } from '../grafico-ia/grafico-ia';
 import { GrafoAtividadesComponent } from '../grafo-atividades/grafo-atividades.component';
 import { LeaderboardUgComponent } from '../leaderboard-ug/leaderboard-ug.component';
-import { AgentService, Notificacao, PainelAtrasos, RelatorioHistoricoItem, UsoIa } from '../services/agent.service';
+import { AgentService, Notificacao, PainelAtrasos, RelatorioHistoricoItem, TarefasAtrasadasResumo, UsoIa } from '../services/agent.service';
 import { AdminService } from '../services/admin.service';
 import { SafeUrlPipe } from '../pipes/safe-url.pipe';
 
@@ -137,12 +137,14 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.carregarSessoes();
   }
 
+  // Só carrega a LISTA de conversas passadas pra sidebar — não seleciona nenhuma delas
+  // automaticamente. Quem abre o agente sempre entra numa conversa nova em branco; retomar
+  // a última conversa é escolha explícita da pessoa (clicar nela na lista), não padrão.
   private carregarSessoes(): void {
     this.agentService.listarSessoes().subscribe({
       next: (lista) => {
         if (lista.length === 0) return; // sem histórico ainda, mantém a "Nova Conversa" padrão
         this.sessoes = lista.map((s) => ({ id: s.id, titulo: s.titulo, fixado: s.fixado, messages: [], carregada: false }));
-        this.selecionarChat(this.sessoes[0]);
       },
       error: () => { /* silencioso — começa do zero se falhar */ }
     });
@@ -712,25 +714,25 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     localStorage.setItem(AgentComponent.FONT_FAMILY_KEY, tipo);
   }
 
+  // Discreto de propósito: nunca põe título de tarefa nem quantidade como mensagem do bot na
+  // conversa (ficava visível de cara pra qualquer um que estivesse olhando a tela — ex: reunião
+  // com compartilhamento de tela — mesmo sem a pessoa ter pedido nada ainda). Só guarda o resumo
+  // pra um indicativo pequeno no composer, que revela detalhe só se a pessoa clicar.
+  resumoTarefasAtrasadas: TarefasAtrasadasResumo | null = null;
+
   private verificarTarefasAtrasadas(): void {
     this.agentService.buscarMinhasTarefasAtrasadas().subscribe({
       next: (resumo) => {
-        if (resumo.quantidade > 0 && this.sessaoAtual.messages.length === 0) {
-          const dias = resumo.diasAtraso ?? 0;
-          const diaOuDias = dias === 1 ? 'dia' : 'dias';
-          const texto = resumo.quantidade === 1
-            ? `⚠️ Antes de começarmos: você tem 1 tarefa atrasada — "${resumo.tituloMaisUrgente}", há ${dias} ${diaOuDias}. Quer que eu liste os detalhes?`
-            : `⚠️ Antes de começarmos: você tem ${resumo.quantidade} tarefas atrasadas. A mais urgente é "${resumo.tituloMaisUrgente}", há ${dias} ${diaOuDias}. Quer que eu liste todas?`;
-
-          this.sessaoAtual.messages.push({
-            from: 'bot',
-            text: texto,
-            sugestoes: ['Quais são minhas tarefas atrasadas?']
-          });
+        if (resumo.quantidade > 0) {
+          this.resumoTarefasAtrasadas = resumo;
         }
       },
       error: () => { /* silencioso: uma falha aqui não pode travar a abertura do chat */ }
     });
+  }
+
+  perguntarTarefasAtrasadas(): void {
+    this.enviarSugestao('Quais são minhas tarefas atrasadas?');
   }
 
   private carregarNotificacoes(): void {

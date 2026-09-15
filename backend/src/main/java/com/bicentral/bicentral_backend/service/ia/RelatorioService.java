@@ -75,13 +75,12 @@ public class RelatorioService {
     }
 
     public Long solicitarRelatorio(Long usuarioId, String departamento, String tipo, String formato) {
-        // PDI hoje só tem uma carga estática/manual feita à mão (não é a integração real da
-        // API), e a Dallyla está segurando de propósito a integração de verdade até fazer mais
-        // sentido nos 5 anos acumulados (ainda estamos no ano 1). Força PAT aqui pra fechar TODA
-        // entrada possível (chat, e também o endpoint REST direto em RelatorioController, que
-        // aceita "tipo" livre) — sem isso o chat já recusa falar de PDI, mas um relatório ainda
-        // conseguia sair com esse dado estático desatualizado sem avisar ninguém. Reverter isso
-        // (tirar essa linha) quando a integração real da API do PDI estiver pronta.
+        // PDI hoje só tem uma carga estática/manual, não a integração real da API, que ainda não
+        // foi ligada. Força PAT aqui pra fechar TODA entrada possível (chat, e também o endpoint
+        // REST direto em RelatorioController, que aceita "tipo" livre) — sem isso o chat já
+        // recusa falar de PDI, mas um relatório ainda conseguia sair com esse dado estático
+        // desatualizado sem avisar ninguém. Reverter isso (tirar essa linha) quando a integração
+        // real da API do PDI estiver pronta.
         tipo = "PAT";
         String formatoFinal = normalizarFormato(formato);
 

@@ -277,21 +277,26 @@
         </div>
 
         <div class="notif-wrapper">
-          <button class="notif-bell" type="button" (click)="toggleNotificacoes()" aria-label="Notificações" title="Notificações">
+          <!-- Não é "notificação" de verdade (evento novo que aparece e some) — é o status
+               recalculado na hora dos departamentos que a pessoa gerencia, sempre vai ter algo
+               aqui enquanto existir departamento fora da faixa esperada. Por isso o ícone e a
+               cor do selo são neutros, não um alerta vermelho gritando pra sempre. -->
+          <button class="notif-bell" type="button" (click)="toggleNotificacoes()" aria-label="Status dos departamentos" title="Status dos departamentos">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round">
-              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
-              <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
+              <line x1="18" y1="20" x2="18" y2="10"></line>
+              <line x1="12" y1="20" x2="12" y2="4"></line>
+              <line x1="6" y1="20" x2="6" y2="14"></line>
             </svg>
             <span class="notif-badge" [class.notif-badge-ok]="!temAlertaNegativo" *ngIf="notificacoes.length > 0">{{ notificacoes.length }}</span>
           </button>
 
           <div class="notif-panel" *ngIf="mostrarPainelNotificacoes">
-            <div class="notif-panel-header">Notificações</div>
+            <div class="notif-panel-header">Status dos departamentos</div>
 
             <div class="notif-panel-body">
               <p class="notif-empty" *ngIf="!carregandoNotificacoes && notificacoes.length === 0">
-                Nenhuma notificação no momento.
+                Nenhum departamento fora da faixa esperada no momento.
               </p>
               <p class="notif-empty" *ngIf="carregandoNotificacoes">Carregando...</p>
 
@@ -494,6 +499,15 @@
 
       <!-- Área do Input de Texto -->
       <div class="composer">
+        <!-- Indicativo discreto de tarefa atrasada — de propósito NÃO mostra título nem detalhe
+             nenhum aqui (só a quantidade), pra não expor conteúdo da tarefa pra quem só olhar
+             a tela por cima do ombro (ex: reunião com compartilhamento de tela). Detalhe só
+             aparece se a pessoa clicar. -->
+        <button type="button" class="aviso-tarefa-discreto" *ngIf="messages.length === 0 && resumoTarefasAtrasadas"
+          (click)="perguntarTarefasAtrasadas()">
+          ⚠️ {{ resumoTarefasAtrasadas.quantidade === 1 ? '1 tarefa atrasada' : resumoTarefasAtrasadas.quantidade + ' tarefas atrasadas' }}
+        </button>
+
         <div *ngIf="sugestoesAtuais.length > 0" class="composer-sugestoes">
           <button type="button" class="sugestao-chip" *ngFor="let s of sugestoesAtuais" (click)="enviarSugestao(s)">
             {{ s }}
