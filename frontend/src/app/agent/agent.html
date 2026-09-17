@@ -347,8 +347,9 @@
       <app-grafo-atividades *ngIf="painelAtivo === 'grafo'"></app-grafo-atividades>
     </div>
 
-    <!-- AVISO: o chat só responde com uma chave de API própria, que não vai pro repositório -->
-    <div class="aviso-api-banner" *ngIf="avisoApiVisivel">
+    <!-- AVISO: o chat só responde com uma chave de API própria, que não vai pro repositório —
+         nota técnica pra quem mexe no LangchainConfig.java, não faz sentido pra tester comum -->
+    <div class="aviso-api-banner" *ngIf="avisoApiVisivel && isAdminSistema">
       <span class="aviso-api-icon">⚠️</span>
       <div class="aviso-api-texto">
         <strong>Antes de sair testando o chat:</strong> o proIAp tá configurado com a API paga da OpenAI, e a minha chave é local — não subiu pro repositório. Sem uma chave sua, o chat vai dar erro e não responder nada.
@@ -375,8 +376,8 @@
     <div class="aviso-api-banner aviso-atualizacao-banner" *ngIf="houveAtualizacaoVisivel">
       <span class="aviso-api-icon">✨</span>
       <div class="aviso-api-texto">
-        <strong>O proIAp mudou desde a última vez que você testou!</strong>
-        Corrigi alguns furos que vocês encontraram e deixei algumas respostas mais espertas. Bom teste de novo — e se achar algo estranho, me conta 💙
+        <strong>O proIAp mudou bastante desde a última vez que você testou! (versão 1.2)</strong>
+        Os relatórios ficaram bem mais completos e fáceis de ler, corrigi um bug que duplicava números em alguns relatórios e rankings, e as respostas do chat ficaram mais diretas. Bom teste de novo — e se achar algo estranho, me conta 💙
       </div>
       <button type="button" class="aviso-api-fechar" (click)="dispensarAvisoAtualizacao()" aria-label="Fechar aviso" title="Fechar">×</button>
     </div>

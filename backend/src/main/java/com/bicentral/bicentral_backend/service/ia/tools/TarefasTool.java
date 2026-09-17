@@ -26,9 +26,11 @@ public class TarefasTool {
     }
 
     @Tool("Busca as tarefas do PAT sob responsabilidade do usuário atualmente logado no chat. Use quando o usuário perguntar 'minhas tarefas', 'o que eu tenho pra fazer', 'como estão minhas pendências', ou pedir um panorama pessoal do próprio trabalho.")
-    public String buscarMinhasTarefas() {
+    public String buscarMinhasTarefas(
+            @P(value = "quantidade máxima de tarefas a retornar, padrão 10 se o usuário não especificar. Se o usuário pedir 'todas', 'sem limite' ou 'lista tudo', passe 500. Se pedir uma quantidade específica, passe esse número exato — nunca mostre menos do que foi pedido.", required = false) Integer limite) {
+        int qtd = (limite == null || limite <= 0) ? 10 : Math.min(limite, 500);
         statusExecucao.definir("Buscando suas tarefas...");
-        System.out.println(">>> TOOL CHAMADA: buscarMinhasTarefas()");
+        System.out.println(">>> TOOL CHAMADA: buscarMinhasTarefas(limite=" + qtd + ")");
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         var usuario = usuarioService.buscarPorEmail(email);
@@ -62,8 +64,8 @@ public class TarefasTool {
             FROM pat_tarefas
             WHERE dados_completos->>'Responsável' ILIKE ?
             ORDER BY atrasada DESC, to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') ASC NULLS LAST
-            LIMIT 30
-            """, "%" + nomeResponsavel.trim() + "%");
+            LIMIT ?
+            """, "%" + nomeResponsavel.trim() + "%", qtd);
 
         System.out.println(">>> TOOL RESULTADO: " + tarefas.size() + " tarefa(s) de " + totalTarefas + " para " + nomeResponsavel);
 
@@ -76,15 +78,16 @@ public class TarefasTool {
         sb.append("Tarefas de ").append(nomeResponsavel).append(" (")
           .append(truncado ? tarefas.size() + " mais urgentes de " + totalTarefas + " no total" : tarefas.size() + " no total")
           .append("):\n\n");
-        sb.append("| Ação | Tarefa | % | Prazo |\n");
-        sb.append("|---|---|---|---|\n");
+        sb.append("| Ação | Tarefa | % | Atraso | Prazo |\n");
+        sb.append("|---|---|---|---|---|\n");
         for (Map<String, Object> t : tarefas) {
             boolean atrasada = Boolean.TRUE.equals(t.get("atrasada"));
-            String prefixo = atrasada ? "⚠️ ATRASADA (" + t.get("dias_atraso") + "d) — " : "";
+            String atraso = atrasada ? "⚠️ " + t.get("dias_atraso") + "d" : "—";
 
             sb.append("| ").append(formatarCodigo(t.get("codigo_acao")))
-              .append(" | ").append(prefixo).append(t.get("titulo_tarefa"))
+              .append(" | ").append(t.get("titulo_tarefa"))
               .append(" | ").append(formatarPercentualEnxuto(t.get("percentual"))).append("%")
+              .append(" | ").append(atraso)
               .append(" | ").append(formatarData(t.get("data_final")))
               .append(" |\n");
         }
@@ -98,9 +101,9 @@ public class TarefasTool {
             @P(value = "palavra-chave a buscar no título da tarefa, opcional", required = false) String palavraChave,
             @P(value = "'atrasada' (prazo vencido e não concluída), 'concluida' ou 'em_andamento' (dentro do prazo, não concluída); deixe null para qualquer status", required = false) String status,
             @P(value = "'prazo' (mais urgentes primeiro, padrão) ou 'percentual' (menor conclusão primeiro)", required = false) String ordenarPor,
-            @P(value = "quantidade máxima de tarefas a retornar, padrão 15, máximo 50", required = false) Integer limite) {
+            @P(value = "quantidade máxima de tarefas a retornar, padrão 10 se o usuário não especificar. Se o usuário pedir 'todas', 'sem limite' ou 'lista tudo', passe 500. Se pedir uma quantidade específica (ex: 'as 30 mais urgentes'), passe esse número exato — nunca mostre menos do que foi pedido.", required = false) Integer limite) {
 
-        int qtd = (limite == null || limite <= 0) ? 15 : Math.min(limite, 50);
+        int qtd = (limite == null || limite <= 0) ? 10 : Math.min(limite, 500);
         boolean ordenarPorPercentual = "percentual".equalsIgnoreCase(ordenarPor);
         statusExecucao.definir(montarStatusBusca(departamento, responsavel, status));
         System.out.println(">>> TOOL CHAMADA: buscarTarefas(departamento=" + departamento + ", responsavel=" + responsavel
@@ -175,18 +178,19 @@ public class TarefasTool {
         boolean truncado = total > tarefas.size();
         sb.append(truncado ? tarefas.size() + " tarefa(s) mostrada(s) de " + total + " no total" : total + " tarefa(s) encontrada(s)")
           .append(":\n\n");
-        sb.append("| Ação | Tarefa | Departamento | Responsável | % Ação | % Tarefa | Prazo |\n");
-        sb.append("|---|---|---|---|---|---|---|\n");
+        sb.append("| Ação | Tarefa | Departamento | Responsável | % Ação | % Tarefa | Atraso | Prazo |\n");
+        sb.append("|---|---|---|---|---|---|---|---|\n");
         for (Map<String, Object> t : tarefas) {
             boolean atrasada = Boolean.TRUE.equals(t.get("atrasada"));
-            String prefixo = atrasada ? "⚠️ ATRASADA (" + t.get("dias_atraso") + "d) — " : "";
+            String atraso = atrasada ? "⚠️ " + t.get("dias_atraso") + "d" : "—";
             Object percentualAcao = t.get("percentual_acao");
             sb.append("| ").append(formatarCodigo(t.get("codigo_acao")))
-              .append(" | ").append(prefixo).append(t.get("titulo_tarefa"))
+              .append(" | ").append(t.get("titulo_tarefa"))
               .append(" | ").append(t.get("departamento"))
               .append(" | ").append(t.get("responsavel") != null ? t.get("responsavel") : "—")
               .append(" | ").append(percentualAcao == null ? "—" : formatarPercentualEnxuto(percentualAcao) + "%")
               .append(" | ").append(formatarPercentualEnxuto(t.get("percentual_tarefa"))).append("%")
+              .append(" | ").append(atraso)
               .append(" | ").append(formatarData(t.get("data_final")))
               .append(" |\n");
         }

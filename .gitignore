@@ -52,6 +52,9 @@ docs/opiniao-proiap.md
 docs/tcc-mudancas-agente.md
 docs/tcc2-estrutura.md
 
+# --- Sincronização manual UFT (guarda token/payload da API local, nunca subir) ---
+backend/sync-data/
+
 # --- Claude Code (config/memória local, não é pra subir) ---
 CLAUDE.md
 .claude/

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { AdminService, TesterProiap } from '../services/admin.service';
+import { AgentComponent } from '../agent/agent.component';
 
 @Component({
   selector: 'app-gestao-testers',
@@ -38,10 +39,40 @@ export class GestaoTestersComponent implements OnInit {
   mensagem = '';
   tipoMensagem: 'sucesso' | 'erro' = 'sucesso';
 
+  versaoAgente = AgentComponent.VERSAO_AGENTE;
+  versaoJaNotificada = false;
+  notificandoVersao = false;
+
   constructor(private adminService: AdminService) {}
 
   ngOnInit(): void {
     this.carregar();
+    this.adminService.statusNotificacaoVersao(this.versaoAgente).subscribe({
+      next: (status) => (this.versaoJaNotificada = status.enviado),
+      error: () => {}
+    });
+  }
+
+  notificarVersao(): void {
+    if (this.notificandoVersao || this.versaoJaNotificada) return;
+
+    this.notificandoVersao = true;
+    this.adminService.notificarVersaoTesters(this.versaoAgente).subscribe({
+      next: (resposta) => {
+        this.notificandoVersao = false;
+        this.versaoJaNotificada = true;
+        this.aviso(
+          resposta.jaEnviado
+            ? 'Esse aviso já tinha sido enviado antes.'
+            : `E-mail da versão ${this.versaoAgente} enviado para ${resposta.enviados} tester(s).`,
+          'sucesso'
+        );
+      },
+      error: () => {
+        this.notificandoVersao = false;
+        this.aviso('Erro ao enviar o e-mail de versão.', 'erro');
+      }
+    });
   }
 
   carregar(): void {

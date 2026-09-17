@@ -82,6 +82,30 @@ public class UsoIaService {
                 criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
             """);
+
+        // Trava o disparo do e-mail de "nova versão" por versão — sem isso um duplo clique
+        // ou um F5 no botão de notificar reenviaria pra todos os testers.
+        jdbcTemplate.execute("""
+            CREATE TABLE IF NOT EXISTS notificacoes_versao_proiap (
+                versao TEXT PRIMARY KEY,
+                enviado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+            """);
+    }
+
+    public boolean versaoJaNotificada(String versao) {
+        Integer total = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM notificacoes_versao_proiap WHERE versao = ?", Integer.class, versao);
+        return total != null && total > 0;
+    }
+
+    // Retorna false se essa versão já tinha sido marcada (corrida entre dois cliques/abas) —
+    // quem chama só deve disparar os e-mails quando o retorno for true.
+    @Transactional
+    public boolean marcarVersaoNotificada(String versao) {
+        int linhas = jdbcTemplate.update(
+                "INSERT INTO notificacoes_versao_proiap (versao) VALUES (?) ON CONFLICT (versao) DO NOTHING", versao);
+        return linhas > 0;
     }
 
     public Long registrarUso(Long usuarioId, String sessaoId, String pergunta, String respostaResumo, TokenUsage tokenUsage) {

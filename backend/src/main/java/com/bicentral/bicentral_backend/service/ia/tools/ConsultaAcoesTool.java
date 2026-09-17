@@ -51,7 +51,17 @@ public class ConsultaAcoesTool {
             FROM pat_dados p
             LEFT JOIN departamento_tipo dt ON dt.departamento = p.departamento
             LEFT JOIN (
-                SELECT DISTINCT departamento, tipo_unidade FROM gerentes_departamento
+                -- gerentes_departamento tem 1 linha por gerente (um departamento pode ter vários),
+                -- mas tipo_unidade é atributo do departamento, não do gerente — GROUP BY colapsa
+                -- pra 1 linha por departamento. "DISTINCT departamento, tipo_unidade" (versão
+                -- anterior) não fazia isso: com um gerente tipado ('UG') e outros sem tipo (NULL),
+                -- sobravam 2 linhas distintas pro mesmo departamento, duplicando toda ação dele
+                -- nesta view (109 departamentos * cada ação 2x — inclusive nos relatórios gerados).
+                -- cast de volta pra VARCHAR(2): CREATE OR REPLACE VIEW não deixa mudar o tipo de
+                -- uma coluna já existente, e MAX() sobre VARCHAR(2) devolve varchar sem limite.
+                SELECT departamento, MAX(tipo_unidade)::VARCHAR(2) AS tipo_unidade
+                FROM gerentes_departamento
+                GROUP BY departamento
             ) gd ON gd.departamento = p.departamento
             """);
 

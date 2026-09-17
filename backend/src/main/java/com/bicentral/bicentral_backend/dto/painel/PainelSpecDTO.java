@@ -11,7 +11,7 @@ public record PainelSpecDTO(
     @Description("Deve ser SEMPRE a palavra exata: 'painel'")
     String skill,
 
-    @Description("Mensagem natural, amigável e SEMPRE VARIADA, resumindo os dados que você encontrou e perguntando se o usuário confirma a geração do painel. Termine SEMPRE com um ponto de interrogação (?). NUNCA use dois pontos (:) no final.")
+    @Description("Se houver dado real nas séries: mensagem natural, amigável e SEMPRE VARIADA, resumindo os dados encontrados e perguntando se o usuário confirma a geração do painel, terminando com ponto de interrogação (?). Se as séries vierem vazias (dado não encontrado): explicação curta do que faltou, SEM pergunta de confirmação (não tem painel pra confirmar). Nos dois casos, NUNCA use dois pontos (:) no final.")
     String mensagemContexto,
 
     @Description("O título geral do painel — se for um único gráfico, pode repetir o título dele")

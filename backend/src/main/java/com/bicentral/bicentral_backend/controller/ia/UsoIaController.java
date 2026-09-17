@@ -4,6 +4,7 @@ import com.bicentral.bicentral_backend.dto.ia.TesterProiapDTO;
 import com.bicentral.bicentral_backend.dto.ia.UsoIaResponseDTO;
 import com.bicentral.bicentral_backend.model.Usuario;
 import com.bicentral.bicentral_backend.service.admin.AdminService;
+import com.bicentral.bicentral_backend.service.auth.EmailService;
 import com.bicentral.bicentral_backend.service.auth.UsuarioService;
 import com.bicentral.bicentral_backend.service.ia.UsoIaService;
 
@@ -28,11 +29,13 @@ public class UsoIaController {
     private final UsoIaService usoIaService;
     private final UsuarioService usuarioService;
     private final AdminService adminService;
+    private final EmailService emailService;
 
-    public UsoIaController(UsoIaService usoIaService, UsuarioService usuarioService, AdminService adminService) {
+    public UsoIaController(UsoIaService usoIaService, UsuarioService usuarioService, AdminService adminService, EmailService emailService) {
         this.usoIaService = usoIaService;
         this.usuarioService = usuarioService;
         this.adminService = adminService;
+        this.emailService = emailService;
     }
 
     @GetMapping
@@ -88,6 +91,35 @@ public class UsoIaController {
     public void removerTesterPendente(@AuthenticationPrincipal UserDetails userDetails, @RequestParam String email) {
         exigirAdmin(userDetails);
         usoIaService.removerTesterPendente(email);
+    }
+
+    // Status do disparo por versão — o front usa isso pra saber se o botão já "morreu"
+    // mesmo depois de um F5 ou login em outra aba/máquina.
+    @GetMapping("/testers/notificar-versao")
+    public Map<String, Object> statusNotificacaoVersao(
+            @AuthenticationPrincipal UserDetails userDetails, @RequestParam String versao) {
+        exigirAdmin(userDetails);
+        return Map.of("enviado", usoIaService.versaoJaNotificada(versao));
+    }
+
+    // Dispara o e-mail de "nova versão" pra todos os testers confirmados (ignora pendentes,
+    // que ainda não têm conta/nome pra personalizar o e-mail). Best-effort por pessoa: um
+    // envio falhando não derruba os demais nem a requisição (ver sendVersaoAnuncioEmailAsync).
+    // Idempotente por versão: uma segunda chamada (duplo clique, F5, outra aba) não reenvia.
+    @PostMapping("/testers/notificar-versao")
+    public Map<String, Object> notificarVersaoParaTesters(
+            @AuthenticationPrincipal UserDetails userDetails, @RequestParam String versao) {
+        exigirAdmin(userDetails);
+        if (!usoIaService.marcarVersaoNotificada(versao)) {
+            return Map.of("enviados", 0, "jaEnviado", true);
+        }
+        List<TesterProiapDTO> destinatarios = usoIaService.listarTesters().stream()
+                .filter(t -> !t.pendente() && t.email() != null && !t.email().isBlank())
+                .toList();
+        for (TesterProiapDTO tester : destinatarios) {
+            emailService.sendVersaoAnuncioEmailAsync(tester.email(), tester.nome() != null ? tester.nome() : "tester");
+        }
+        return Map.of("enviados", destinatarios.size(), "jaEnviado", false);
     }
 
     private void exigirAdmin(UserDetails userDetails) {

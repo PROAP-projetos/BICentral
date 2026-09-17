@@ -184,4 +184,13 @@ export class AdminService {
   removerTesterPendente(email: string): Observable<void> {
     return this.http.delete<void>('/api/uso-ia/testers/pendentes', { params: { email } });
   }
+
+  statusNotificacaoVersao(versao: string): Observable<{ enviado: boolean }> {
+    return this.http.get<{ enviado: boolean }>('/api/uso-ia/testers/notificar-versao', { params: { versao } });
+  }
+
+  notificarVersaoTesters(versao: string): Observable<{ enviados: number; jaEnviado: boolean }> {
+    return this.http.post<{ enviados: number; jaEnviado: boolean }>(
+      '/api/uso-ia/testers/notificar-versao', null, { params: { versao } });
+  }
 }

@@ -9,8 +9,10 @@ import com.bicentral.bicentral_backend.dto.ia.AnaliseComandoDTO;
 import com.bicentral.bicentral_backend.dto.ia.ContextoRAGDTO;
 import com.bicentral.bicentral_backend.dto.ia.IntencaoDTO;
 import com.bicentral.bicentral_backend.dto.ia.RespostaTextualDTO;
+import com.bicentral.bicentral_backend.dto.painel.GraficoSpecDTO;
 import com.bicentral.bicentral_backend.dto.painel.PainelRespostaDTO;
 import com.bicentral.bicentral_backend.dto.painel.PainelSpecDTO;
+import com.bicentral.bicentral_backend.dto.painel.SerieGraficoDTO;
 import com.bicentral.bicentral_backend.state.EstadoSessao;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.tool.ToolExecution;
@@ -40,10 +42,11 @@ public class ProiapService {
             "Quero ver a execução média num indicador visual")),
         Map.entry("rastrearGargaloEmAcaoCompartilhada", List.of("Quero um relatório da unidade mais atrasada")),
         Map.entry("contarAcoesPorDepartamentoPAT", List.of("Qual o desempenho dessas unidades no PAT?")),
-        Map.entry("buscarMinhasTarefas", List.of("Quais dessas estão atrasadas?")),
+        Map.entry("buscarMinhasTarefas", List.of("Quais dessas estão atrasadas?", "Mostra todas as minhas tarefas")),
         Map.entry("buscarTarefas", List.of(
             "Quero um relatório completo dessa unidade",
-            "E as que estão atrasadas?")),
+            "E as que estão atrasadas?",
+            "Mostra todas")),
         Map.entry("contarAcoesUnicasPAT", List.of("Qual departamento tem mais ações no PAT?")),
         Map.entry("buscarAcoesPorMarcador", List.of("Quero um relatório completo desse departamento")),
         Map.entry("contarTarefasPorDepartamento", List.of("Qual departamento tem mais tarefas atrasadas?"))
@@ -202,6 +205,18 @@ public class ProiapService {
                     estadoSessao.getIndicador(),
                     estadoSessao.getTipoGrafico());
 
+            if (!painelTemDados(spec)) {
+                // Sem dado real pra mostrar, não faz sentido entrar no fluxo de "confirma a
+                // geração?" — antes disso acontecia mesmo assim, e um "sim" do usuário só
+                // reexibia o mesmo painel vazio, sem nunca tentar buscar de novo. Responde como
+                // texto direto (igual RESPOSTA), sem guardar painel pendente nem aguardar confirmação.
+                System.out.println(">>> PAINEL SEM DADOS — respondendo como texto, sem oferecer confirmação");
+                List<String> sugestoesVazio = montarSugestoes(dadosResultado.toolExecutions());
+                chatHistoricoService.salvarUser(sessaoId, usuarioId, perguntaUsuario);
+                chatHistoricoService.salvarBot(sessaoId, usuarioId, spec.mensagemContexto(), null, contextoRAG.fontes(), sugestoesVazio, interacaoId);
+                return new RespostaTextualDTO(spec.mensagemContexto(), contextoRAG.fontes(), false, sugestoesVazio, interacaoId);
+            }
+
             System.out.println(">>> NOVO PAINEL GERADO (" + spec.graficos().size() + " gráfico(s))");
             System.out.println(">>> SALVANDO COMO PENDENTE");
 
@@ -216,6 +231,20 @@ public class ProiapService {
         }
 
         return new RespostaTextualDTO("Desculpe, não consegui entender a intenção do seu comando.", null, false, List.of(), null);
+    }
+
+    /** true se pelo menos um gráfico do painel tem pelo menos um valor real — critério pra decidir se vale a pena oferecer confirmação de exibição, ou se é melhor só avisar que faltou dado. */
+    private boolean painelTemDados(PainelSpecDTO spec) {
+        if (spec.graficos() == null) return false;
+        for (GraficoSpecDTO grafico : spec.graficos()) {
+            if (grafico.series() == null) continue;
+            for (SerieGraficoDTO serie : grafico.series()) {
+                if (serie.valores() != null && !serie.valores().isEmpty()) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private List<String> montarSugestoes(List<ToolExecution> execucoes) {

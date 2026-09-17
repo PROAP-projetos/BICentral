@@ -33,10 +33,15 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   private static readonly AVISO_API_DISPENSADO_KEY = 'bicentral_aviso_api_openai_dispensado';
   private static readonly AVISO_TESTER_DISPENSADO_KEY = 'bicentral_aviso_tester_dispensado';
 
+  // sessionStorage (não localStorage) de propósito: dura só enquanto essa ABA fica aberta —
+  // um F5 na mesma aba volta pra conversa que estava aberta, mas abrir o agente numa aba/janela
+  // nova de novo continua caindo em conversa nova, sem misturar os dois comportamentos.
+  private static readonly SESSAO_ABA_KEY = 'bicentral_sessao_atual_aba';
+
   // Sobe esse número (e a data no comentário) a cada leva de mudança que valha avisar os
   // testers — o "gracejo" do logo e o banner de atualização aparecem sozinhos, uma vez só,
   // pra quem já tinha usado o chat antes com uma versão diferente (ver VERSAO_VISTA_KEY).
-  static readonly VERSAO_AGENTE = '1.1'; // 2026-09-15 — buscarTarefas, marcador, limpeza PDI
+  static readonly VERSAO_AGENTE = '1.2'; // 2026-09-17 — relatório redesenhado, chat mais direto, F5 e gráfico vazio corrigidos
   private static readonly VERSAO_VISTA_KEY = 'bicentral_versao_vista';
 
   isDarkMode = false;
@@ -138,13 +143,33 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   }
 
   // Só carrega a LISTA de conversas passadas pra sidebar — não seleciona nenhuma delas
-  // automaticamente. Quem abre o agente sempre entra numa conversa nova em branco; retomar
-  // a última conversa é escolha explícita da pessoa (clicar nela na lista), não padrão.
+  // automaticamente. Quem abre o agente numa aba/janela NOVA sempre entra numa conversa nova
+  // em branco (retomar uma conversa antiga é escolha explícita, clicando nela na lista) — mas
+  // um F5 na MESMA aba restaura a conversa que já estava aberta (ver SESSAO_ABA_KEY), pra não
+  // perder o lugar por acidente.
   private carregarSessoes(): void {
     this.agentService.listarSessoes().subscribe({
       next: (lista) => {
-        if (lista.length === 0) return; // sem histórico ainda, mantém a "Nova Conversa" padrão
+        if (lista.length === 0) {
+          // Sem histórico ainda — mantém a "Nova Conversa" padrão desta instância, mas registra
+          // o id dela: se o usuário mandar a primeira mensagem antes de recarregar de novo, um
+          // F5 seguinte precisa achar esse id pra restaurar a conversa certa.
+          sessionStorage.setItem(AgentComponent.SESSAO_ABA_KEY, this.sessaoAtual.id);
+          return;
+        }
         this.sessoes = lista.map((s) => ({ id: s.id, titulo: s.titulo, fixado: s.fixado, messages: [], carregada: false }));
+
+        const idLembrado = sessionStorage.getItem(AgentComponent.SESSAO_ABA_KEY);
+        const sessaoLembrada = idLembrado ? this.sessoes.find((s) => s.id === idLembrado) : undefined;
+        if (sessaoLembrada) {
+          this.selecionarChat(sessaoLembrada);
+        } else {
+          // Nada pra restaurar (aba nova, ou o id lembrado era de uma "Nova Conversa" que
+          // recarregou sem nunca virar mensagem de verdade) — registra o id desta "Nova
+          // Conversa" atual, senão um F5 antes da primeira mensagem fica com um id "morto" no
+          // sessionStorage que nunca vai bater com a sessão que o usuário efetivamente enviar.
+          sessionStorage.setItem(AgentComponent.SESSAO_ABA_KEY, this.sessaoAtual.id);
+        }
       },
       error: () => { /* silencioso — começa do zero se falhar */ }
     });
@@ -400,6 +425,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.sessaoAtual = novaSessao;
     this.erro = '';
     this.gerarMensagemBoasVindas();
+    sessionStorage.setItem(AgentComponent.SESSAO_ABA_KEY, novaSessao.id);
   }
 
   encodeURIComponent(url: string | null): string {
@@ -410,6 +436,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.sessaoAtual = sessao;
     this.erro = '';
     this.agendarScrollParaFim();
+    sessionStorage.setItem(AgentComponent.SESSAO_ABA_KEY, sessao.id);
 
     if (sessao.carregada) return;
 

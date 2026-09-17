@@ -44,6 +44,9 @@ public class EmailService {
     @Value("${app.backend-base-url:http://localhost:8080}")
     private String backendBaseUrl;
 
+    @Value("${app.frontend-base-url:http://localhost:4200}")
+    private String frontendBaseUrl;
+
     public EmailService(RestClient.Builder restClientBuilder) {
         this.restClient = restClientBuilder
                 .baseUrl("https://api.brevo.com/v3/smtp/email")
@@ -336,9 +339,18 @@ public class EmailService {
                                             <p style="margin:0 0 12px;font-size:16px;line-height:1.65;color:#3b556b;">
                                                 Você foi adicionado(a) como <strong>tester do proIAp</strong>, o agente de IA do BICentral. Ele lê os dados reais da PROAP — PDI, PAT, tarefas e desempenho por departamento — e responde na hora, em texto ou em gráfico.
                                             </p>
-                                            <p style="margin:0;font-size:16px;line-height:1.65;color:#3b556b;">
+                                            <p style="margin:0 0 24px;font-size:16px;line-height:1.65;color:#3b556b;">
                                                 É só entrar no BICentral e clicar em "Pergunte ao agente". Anexamos um guia rápido em PDF com o que ele sabe fazer e exemplos de perguntas pra começar.
                                             </p>
+                                            <table border="0" cellpadding="0" cellspacing="0">
+                                                <tr>
+                                                    <td>
+                                                        <a href="%s" target="_blank" style="display:inline-block;padding:14px 24px;background:#004a80;color:#ffffff;text-decoration:none;font-weight:700;border-radius:10px;">
+                                                            Abrir o proIAp
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            </table>
                                         </td>
                                     </tr>
                                     <tr>
@@ -352,7 +364,7 @@ public class EmailService {
                     </table>
                 </body>
                 </html>
-                """.formatted(roboProiapUrl(), nome);
+                """.formatted(roboProiapUrl(), nome, frontendBaseUrl + "/agente");
 
         enviarEmail(toAddress, null, assunto, content, null, null, guiaProiapAnexo());
     }
@@ -365,6 +377,84 @@ public class EmailService {
             sendTesterAddedEmail(toAddress, nome);
         } catch (Exception e) {
             logger.error("Falha ao enviar e-mail de tester confirmado para {}", toAddress, e);
+        }
+    }
+
+    public void sendVersaoAnuncioEmail(String toAddress, String nome) {
+        String assunto = "proIAp — versão 1.2 já está no ar";
+        String content = """
+                <!DOCTYPE html>
+                <html lang="pt-BR">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>proIAp — versão 1.2</title>
+                </head>
+                <body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#1a1a1a;">
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%%">
+                        <tr>
+                            <td style="padding:24px 12px;">
+                                <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%%" style="max-width:620px;background:#ffffff;border:1px solid rgba(0,74,128,0.08);border-radius:16px;overflow:hidden;">
+                                    <tr>
+                                        <td style="padding:28px 32px;background:#004a80;color:#ffffff;">
+                                            <div style="font-size:24px;font-weight:700;letter-spacing:0.2px;">BICentral</div>
+                                            <div style="margin-top:8px;font-size:14px;opacity:0.92;">proIAp — versão 1.2</div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:22px 32px 0;text-align:center;background:#ffffff;">
+                                            <img src="%s" width="88" height="88" alt="proIAp" style="display:block;margin:0 auto;border:0;outline:none;" />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:32px;">
+                                            <h1 style="margin:0 0 12px;font-size:26px;line-height:1.2;color:#113956;">Olá, %s!</h1>
+                                            <p style="margin:0 0 16px;font-size:16px;line-height:1.65;color:#3b556b;">
+                                                O proIAp acabou de ganhar uma leva grande de melhorias a partir do que vocês reportaram nos testes. Principais mudanças:
+                                            </p>
+                                            <ul style="margin:0 0 24px;padding-left:20px;font-size:15px;line-height:1.8;color:#3b556b;">
+                                                <li><strong>Relatórios completamente redesenhados</strong> — capa, visão executiva com números grandes, tabelas de pontos de atenção e destaques, e uma seção de metodologia explicando como ler os indicadores.</li>
+                                                <li><strong>Números corrigidos</strong> — um bug fazia alguns relatórios e rankings contarem ações em dobro; já está corrigido.</li>
+                                                <li><strong>Respostas do chat mais diretas</strong> — menos texto de enrolação, mais número e tabela logo de cara.</li>
+                                                <li><strong>Não trava mais em 10 itens</strong> — se você pedir "todas as tarefas" ou uma quantidade específica, o chat agora respeita.</li>
+                                                <li><strong>F5 não perde mais a conversa</strong> — recarregar a página volta pro mesmo chat, não abre um novo.</li>
+                                            </ul>
+                                            <table border="0" cellpadding="0" cellspacing="0">
+                                                <tr>
+                                                    <td>
+                                                        <a href="%s" target="_blank" style="display:inline-block;padding:14px 24px;background:#004a80;color:#ffffff;text-decoration:none;font-weight:700;border-radius:10px;">
+                                                            Testar a versão 1.2
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                            <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#7b8a97;">
+                                                Achou algo estranho? Me conta — é exatamente pra isso que o teste existe. Obrigada por continuar testando 💙
+                                            </p>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:20px 32px;border-top:1px solid #e8eef5;font-size:12px;color:#7b8a97;">
+                                            Você recebeu este e-mail por ser tester do proIAp.
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </body>
+                </html>
+                """.formatted(roboProiapUrl(), nome, frontendBaseUrl + "/agente");
+
+        enviarEmail(toAddress, null, assunto, content, null, null, null);
+    }
+
+    @Async
+    public void sendVersaoAnuncioEmailAsync(String toAddress, String nome) {
+        try {
+            sendVersaoAnuncioEmail(toAddress, nome);
+        } catch (Exception e) {
+            logger.error("Falha ao enviar anúncio de versão para {}", toAddress, e);
         }
     }
 

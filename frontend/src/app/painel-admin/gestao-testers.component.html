@@ -21,6 +21,13 @@
         em cada resposta. Cada tester tem US$ 1,00 de uso; ao esgotar, o chat para de responder pra essa pessoa.
       </p>
     </div>
+    <button
+      class="btn btn-primary btn-sm"
+      type="button"
+      [disabled]="versaoJaNotificada || notificandoVersao"
+      (click)="notificarVersao()">
+      {{ versaoJaNotificada ? 'Aviso da v' + versaoAgente + ' já enviado' : 'Avisar testers da v' + versaoAgente }}
+    </button>
   </section>
 
   <div *ngIf="carregando" class="loading-panel">
