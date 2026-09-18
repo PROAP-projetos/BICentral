@@ -133,6 +133,11 @@ export class GraficoIaComponent implements OnChanges, OnDestroy {
       return;
     }
 
+    if (tipo === 'pie') {
+      this.mapearPizza(rawSeries, eixoX);
+      return;
+    }
+
     // Muitas categorias OU nomes compridos (nome de departamento institucional raramente é curto,
     // mesmo com só 4-5 categorias já sobrepõe) espremidos na horizontal viram ilegíveis — Power BI
     // resolve isso virando o gráfico de barras deitado, categoria no eixo vertical. Vale pra
@@ -170,7 +175,7 @@ export class GraficoIaComponent implements OnChanges, OnDestroy {
         smooth: tipoSerie === 'line',
         itemStyle: {
           borderRadius: tipoSerie === 'bar' && tipo !== 'empilhado' ? (horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0]) : 0,
-          color: tipo === 'pie' ? undefined : PALETA_POWER_BI[i % PALETA_POWER_BI.length]
+          color: PALETA_POWER_BI[i % PALETA_POWER_BI.length]
         },
         label: {
           show: this.compacto ? false : this.mostrarValores,
@@ -291,6 +296,71 @@ export class GraficoIaComponent implements OnChanges, OnDestroy {
         data: [{ value: valor, name: rotulo }]
       }]
     };
+  }
+
+  // 'pie' também é estruturalmente diferente (sem eixo, uma série só com uma fatia por
+  // categoria) — não dá pra reaproveitar o mapeamento de barra/linha, que manda `data` como
+  // array plano de números (posicional, casado com eixoX). Pizza precisa de {name, value} por
+  // fatia: é o nome em cada item que faz o ECharts montar a legenda colorida e o rótulo com o
+  // valor — sem isso, cada fatia fica sem cor própria na legenda e sem número visível.
+  private mapearPizza(rawSeries: any[], eixoX: any[]): void {
+    const primeiraSerie = rawSeries[0];
+    const valoresBrutos = Array.isArray(primeiraSerie?.valores) ? primeiraSerie.valores : [];
+
+    const dados = eixoX.map((nome: string, i: number) => {
+      const bruto = valoresBrutos[i];
+      const numerico = typeof bruto === 'number'
+        ? bruto
+        : Number(String(bruto ?? '').replace(/[^0-9eE+\-\.]/g, ''));
+      return { name: String(nome ?? ''), value: Number.isFinite(numerico) ? numerico : 0 };
+    });
+
+    this.chartHeight = 320;
+
+    this.chartOptions = {
+      color: PALETA_POWER_BI,
+      title: this.compacto ? undefined : {
+        text: this.spec?.titulo || '',
+        left: 'center',
+        textStyle: { fontFamily: 'sans-serif', color: '#333', fontWeight: 600, fontSize: 14 },
+        padding: [0, 8, 0, 8]
+      },
+      tooltip: {
+        trigger: 'item',
+        formatter: '{b}: {c}'
+      },
+      legend: this.compacto ? undefined : {
+        bottom: 0,
+        textStyle: { fontSize: 10 },
+        formatter: (nome: string) => this.rotuloLegendaPizza(nome)
+      },
+      series: [{
+        type: 'pie',
+        radius: this.compacto ? '75%' : '62%',
+        center: this.compacto ? ['50%', '50%'] : ['50%', '44%'],
+        data: dados,
+        // Mostra o próprio valor (já é a métrica pedida, ex: % de execução) — não o {d}, que é
+        // a fatia proporcional dentro da pizza e mediria outra coisa (a participação desse item
+        // na soma de todos), confuso quando os valores já são percentuais individuais.
+        label: {
+          show: this.compacto ? false : this.mostrarValores,
+          formatter: '{b}\n{c}',
+          fontSize: 10
+        },
+        labelLine: { show: this.compacto ? false : this.mostrarValores }
+      }]
+    };
+  }
+
+  // Nome de departamento/campus costuma ser longo e sempre com o mesmo prefixo ("Campus
+  // Universitário de...", "Pró-Reitoria de..."), então quebrar por caractere corta bem antes da
+  // parte que realmente diferencia um item do outro — a legenda ficava com "Campus\nUniversitário
+  // de" repetido 5 vezes, todas iguais. Prioriza a sigla entre parênteses no fim do nome (ex:
+  // "(CUAR)"), que já é curta e distintiva; sem sigla, cai pro corte por linha de sempre.
+  private rotuloLegendaPizza(nome: string): string {
+    const sigla = String(nome ?? '').match(/\(([^()]+)\)\s*$/);
+    if (sigla) return sigla[1];
+    return this.quebrarRotulo(nome, 18);
   }
 
   // Quebra por PALAVRA respeitando um limite de caracteres por linha (em vez de partir o texto

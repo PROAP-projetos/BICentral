@@ -64,7 +64,7 @@ public interface AgenteProiap {
                         "REGRA 2: Extraia a(s) métrica(s) exata(s) que o usuário pediu. Se o pedido for um indicador só, o painel tem 1 gráfico na lista 'graficos'. Se envolver comparar vários indicadores, unidades ou períodos, monte um gráfico separado pra cada um dentro da mesma lista.",
                         "REGRA 3: O campo 'tipo' de cada gráfico DEVE respeitar o 'Tipo de Gráfico Preferido' da memória da sessão, a menos que o usuário exija outro na mensagem.",
                         "REGRA 4: Se os números exatos para o gráfico solicitado não estiverem nos DADOS RECUPERADOS, retorne as séries vazias. A mensagemContexto nesse caso é só uma explicação curta do que faltou (ex: 'Não encontrei a execução média do PAT — falta eu saber de qual unidade' ou 'Os dados retornados não trazem esse número ainda'), SEM perguntar se o usuário confirma ou quer ver o painel — não existe painel pra confirmar quando não há dado. Não prometa gerar automaticamente 'assim que os dados estiverem disponíveis' — isso não vai acontecer sozinho, convide a pessoa a perguntar de novo com mais detalhe.",
-                        "REGRA 5: Quando HOUVER dado real (séries não vazias), preencha o 'mensagemContexto' com uma frase natural e amigável dizendo os dados que encontrou e perguntando se o usuário quer ver o painel. NUNCA termine com dois pontos (:).",
+                        "REGRA 5: Quando HOUVER dado real (séries não vazias), preencha o 'mensagemContexto' com uma frase natural e amigável apresentando o que o painel mostra (ex: 'A execução média da PROEST está em 23,91%.') — o painel já é exibido direto junto com essa mensagem, NUNCA pergunte se o usuário quer ver ou confirma, não existe etapa de confirmação. NUNCA termine com dois pontos (:).",
                         "REGRA 6: 'skill' deve ser sempre a palavra exata 'painel', mesmo com um gráfico só.",
                         "REGRA 7: Inclua TODAS as categorias presentes nos DADOS RECUPERADOS, mesmo que sejam muitas (dezenas) — nunca corte ou resuma a lista sozinho. O gráfico cresce e vira rolável para acomodar todas; cortar dados é pior que uma rolagem longa.",
                         "REGRA 8 (tipo 'gauge'): se o pedido for sobre UM indicador isolado, sem comparar categorias (ex: 'qual a execução da PROEST?'), use tipo 'gauge'. 'eixoX' deve ter exatamente 1 item (o rótulo do indicador) e a lista 'series' deve ter exatamente 1 série com exatamente 1 valor (0 a 100).",
@@ -77,18 +77,4 @@ public interface AgenteProiap {
                         @V("dados_recuperados") String dadosRecuperados,
                         @V("indicador") String indicadorSessao,
                         @V("tipo_grafico") String tipoGraficoSessao);
-
-        // ==========================================
-        // SKILL 3: CLASSIFICADOR DE INTENÇÃO RÁPIDA
-        // ==========================================
-        @SystemMessage({
-                        "Você é um classificador de intenções.",
-                        "O sistema perguntou se o usuário 'Confere?' os dados ou ele está aguardando um gráfico.",
-                        "Leia a resposta do usuário e classifique-a em uma destas 3 categorias EXATAS:",
-                        "CONFIRMAR - se ele aceitou, disse sim, pediu para mostrar, enviou um 'cadê', 'manda', 'confere', etc.",
-                        "NEGAR - se ele disse não, que está errado, pediu para cancelar, mudar, etc.",
-                        "NOVA_PERGUNTA - se ele ignorou a confirmação e fez uma pergunta ou pedido completamente diferente.",
-                        "Retorne ESTRITAMENTE uma única palavra (CONFIRMAR, NEGAR ou NOVA_PERGUNTA). NUNCA adicione pontos finais, aspas ou explicações."
-        })
-        String classificarConfirmacao(@MemoryId String id, @UserMessage String respostaUsuario);
 }

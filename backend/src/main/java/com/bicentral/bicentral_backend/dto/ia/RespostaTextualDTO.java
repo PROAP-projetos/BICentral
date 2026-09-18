@@ -7,5 +7,6 @@ public record RespostaTextualDTO(
     List<String> fontes,
     boolean relatorioGerado,
     List<String> sugestoes,
-    Long interacaoId
+    Long interacaoId,
+    boolean memoriaAtualizada
 ) {}

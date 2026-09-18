@@ -3,8 +3,6 @@ package com.bicentral.bicentral_backend.state;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.annotation.SessionScope;
 
-import com.bicentral.bicentral_backend.dto.painel.PainelSpecDTO;
-
 import lombok.Getter;
 import lombok.Setter;
 
@@ -24,10 +22,8 @@ public class EstadoSessao {
     private String modelo;
     private Long equipeId;
 
-    private boolean aguardandoConfirmacaoGrafico = false;
-    private PainelSpecDTO painelPendente = null;
-    private Long interacaoIdPendente = null;
     private boolean relatorioGerado = false;
+    private boolean memoriaAtualizada = false;
 
     // Rastreia a execução de pergunta em andamento nessa sessão, pro botão de "parar"
     // conseguir cancelar de verdade (ver ProiapController). "transient" porque isso é só
@@ -41,8 +37,7 @@ public class EstadoSessao {
     // Chamado pelo endpoint /cancelar: pede a interrupção da thread que está processando a
     // pergunta atual e espera ela realmente terminar de desligar antes de devolver — sem
     // esse espera, uma pergunta nova poderia começar enquanto a cancelada ainda está mexendo
-    // nesse mesmo EstadoSessao (aguardandoConfirmacaoGrafico, painelPendente etc.), que não
-    // tem nenhuma trava própria.
+    // nesse mesmo EstadoSessao, que não tem nenhuma trava própria.
     public void cancelarExecucaoAtual() {
         Future<?> execucao = this.execucaoAtual;
         if (execucao == null || execucao.isDone()) return;
@@ -74,8 +69,6 @@ public class EstadoSessao {
                 ", tipoGrafico='" + tipoGrafico + '\'' +
                 ", modelo='" + modelo + '\'' +
                 ", equipeId=" + equipeId +
-                ", aguardandoConfirmacaoGrafico=" + aguardandoConfirmacaoGrafico +
-                ", painelPendente=" + (painelPendente != null ? "OBJETO" : "NULL") +
                 '}';
     }
 }

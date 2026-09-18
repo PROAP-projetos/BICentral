@@ -18,7 +18,6 @@ import dev.langchain4j.service.Result;
 import dev.langchain4j.service.tool.ToolExecution;
 import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 public class ProiapService {
@@ -29,6 +28,7 @@ public class ProiapService {
     private final AgenteConsultaSql agenteConsultaSql;
     private final UsoIaService usoIaService;
     private final ChatHistoricoService chatHistoricoService;
+    private final MemoriaUsuarioService memoriaUsuarioService;
 
     private static final int MAX_SUGESTOES = 3;
 
@@ -49,25 +49,21 @@ public class ProiapService {
             "Mostra todas")),
         Map.entry("contarAcoesUnicasPAT", List.of("Qual departamento tem mais ações no PAT?")),
         Map.entry("buscarAcoesPorMarcador", List.of("Quero um relatório completo desse departamento")),
-        Map.entry("contarTarefasPorDepartamento", List.of("Qual departamento tem mais tarefas atrasadas?"))
-    );
-
-    private static final List<String> MENSAGENS_PAINEL_PRONTO = List.of(
-        "Prontinho! Aqui está o painel. Se quiser mudar o formato (ex: pizza) ou o título, é só pedir.",
-        "Pronto, montei o painel! Quer ajustar o tipo de gráfico ou o título? É só falar.",
-        "Aqui está! Se não ficou do jeito que você queria — outro formato, outro título — é só pedir de novo.",
-        "Painel gerado! Fica à vontade pra pedir outro formato (barra, pizza, linha) ou trocar o título.",
-        "Feito! Se quiser ver de outro jeito (outro tipo de gráfico) ou mudar o título, é só me falar."
+        Map.entry("contarTarefasPorDepartamento", List.of("Qual departamento tem mais tarefas atrasadas?")),
+        Map.entry("salvarPreferenciaUsuario", List.of("O que você lembra sobre mim?")),
+        Map.entry("listarMinhasMemorias", List.of("Quero atualizar uma dessas preferências"))
     );
 
     public ProiapService(AgenteProiap agenteProiap, AgenteConsultaSql agenteConsultaSql, EstadoSessao estadoSessao,
-            EmbeddingService embeddingService, UsoIaService usoIaService, ChatHistoricoService chatHistoricoService) {
+            EmbeddingService embeddingService, UsoIaService usoIaService, ChatHistoricoService chatHistoricoService,
+            MemoriaUsuarioService memoriaUsuarioService) {
         this.agenteProiap = agenteProiap;
         this.agenteConsultaSql = agenteConsultaSql;
         this.estadoSessao = estadoSessao;
         this.embeddingService = embeddingService;
         this.usoIaService = usoIaService;
         this.chatHistoricoService = chatHistoricoService;
+        this.memoriaUsuarioService = memoriaUsuarioService;
     }
 
     public Object processarPergunta(String perguntaUsuario, String sessaoId, boolean usuarioEhAdmin, Long usuarioId) {
@@ -75,69 +71,18 @@ public class ProiapService {
         if (usoIaService.deveBloquear(usuarioId)) {
             return new RespostaTextualDTO(
                     "Esse teste atingiu o limite de uso combinado com o time. Muito obrigada por testar! 💙",
-                    null, false, List.of(), null);
+                    null, false, List.of(), null, false);
         }
 
         estadoSessao.setRelatorioGerado(false);
+        estadoSessao.setMemoriaAtualizada(false);
 
         System.out.println("\n================================");
         System.out.println("NOVA REQUISIÇÃO");
         System.out.println("Pergunta: " + perguntaUsuario);
         System.out.println("Sessao ID Front: " + sessaoId);
         System.out.println("Sessao Hash (Estado): " + System.identityHashCode(estadoSessao));
-        System.out.println("Aguardando confirmação: " + estadoSessao.isAguardandoConfirmacaoGrafico());
-        System.out.println("Tem painel pendente: " + (estadoSessao.getPainelPendente() != null));
         System.out.println("================================");
-
-        if (estadoSessao.isAguardandoConfirmacaoGrafico()) {
-
-            System.out.println(">>> ENTROU NO BLOCO DE CONFIRMAÇÃO");
-
-            String classificacao = agenteProiap.classificarConfirmacao(UUID.randomUUID().toString(), perguntaUsuario)
-                    .trim().toUpperCase();
-            System.out.println("IA Classificou a resposta como: " + classificacao);
-
-            if (classificacao.contains("CONFIRMAR")) {
-                System.out.println(">>> USUÁRIO CONFIRMOU (IA ENTENDEU)");
-                PainelSpecDTO pendente = estadoSessao.getPainelPendente();
-                Long interacaoId = estadoSessao.getInteracaoIdPendente();
-
-                String mensagemPronto = MENSAGENS_PAINEL_PRONTO.get(
-                        ThreadLocalRandom.current().nextInt(MENSAGENS_PAINEL_PRONTO.size()));
-
-                PainelRespostaDTO painelPronto = new PainelRespostaDTO(
-                        pendente.skill(),
-                        mensagemPronto,
-                        pendente.titulo(),
-                        pendente.graficos(),
-                        false,
-                        interacaoId);
-
-                estadoSessao.setAguardandoConfirmacaoGrafico(false);
-                estadoSessao.setPainelPendente(null);
-                estadoSessao.setInteracaoIdPendente(null);
-
-                chatHistoricoService.salvarUser(sessaoId, usuarioId, perguntaUsuario);
-                chatHistoricoService.salvarBot(sessaoId, usuarioId, mensagemPronto, painelPronto, null, null, interacaoId);
-                return painelPronto;
-            }
-
-            if (classificacao.contains("NEGAR")) {
-                System.out.println(">>> USUÁRIO NEGOU (IA ENTENDEU)");
-                estadoSessao.setAguardandoConfirmacaoGrafico(false);
-                estadoSessao.setPainelPendente(null);
-                estadoSessao.setInteracaoIdPendente(null);
-
-                String mensagemNegar = "Tudo bem! Me diz o que você quer ver e eu busco novamente.";
-                chatHistoricoService.salvarUser(sessaoId, usuarioId, perguntaUsuario);
-                chatHistoricoService.salvarBot(sessaoId, usuarioId, mensagemNegar, null, null, null, null);
-                return new RespostaTextualDTO(mensagemNegar, null, false, List.of(), null);
-            }
-
-            System.out.println(">>> USUÁRIO REFORMULOU A CONSULTA (IA ENTENDEU)");
-            estadoSessao.setAguardandoConfirmacaoGrafico(false);
-            estadoSessao.setPainelPendente(null);
-        }
 
         AnaliseComandoDTO analise = agenteProiap.analisarComando(UUID.randomUUID().toString(), perguntaUsuario);
 
@@ -184,14 +129,19 @@ public class ProiapService {
                     ? sessaoId 
                     : "sessao-fallback-" + System.identityHashCode(estadoSessao);
             
+            // Preferências que o usuário já pediu explicitamente pra lembrar (ver MemoriaTool) —
+            // entram no mesmo CONTEXTO do RAG, na frente, pra IA já ver o que existe antes de
+            // decidir se uma nova instrução é inédita ou substitui uma memória anterior.
+            String contextoComMemoria = memoriaUsuarioService.montarBlocoMemoria(usuarioId) + contextoRAG.textoContexto();
+
             Result<String> resultado = agenteConsultaSql.responderComFerramentas(memoryId, perguntaUsuario,
-                    contextoRAG.textoContexto());
+                    contextoComMemoria);
             List<String> sugestoes = montarSugestoes(resultado.toolExecutions());
             Long interacaoId = usoIaService.registrarUso(usuarioId, sessaoId, perguntaUsuario, resultado.content(), resultado.tokenUsage());
 
             chatHistoricoService.salvarUser(sessaoId, usuarioId, perguntaUsuario);
             chatHistoricoService.salvarBot(sessaoId, usuarioId, resultado.content(), null, contextoRAG.fontes(), sugestoes, interacaoId);
-            return new RespostaTextualDTO(resultado.content(), contextoRAG.fontes(), estadoSessao.isRelatorioGerado(), sugestoes, interacaoId);
+            return new RespostaTextualDTO(resultado.content(), contextoRAG.fontes(), estadoSessao.isRelatorioGerado(), sugestoes, interacaoId, estadoSessao.isMemoriaAtualizada());
             
         } else if (analise.intencao() == IntencaoDTO.GRAFICO) {
 
@@ -206,31 +156,34 @@ public class ProiapService {
                     estadoSessao.getTipoGrafico());
 
             if (!painelTemDados(spec)) {
-                // Sem dado real pra mostrar, não faz sentido entrar no fluxo de "confirma a
-                // geração?" — antes disso acontecia mesmo assim, e um "sim" do usuário só
-                // reexibia o mesmo painel vazio, sem nunca tentar buscar de novo. Responde como
-                // texto direto (igual RESPOSTA), sem guardar painel pendente nem aguardar confirmação.
-                System.out.println(">>> PAINEL SEM DADOS — respondendo como texto, sem oferecer confirmação");
+                // Sem dado real pra mostrar, não tem painel nenhum pra exibir — responde como
+                // texto direto (igual RESPOSTA) explicando o que faltou.
+                System.out.println(">>> PAINEL SEM DADOS — respondendo como texto");
                 List<String> sugestoesVazio = montarSugestoes(dadosResultado.toolExecutions());
                 chatHistoricoService.salvarUser(sessaoId, usuarioId, perguntaUsuario);
                 chatHistoricoService.salvarBot(sessaoId, usuarioId, spec.mensagemContexto(), null, contextoRAG.fontes(), sugestoesVazio, interacaoId);
-                return new RespostaTextualDTO(spec.mensagemContexto(), contextoRAG.fontes(), false, sugestoesVazio, interacaoId);
+                return new RespostaTextualDTO(spec.mensagemContexto(), contextoRAG.fontes(), false, sugestoesVazio, interacaoId, false);
             }
 
+            // Tem dado real — mostra o painel direto, sem pausar pra perguntar "quer ver?"
+            // (isso já foi removido: só existia um caminho de confirmação, nunca uma recusa
+            // real com efeito, então era um passo a mais sem ganho).
             System.out.println(">>> NOVO PAINEL GERADO (" + spec.graficos().size() + " gráfico(s))");
-            System.out.println(">>> SALVANDO COMO PENDENTE");
 
-            estadoSessao.setPainelPendente(spec);
-            estadoSessao.setAguardandoConfirmacaoGrafico(true);
-            estadoSessao.setInteracaoIdPendente(interacaoId);
+            PainelRespostaDTO painelPronto = new PainelRespostaDTO(
+                    spec.skill(),
+                    spec.mensagemContexto(),
+                    spec.titulo(),
+                    spec.graficos(),
+                    false,
+                    interacaoId);
 
-            List<String> sugestoes = montarSugestoes(dadosResultado.toolExecutions());
             chatHistoricoService.salvarUser(sessaoId, usuarioId, perguntaUsuario);
-            chatHistoricoService.salvarBot(sessaoId, usuarioId, spec.mensagemContexto(), null, contextoRAG.fontes(), sugestoes, interacaoId);
-            return new RespostaTextualDTO(spec.mensagemContexto(), contextoRAG.fontes(), false, sugestoes, interacaoId);
+            chatHistoricoService.salvarBot(sessaoId, usuarioId, spec.mensagemContexto(), painelPronto, null, null, interacaoId);
+            return painelPronto;
         }
 
-        return new RespostaTextualDTO("Desculpe, não consegui entender a intenção do seu comando.", null, false, List.of(), null);
+        return new RespostaTextualDTO("Desculpe, não consegui entender a intenção do seu comando.", null, false, List.of(), null, false);
     }
 
     /** true se pelo menos um gráfico do painel tem pelo menos um valor real — critério pra decidir se vale a pena oferecer confirmação de exibição, ou se é melhor só avisar que faltou dado. */

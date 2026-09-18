@@ -17,7 +17,8 @@ class ProiapServiceTest {
 
     private final ProiapService proiapService = new ProiapService(
             mock(AgenteProiap.class), mock(AgenteConsultaSql.class), mock(EstadoSessao.class),
-            mock(EmbeddingService.class), mock(UsoIaService.class), mock(ChatHistoricoService.class));
+            mock(EmbeddingService.class), mock(UsoIaService.class), mock(ChatHistoricoService.class),
+            mock(MemoriaUsuarioService.class));
 
     private boolean painelTemDados(PainelSpecDTO spec) throws Exception {
         Method m = ProiapService.class.getDeclaredMethod("painelTemDados", PainelSpecDTO.class);
@@ -26,7 +27,7 @@ class ProiapServiceTest {
     }
 
     private PainelSpecDTO painel(List<GraficoSpecDTO> graficos) {
-        return new PainelSpecDTO("painel", "msg", "titulo", graficos, true);
+        return new PainelSpecDTO("painel", "msg", "titulo", graficos);
     }
 
     @Test

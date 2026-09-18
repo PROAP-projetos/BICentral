@@ -14,8 +14,13 @@ interface ChatSession {
   id: string;
   titulo: string;
   carregada?: boolean;
+  // true só pra sessão que veio do GET /sessoes (existe no banco). Sem isso, confirmarExclusao()
+  // não tem como distinguir "Nova Conversa local que nunca foi enviada" de "conversa antiga que
+  // existe no banco mas ainda não foi clicada nessa aba" — as duas têm carregada=false, mas só a
+  // primeira pode pular o DELETE com segurança.
+  persistida?: boolean;
   fixado?: boolean;
-  messages: { from: 'bot' | 'user'; text?: string; spec?: any; fontes?: string[]; sugestoes?: string[]; salvandoPainel?: boolean; painelSalvo?: boolean; interacaoId?: number; feedbackAberto?: boolean; feedbackTexto?: string; feedbackEnviado?: boolean }[];
+  messages: { from: 'bot' | 'user'; text?: string; spec?: any; fontes?: string[]; sugestoes?: string[]; salvandoPainel?: boolean; painelSalvo?: boolean; interacaoId?: number; feedbackAberto?: boolean; feedbackTexto?: string; feedbackEnviado?: boolean; memoriaAtualizada?: boolean }[];
 }
 
 @Component({
@@ -157,7 +162,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
           sessionStorage.setItem(AgentComponent.SESSAO_ABA_KEY, this.sessaoAtual.id);
           return;
         }
-        this.sessoes = lista.map((s) => ({ id: s.id, titulo: s.titulo, fixado: s.fixado, messages: [], carregada: false }));
+        this.sessoes = lista.map((s) => ({ id: s.id, titulo: s.titulo, fixado: s.fixado, messages: [], carregada: false, persistida: true }));
 
         const idLembrado = sessionStorage.getItem(AgentComponent.SESSAO_ABA_KEY);
         const sessaoLembrada = idLembrado ? this.sessoes.find((s) => s.id === idLembrado) : undefined;
@@ -306,16 +311,48 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     if (!sessao) return;
     this.sessaoParaExcluir = null;
 
-    // Uma "Nova Conversa" sem nenhuma mensagem ainda não existe no banco (só é criada lá na
-    // primeira mensagem) — nesse caso só remove localmente, sem chamar o backend à toa.
-    if (sessao.messages.length === 0 && !sessao.carregada) {
+    // Uma "Nova Conversa" local sem nenhuma mensagem ainda não existe no banco (só é criada lá
+    // na primeira mensagem) — nesse caso só remove localmente, sem chamar o backend à toa. Tem
+    // que checar "persistida", não "carregada": uma conversa ANTIGA que já existe no banco mas
+    // ainda não foi clicada nessa aba também tem carregada=false, e excluir ela direto pela
+    // sidebar (sem abrir primeiro) não pode cair nesse atalho — senão só some da tela e volta
+    // no próximo F5, porque o DELETE nunca foi chamado de verdade.
+    if (!sessao.persistida && sessao.messages.length === 0) {
       this.removerSessaoLocal(sessao);
       return;
     }
 
+    // Excluir uma conversa que ainda está gerando resposta precisa cancelar ANTES — senão a
+    // resposta em andamento termina de processar DEPOIS do DELETE e chama salvarUser/salvarBot,
+    // que fazem upsert da sessão (ChatHistoricoService.garantirSessao); isso recria sozinha a
+    // conversa que acabou de ser excluída, e a exclusão parece "não funcionar de verdade".
+    // cancelarGeracao() só responde depois que o backend garante que a thread foi interrompida
+    // (EstadoSessao.cancelarExecucaoAtual), então só chama o DELETE depois dessa confirmação.
+    if (this.sessaoGerandoId === sessao.id) {
+      this.pararGeracaoLocal();
+      this.agentService.cancelarGeracao().subscribe({
+        next: () => this.excluirSessaoNoBackend(sessao),
+        error: () => this.excluirSessaoNoBackend(sessao)
+      });
+      return;
+    }
+
+    this.excluirSessaoNoBackend(sessao);
+  }
+
+  private excluirSessaoNoBackend(sessao: ChatSession): void {
     this.agentService.excluirSessao(sessao.id).subscribe({
       next: () => this.removerSessaoLocal(sessao),
-      error: () => { this.erro = 'Não foi possível excluir a conversa agora.'; }
+      error: (err) => {
+        // 404 aqui significa que a sessão nunca chegou a ser salva no banco (cancelada antes
+        // da 1ª resposta terminar) — não existe nada pra excluir, então some só localmente
+        // em vez de mostrar um erro pra uma exclusão que, na prática, já era desnecessária.
+        if (err?.status === 404) {
+          this.removerSessaoLocal(sessao);
+          return;
+        }
+        this.erro = 'Não foi possível excluir a conversa agora.';
+      }
     });
   }
 
@@ -466,6 +503,10 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   private acordandoServidor = false;
   private consultaSub?: Subscription;
   private acordarServidorTimer?: number;
+  // Qual sessão está com uma pergunta em andamento — independente de qual chat está sendo
+  // exibido agora (dá pra trocar de conversa com uma resposta ainda "Pensando" no fundo).
+  // Usado em confirmarExclusao() pra saber se precisa cancelar antes de excluir.
+  private sessaoGerandoId?: string;
 
   // etapaAtual vem do polling no backend (qual ferramenta está rodando agora — ver
   // iniciarPollingStatus) e tem prioridade sobre o palpite por palavra-chave abaixo, que
@@ -528,25 +569,33 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.agendarScrollParaFim();
 
     const idDaSessao = String(this.sessaoAtual.id);
+    this.sessaoGerandoId = idDaSessao;
     this.enviarConsulta(text, idDaSessao, false);
   }
 
-  // Some o botão de enviar e mostra um de parar enquanto carregando — clicar nele cancela
-  // a chamada HTTP em andamento (unsubscribe aborta o request), avisa o backend pra tentar
-  // interromper de verdade a geração em andamento (best-effort, ver AgentService.
-  // cancelarGeracao) e, se estava no meio do retry silencioso de servidor dormindo, cancela
-  // o setTimeout também.
-  pararGeracao(): void {
+  // Limpa só o estado do lado do cliente (subscription, timers, flags) — sem avisar o backend.
+  // Extraído de pararGeracao() pra reaproveitar em confirmarExclusao(), que precisa ESPERAR a
+  // resposta de cancelarGeracao() antes de excluir (ver comentário lá), em vez do fire-and-forget
+  // que o botão de parar usa.
+  private pararGeracaoLocal(): void {
     if (this.acordarServidorTimer) {
       window.clearTimeout(this.acordarServidorTimer);
       this.acordarServidorTimer = undefined;
     }
     this.consultaSub?.unsubscribe();
     this.consultaSub = undefined;
-    this.agentService.cancelarGeracao().subscribe({ error: () => {} });
     this.acordandoServidor = false;
     this.carregando = false;
+    this.sessaoGerandoId = undefined;
     this.pararPollingStatus();
+  }
+
+  // Some o botão de enviar e mostra um de parar enquanto carregando — clicar nele cancela
+  // a chamada HTTP em andamento (unsubscribe aborta o request) e avisa o backend pra tentar
+  // interromper de verdade a geração em andamento (best-effort, ver AgentService.cancelarGeracao).
+  pararGeracao(): void {
+    this.pararGeracaoLocal();
+    this.agentService.cancelarGeracao().subscribe({ error: () => {} });
   }
 
   private enviarConsulta(text: string, idDaSessao: string, isRetry: boolean) {
@@ -554,6 +603,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
       .pipe(finalize(() => {
         if (!this.acordandoServidor) {
           this.carregando = false;
+          this.sessaoGerandoId = undefined;
           this.pararPollingStatus();
           this.carregarUsoIa();
         }
@@ -576,7 +626,8 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
               text: resposta.texto,
               fontes: resposta.fontes,
               sugestoes: resposta.sugestoes,
-              interacaoId: resposta.interacaoId
+              interacaoId: resposta.interacaoId,
+              memoriaAtualizada: resposta.memoriaAtualizada
             });
 
             if (resposta.relatorioGerado) {

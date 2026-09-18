@@ -844,6 +844,31 @@
   color: #10b981;
 }
 
+.memoria-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 5px 12px 5px 8px;
+  border-radius: 999px;
+  background: var(--bg-sidebar-hover);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.memoria-estrela {
+  flex-shrink: 0;
+  color: var(--logo-accent);
+  transform-origin: center;
+  animation: memoria-estrela-girar 0.8s ease-in-out 1;
+}
+
+@keyframes memoria-estrela-girar {
+  0% { transform: scale(0.6) rotate(0deg); opacity: 0; }
+  55% { transform: scale(1.25) rotate(200deg); opacity: 1; }
+  100% { transform: scale(1) rotate(360deg); opacity: 1; }
+}
+
 .message-text {
   white-space: normal;
   overflow-wrap: anywhere;
