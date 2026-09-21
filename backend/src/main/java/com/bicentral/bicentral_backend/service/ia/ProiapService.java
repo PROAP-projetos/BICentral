@@ -14,6 +14,7 @@ import com.bicentral.bicentral_backend.dto.painel.PainelRespostaDTO;
 import com.bicentral.bicentral_backend.dto.painel.PainelSpecDTO;
 import com.bicentral.bicentral_backend.dto.painel.SerieGraficoDTO;
 import com.bicentral.bicentral_backend.state.EstadoSessao;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.tool.ToolExecution;
 import java.util.LinkedHashSet;
@@ -129,35 +130,34 @@ public class ProiapService {
                     ? sessaoId 
                     : "sessao-fallback-" + System.identityHashCode(estadoSessao);
             
-            // Preferências que o usuário já pediu explicitamente pra lembrar (ver MemoriaTool) —
-            // entram no mesmo CONTEXTO do RAG, na frente, pra IA já ver o que existe antes de
-            // decidir se uma nova instrução é inédita ou substitui uma memória anterior.
+            // Memória do usuário (ver MemoriaTool) entra na frente do contexto de RAG.
             String contextoComMemoria = memoriaUsuarioService.montarBlocoMemoria(usuarioId) + contextoRAG.textoContexto();
 
             Result<String> resultado = agenteConsultaSql.responderComFerramentas(memoryId, perguntaUsuario,
                     contextoComMemoria);
+            String conteudo = tratarRespostaTruncada(resultado);
             List<String> sugestoes = montarSugestoes(resultado.toolExecutions());
-            Long interacaoId = usoIaService.registrarUso(usuarioId, sessaoId, perguntaUsuario, resultado.content(), resultado.tokenUsage());
+            Long interacaoId = usoIaService.registrarUso(usuarioId, sessaoId, perguntaUsuario, conteudo, resultado.tokenUsage());
 
             chatHistoricoService.salvarUser(sessaoId, usuarioId, perguntaUsuario);
-            chatHistoricoService.salvarBot(sessaoId, usuarioId, resultado.content(), null, contextoRAG.fontes(), sugestoes, interacaoId);
-            return new RespostaTextualDTO(resultado.content(), contextoRAG.fontes(), estadoSessao.isRelatorioGerado(), sugestoes, interacaoId, estadoSessao.isMemoriaAtualizada());
-            
+            chatHistoricoService.salvarBot(sessaoId, usuarioId, conteudo, null, contextoRAG.fontes(), sugestoes, interacaoId);
+            return new RespostaTextualDTO(conteudo, contextoRAG.fontes(), estadoSessao.isRelatorioGerado(), sugestoes, interacaoId, estadoSessao.isMemoriaAtualizada());
+
         } else if (analise.intencao() == IntencaoDTO.GRAFICO) {
 
             Result<String> dadosResultado = agenteConsultaSql.responderComFerramentas(
                     "grafico-" + UUID.randomUUID(), perguntaUsuario, contextoRAG.textoContexto());
-            Long interacaoId = usoIaService.registrarUso(usuarioId, sessaoId, perguntaUsuario, dadosResultado.content(), dadosResultado.tokenUsage());
+            String dadosConteudo = tratarRespostaTruncada(dadosResultado);
+            Long interacaoId = usoIaService.registrarUso(usuarioId, sessaoId, perguntaUsuario, dadosConteudo, dadosResultado.tokenUsage());
 
             PainelSpecDTO spec = agenteProiap.gerarPainel(
                     perguntaUsuario,
-                    dadosResultado.content(),
+                    dadosConteudo,
                     estadoSessao.getIndicador(),
                     estadoSessao.getTipoGrafico());
 
             if (!painelTemDados(spec)) {
-                // Sem dado real pra mostrar, não tem painel nenhum pra exibir — responde como
-                // texto direto (igual RESPOSTA) explicando o que faltou.
+                // Sem dado real, não tem painel pra exibir — responde como texto explicando o que faltou.
                 System.out.println(">>> PAINEL SEM DADOS — respondendo como texto");
                 List<String> sugestoesVazio = montarSugestoes(dadosResultado.toolExecutions());
                 chatHistoricoService.salvarUser(sessaoId, usuarioId, perguntaUsuario);
@@ -165,9 +165,7 @@ public class ProiapService {
                 return new RespostaTextualDTO(spec.mensagemContexto(), contextoRAG.fontes(), false, sugestoesVazio, interacaoId, false);
             }
 
-            // Tem dado real — mostra o painel direto, sem pausar pra perguntar "quer ver?"
-            // (isso já foi removido: só existia um caminho de confirmação, nunca uma recusa
-            // real com efeito, então era um passo a mais sem ganho).
+            // Tem dado real — mostra o painel direto, sem etapa de confirmação.
             System.out.println(">>> NOVO PAINEL GERADO (" + spec.graficos().size() + " gráfico(s))");
 
             PainelRespostaDTO painelPronto = new PainelRespostaDTO(
@@ -184,6 +182,20 @@ public class ProiapService {
         }
 
         return new RespostaTextualDTO("Desculpe, não consegui entender a intenção do seu comando.", null, false, List.of(), null, false);
+    }
+
+    private static final String AVISO_RESPOSTA_CORTADA =
+            "\n\n⚠️ A resposta foi cortada por ficar muito extensa. Peça uma parte específica (ex: só as atrasadas, só os primeiros 10 itens) para ver o restante.";
+
+    private String tratarRespostaTruncada(Result<String> resultado) {
+        String conteudo = resultado.content();
+        if (resultado.finishReason() != FinishReason.LENGTH) {
+            return conteudo;
+        }
+        System.out.println(">>> AVISO: resposta cortada por limite de tokens (finishReason=LENGTH)");
+        int ultimaQuebra = conteudo.lastIndexOf('\n');
+        String conteudoLimpo = ultimaQuebra > 0 ? conteudo.substring(0, ultimaQuebra) : conteudo;
+        return conteudoLimpo + AVISO_RESPOSTA_CORTADA;
     }
 
     /** true se pelo menos um gráfico do painel tem pelo menos um valor real — critério pra decidir se vale a pena oferecer confirmação de exibição, ou se é melhor só avisar que faltou dado. */

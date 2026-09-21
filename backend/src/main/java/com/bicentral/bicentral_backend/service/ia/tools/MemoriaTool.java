@@ -42,8 +42,7 @@ public class MemoriaTool {
         statusExecucao.definir("Salvando sua preferência...");
         Long usuarioId = usuarioIdAtual();
         memoriaUsuarioService.salvar(usuarioId, tipo, conteudo, idParaSubstituir);
-        // Sinaliza pro frontend mostrar o chip animado de "memória atualizada" nessa resposta —
-        // mesmo mecanismo do relatorioGerado (ver EstadoSessao/ProiapService/RespostaTextualDTO).
+        // Mesmo mecanismo do relatorioGerado — sinaliza pro frontend mostrar o chip de memória atualizada.
         estadoSessao.setMemoriaAtualizada(true);
         return "Preferência salva: " + conteudo;
     }

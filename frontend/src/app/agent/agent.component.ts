@@ -14,10 +14,7 @@ interface ChatSession {
   id: string;
   titulo: string;
   carregada?: boolean;
-  // true só pra sessão que veio do GET /sessoes (existe no banco). Sem isso, confirmarExclusao()
-  // não tem como distinguir "Nova Conversa local que nunca foi enviada" de "conversa antiga que
-  // existe no banco mas ainda não foi clicada nessa aba" — as duas têm carregada=false, mas só a
-  // primeira pode pular o DELETE com segurança.
+  // true só pra sessão vinda do GET /sessoes — distingue de uma "Nova Conversa" local nunca enviada.
   persistida?: boolean;
   fixado?: boolean;
   messages: { from: 'bot' | 'user'; text?: string; spec?: any; fontes?: string[]; sugestoes?: string[]; salvandoPainel?: boolean; painelSalvo?: boolean; interacaoId?: number; feedbackAberto?: boolean; feedbackTexto?: string; feedbackEnviado?: boolean; memoriaAtualizada?: boolean }[];
@@ -311,23 +308,13 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     if (!sessao) return;
     this.sessaoParaExcluir = null;
 
-    // Uma "Nova Conversa" local sem nenhuma mensagem ainda não existe no banco (só é criada lá
-    // na primeira mensagem) — nesse caso só remove localmente, sem chamar o backend à toa. Tem
-    // que checar "persistida", não "carregada": uma conversa ANTIGA que já existe no banco mas
-    // ainda não foi clicada nessa aba também tem carregada=false, e excluir ela direto pela
-    // sidebar (sem abrir primeiro) não pode cair nesse atalho — senão só some da tela e volta
-    // no próximo F5, porque o DELETE nunca foi chamado de verdade.
+    // Sem persistida, a conversa nunca existiu no banco — só remove localmente.
     if (!sessao.persistida && sessao.messages.length === 0) {
       this.removerSessaoLocal(sessao);
       return;
     }
 
-    // Excluir uma conversa que ainda está gerando resposta precisa cancelar ANTES — senão a
-    // resposta em andamento termina de processar DEPOIS do DELETE e chama salvarUser/salvarBot,
-    // que fazem upsert da sessão (ChatHistoricoService.garantirSessao); isso recria sozinha a
-    // conversa que acabou de ser excluída, e a exclusão parece "não funcionar de verdade".
-    // cancelarGeracao() só responde depois que o backend garante que a thread foi interrompida
-    // (EstadoSessao.cancelarExecucaoAtual), então só chama o DELETE depois dessa confirmação.
+    // Cancela antes de excluir — senão a resposta pendente salva depois do DELETE e recria a sessão sozinha.
     if (this.sessaoGerandoId === sessao.id) {
       this.pararGeracaoLocal();
       this.agentService.cancelarGeracao().subscribe({
@@ -344,9 +331,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.agentService.excluirSessao(sessao.id).subscribe({
       next: () => this.removerSessaoLocal(sessao),
       error: (err) => {
-        // 404 aqui significa que a sessão nunca chegou a ser salva no banco (cancelada antes
-        // da 1ª resposta terminar) — não existe nada pra excluir, então some só localmente
-        // em vez de mostrar um erro pra uma exclusão que, na prática, já era desnecessária.
+        // 404 = sessão nunca existiu no banco — não é erro, só remove localmente.
         if (err?.status === 404) {
           this.removerSessaoLocal(sessao);
           return;
@@ -503,9 +488,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   private acordandoServidor = false;
   private consultaSub?: Subscription;
   private acordarServidorTimer?: number;
-  // Qual sessão está com uma pergunta em andamento — independente de qual chat está sendo
-  // exibido agora (dá pra trocar de conversa com uma resposta ainda "Pensando" no fundo).
-  // Usado em confirmarExclusao() pra saber se precisa cancelar antes de excluir.
+  // Sessão com pergunta em andamento, independente do chat exibido agora — usado em confirmarExclusao().
   private sessaoGerandoId?: string;
 
   // etapaAtual vem do polling no backend (qual ferramenta está rodando agora — ver
@@ -573,10 +556,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.enviarConsulta(text, idDaSessao, false);
   }
 
-  // Limpa só o estado do lado do cliente (subscription, timers, flags) — sem avisar o backend.
-  // Extraído de pararGeracao() pra reaproveitar em confirmarExclusao(), que precisa ESPERAR a
-  // resposta de cancelarGeracao() antes de excluir (ver comentário lá), em vez do fire-and-forget
-  // que o botão de parar usa.
+  // Limpeza só client-side, sem avisar o backend — reaproveitada por confirmarExclusao(), que espera cancelarGeracao() antes de excluir.
   private pararGeracaoLocal(): void {
     if (this.acordarServidorTimer) {
       window.clearTimeout(this.acordarServidorTimer);
@@ -590,9 +570,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.pararPollingStatus();
   }
 
-  // Some o botão de enviar e mostra um de parar enquanto carregando — clicar nele cancela
-  // a chamada HTTP em andamento (unsubscribe aborta o request) e avisa o backend pra tentar
-  // interromper de verdade a geração em andamento (best-effort, ver AgentService.cancelarGeracao).
+  // Aborta a chamada em andamento e avisa o backend pra interromper de verdade (best-effort).
   pararGeracao(): void {
     this.pararGeracaoLocal();
     this.agentService.cancelarGeracao().subscribe({ error: () => {} });

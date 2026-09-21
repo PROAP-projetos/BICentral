@@ -87,12 +87,15 @@ public class AiConfig {
                 .build();
     }
 
+    private static final int MAX_TOKENS_RESPOSTA = 8192;
+
     @Bean("openaiLunaModel")
     @Primary
     public ChatLanguageModel openaiLunaModel() {
         return OpenAiChatModel.builder()
                 .apiKey(openaiApiKey)
                 .modelName("gpt-5.6-luna")
+                .maxTokens(MAX_TOKENS_RESPOSTA)
                 .defaultRequestParameters(OpenAiChatRequestParameters.builder()
                         .reasoningEffort("none")
                         .build())
@@ -104,6 +107,7 @@ public class AiConfig {
         return OpenAiChatModel.builder()
                 .apiKey(openaiApiKey)
                 .modelName("gpt-5.6-terra")
+                .maxTokens(MAX_TOKENS_RESPOSTA)
                 .defaultRequestParameters(OpenAiChatRequestParameters.builder()
                         .reasoningEffort("none")
                         .build())

@@ -298,11 +298,7 @@ export class GraficoIaComponent implements OnChanges, OnDestroy {
     };
   }
 
-  // 'pie' também é estruturalmente diferente (sem eixo, uma série só com uma fatia por
-  // categoria) — não dá pra reaproveitar o mapeamento de barra/linha, que manda `data` como
-  // array plano de números (posicional, casado com eixoX). Pizza precisa de {name, value} por
-  // fatia: é o nome em cada item que faz o ECharts montar a legenda colorida e o rótulo com o
-  // valor — sem isso, cada fatia fica sem cor própria na legenda e sem número visível.
+  // Pizza não tem eixo — precisa de pares {name, value} por fatia, não array plano de números.
   private mapearPizza(rawSeries: any[], eixoX: any[]): void {
     const primeiraSerie = rawSeries[0];
     const valoresBrutos = Array.isArray(primeiraSerie?.valores) ? primeiraSerie.valores : [];
@@ -339,9 +335,7 @@ export class GraficoIaComponent implements OnChanges, OnDestroy {
         radius: this.compacto ? '75%' : '62%',
         center: this.compacto ? ['50%', '50%'] : ['50%', '44%'],
         data: dados,
-        // Mostra o próprio valor (já é a métrica pedida, ex: % de execução) — não o {d}, que é
-        // a fatia proporcional dentro da pizza e mediria outra coisa (a participação desse item
-        // na soma de todos), confuso quando os valores já são percentuais individuais.
+        // Valor real, não {d} (participação na pizza) — confundiria com percentuais já individuais.
         label: {
           show: this.compacto ? false : this.mostrarValores,
           formatter: '{b}\n{c}',
@@ -352,11 +346,7 @@ export class GraficoIaComponent implements OnChanges, OnDestroy {
     };
   }
 
-  // Nome de departamento/campus costuma ser longo e sempre com o mesmo prefixo ("Campus
-  // Universitário de...", "Pró-Reitoria de..."), então quebrar por caractere corta bem antes da
-  // parte que realmente diferencia um item do outro — a legenda ficava com "Campus\nUniversitário
-  // de" repetido 5 vezes, todas iguais. Prioriza a sigla entre parênteses no fim do nome (ex:
-  // "(CUAR)"), que já é curta e distintiva; sem sigla, cai pro corte por linha de sempre.
+  // Nome completo corta igual pra todo item (mesmo prefixo longo) — prioriza a sigla entre parênteses.
   private rotuloLegendaPizza(nome: string): string {
     const sigla = String(nome ?? '').match(/\(([^()]+)\)\s*$/);
     if (sigla) return sigla[1];

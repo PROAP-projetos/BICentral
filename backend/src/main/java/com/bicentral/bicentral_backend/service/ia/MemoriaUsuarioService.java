@@ -7,10 +7,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Map;
 
-// Memória explícita por usuário (Fase 1 do autolearning do proIAp — ver docs/tcc-mudancas-agente.md):
-// o usuário pede pra lembrar algo ("sempre responda resumido") e isso entra no CONTEXTO enviado
-// ao modelo em toda conversa futura dessa pessoa. Nada de extração automática de padrão nem
-// retreino de modelo — só o que foi pedido explicitamente entra aqui (ver MemoriaTool).
+// Memória explícita por usuário: o que a pessoa pede pra lembrar entra no CONTEXTO de toda
+// conversa futura dela (ver MemoriaTool) — sem extração automática de padrão nem retreino de modelo.
 @Service
 public class MemoriaUsuarioService {
 
@@ -36,9 +34,7 @@ public class MemoriaUsuarioService {
             """);
     }
 
-    // Nunca apaga de verdade — se idParaSubstituir vier preenchido (a IA já viu a memória antiga
-    // no contexto e reconheceu o conflito), só desativa ela e insere a nova, mantendo o histórico
-    // pra dar pra auditar depois "por que o agente tá fazendo isso".
+    // Nunca apaga de verdade: com idParaSubstituir, desativa a antiga e insere a nova (histórico auditável).
     @Transactional
     public Long salvar(Long usuarioId, String tipo, String conteudo, Long idParaSubstituir) {
         if (idParaSubstituir != null) {
@@ -61,9 +57,7 @@ public class MemoriaUsuarioService {
             """, usuarioId);
     }
 
-    // Bloco de texto pronto pra entrar no CONTEXTO enviado ao modelo (ver ProiapService) — vazio
-    // se a pessoa não tiver nenhuma preferência salva, pra não poluir o prompt à toa. O id de cada
-    // linha é o que a tool usa como idParaSubstituir quando uma preferência nova contradiz essa.
+    // Vazio se não houver preferência salva. O [id] de cada linha é o que idParaSubstituir usa.
     public String montarBlocoMemoria(Long usuarioId) {
         List<Map<String, Object>> memorias = listarAtivas(usuarioId);
         if (memorias.isEmpty()) {
