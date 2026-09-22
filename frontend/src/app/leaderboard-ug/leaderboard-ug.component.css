@@ -292,6 +292,38 @@
   gap: 0.55rem;
 }
 
+.ranking-status {
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  color: var(--text-secondary, #6b7280);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.ranking-status-error {
+  color: #dc2626;
+  flex-direction: column;
+}
+
+.ranking-status button {
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0.35rem 0.65rem;
+}
+
+.action-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
 .ug-card {
   display: flex;
   align-items: center;

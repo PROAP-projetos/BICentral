@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, OnDestroy, OnInit, Output } from '@angular/core';
 import { NgxEchartsDirective, provideEchartsCore } from 'ngx-echarts';
+import { RankingDepartamento, RankingService } from '../services/ranking.service';
 
 export interface UgRankingItem {
   id: string;
@@ -51,115 +52,11 @@ export class LeaderboardUgComponent implements OnInit, OnDestroy {
   modoVisualizacao: 'cards' | 'echarts' = 'cards';
   autoSimulacaoAtiva = false;
   private timerAutoSimulacao?: number;
+  carregandoRanking = false;
+  erroRanking = '';
 
-  // Lista inicial de UGs (Unidades Gestoras/Departamentos)
-  ugs: UgRankingItem[] = [
-    {
-      id: 'PROEST',
-      sigla: 'PROEST',
-      nome: 'Pró-Reitoria de Assistência Estudantil',
-      posicao: 1,
-      posicaoAnterior: 1,
-      percentual: 88.5,
-      percentualAnterior: 88.5,
-      totalTarefas: 42,
-      tarefasConcluidas: 37,
-      variacaoPosicao: 0,
-      subiu: false,
-      caiu: false,
-      destaqueAnimacao: false
-    },
-    {
-      id: 'PROAD',
-      sigla: 'PROAD',
-      nome: 'Pró-Reitoria de Administração e Finanças',
-      posicao: 2,
-      posicaoAnterior: 2,
-      percentual: 79.2,
-      percentualAnterior: 79.2,
-      totalTarefas: 55,
-      tarefasConcluidas: 43,
-      variacaoPosicao: 0,
-      subiu: false,
-      caiu: false,
-      destaqueAnimacao: false
-    },
-    {
-      id: 'PROEX',
-      sigla: 'PROEX',
-      nome: 'Pró-Reitoria de Extensão e Cultura',
-      posicao: 3,
-      posicaoAnterior: 3,
-      percentual: 74.0,
-      percentualAnterior: 74.0,
-      totalTarefas: 38,
-      tarefasConcluidas: 28,
-      variacaoPosicao: 0,
-      subiu: false,
-      caiu: false,
-      destaqueAnimacao: false
-    },
-    {
-      id: 'DTI',
-      sigla: 'DTI',
-      nome: 'Diretoria de Tecnologia da Informação',
-      posicao: 4,
-      posicaoAnterior: 4,
-      percentual: 68.4,
-      percentualAnterior: 68.4,
-      totalTarefas: 60,
-      tarefasConcluidas: 41,
-      variacaoPosicao: 0,
-      subiu: false,
-      caiu: false,
-      destaqueAnimacao: false
-    },
-    {
-      id: 'PROGRAD',
-      sigla: 'PROGRAD',
-      nome: 'Pró-Reitoria de Graduação',
-      posicao: 5,
-      posicaoAnterior: 5,
-      percentual: 62.1,
-      percentualAnterior: 62.1,
-      totalTarefas: 50,
-      tarefasConcluidas: 31,
-      variacaoPosicao: 0,
-      subiu: false,
-      caiu: false,
-      destaqueAnimacao: false
-    },
-    {
-      id: 'PROPESQ',
-      sigla: 'PROPESQ',
-      nome: 'Pró-Reitoria de Pesquisa e Pós-Graduação',
-      posicao: 6,
-      posicaoAnterior: 6,
-      percentual: 55.8,
-      percentualAnterior: 55.8,
-      totalTarefas: 35,
-      tarefasConcluidas: 19,
-      variacaoPosicao: 0,
-      subiu: false,
-      caiu: false,
-      destaqueAnimacao: false
-    },
-    {
-      id: 'ASCOM',
-      sigla: 'ASCOM',
-      nome: 'Assessoria de Comunicação Social',
-      posicao: 7,
-      posicaoAnterior: 7,
-      percentual: 42.3,
-      percentualAnterior: 42.3,
-      totalTarefas: 24,
-      tarefasConcluidas: 10,
-      variacaoPosicao: 0,
-      subiu: false,
-      caiu: false,
-      destaqueAnimacao: false
-    }
-  ];
+  // Preenchido pelo endpoint real, sem limite artificial de UGs.
+  ugs: UgRankingItem[] = [];
 
   // Feed em tempo real de acontecimentos recentes do PAT
   atividadesRecentes: AtividadeRecenteItem[] = [
@@ -246,8 +143,10 @@ export class LeaderboardUgComponent implements OnInit, OnDestroy {
   // Opções do ECharts para o modo alternativo
   echartsOptions: any;
 
+  constructor(private rankingService: RankingService) {}
+
   ngOnInit(): void {
-    this.atualizarEchartsOptions();
+    this.carregarRanking();
   }
 
   ngOnDestroy(): void {
@@ -273,7 +172,62 @@ export class LeaderboardUgComponent implements OnInit, OnDestroy {
     return this.ugs.filter(u => u.percentual < 60).length;
   }
 
+  get percentualAcoesConcluidas(): number {
+    if (!this.totalTarefasGlobal) return 0;
+    return Math.round((this.totalConcluidasGlobal / this.totalTarefasGlobal) * 100);
+  }
+
+  carregarRanking(): void {
+    this.carregandoRanking = true;
+    this.erroRanking = '';
+
+    // Sem `limite`: o painel sempre exibe todas as UGs devolvidas pela API.
+    this.rankingService.listarRanking('UG').subscribe({
+      next: (ranking) => {
+        this.ugs = ranking.map(item => this.paraUgRankingItem(item));
+        this.atualizarEchartsOptions();
+        this.carregandoRanking = false;
+      },
+      error: () => {
+        this.ugs = [];
+        this.atualizarEchartsOptions();
+        this.erroRanking = 'Não foi possível carregar o ranking das UGs agora.';
+        this.carregandoRanking = false;
+      }
+    });
+  }
+
+  private paraUgRankingItem(item: RankingDepartamento): UgRankingItem {
+    const posicaoAnterior = item.posicaoAnterior ?? item.posicaoAtual;
+    const variacaoPosicao = posicaoAnterior - item.posicaoAtual;
+    const percentual = Math.min(100, Math.max(0, item.mediaExecucaoPct));
+
+    return {
+      id: item.departamento,
+      sigla: this.extrairSigla(item.departamento),
+      nome: item.departamento,
+      posicao: item.posicaoAtual,
+      posicaoAnterior,
+      percentual,
+      // O endpoint atual registra a posição anterior, não o percentual anterior.
+      percentualAnterior: percentual,
+      totalTarefas: item.qtdAcoes,
+      tarefasConcluidas: Math.round((item.qtdAcoes * percentual) / 100),
+      variacaoPosicao,
+      subiu: variacaoPosicao > 0,
+      caiu: variacaoPosicao < 0,
+      destaqueAnimacao: false
+    };
+  }
+
+  private extrairSigla(departamento: string): string {
+    const partes = departamento.split(' - ');
+    return partes.length > 1 ? partes[partes.length - 1].trim() : departamento;
+  }
+
   simularReordenacao(): void {
+    if (!this.ugs.length) return;
+
     const posicoesAnterioresMap = new Map<string, number>();
     this.ugs.forEach((ug, idx) => {
       ug.posicaoAnterior = idx + 1;
