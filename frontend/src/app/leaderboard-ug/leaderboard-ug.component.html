@@ -17,6 +17,7 @@
         type="button" 
         class="action-btn simular-btn" 
         (click)="simularReordenacao()" 
+        [disabled]="carregandoRanking || !ugs.length"
         title="Simular alteração de notas e ver a animação de troca de posições">
         ⚡ Simular Reordenação
       </button>
@@ -26,7 +27,8 @@
         type="button" 
         class="action-btn auto-btn" 
         [class.active]="autoSimulacaoAtiva" 
-        (click)="toggleAutoSimulacao()">
+        (click)="toggleAutoSimulacao()"
+        [disabled]="carregandoRanking || !ugs.length">
         {{ autoSimulacaoAtiva ? '⏸️ Pausar Animação' : '▶️ Loop Automático' }}
       </button>
 
@@ -81,12 +83,12 @@
     <div class="kpi-card">
       <div class="kpi-icon-wrap kpi-green">✅</div>
       <div class="kpi-details">
-        <span class="kpi-label">Tarefas Concluídas</span>
+        <span class="kpi-label">Ações Concluídas</span>
         <div class="kpi-value-row">
           <span class="kpi-value">{{ totalConcluidasGlobal }}/{{ totalTarefasGlobal }}</span>
-          <span class="kpi-badge positive">{{ (totalConcluidasGlobal / totalTarefasGlobal * 100) | number:'1.0-0' }}%</span>
+          <span class="kpi-badge positive">{{ percentualAcoesConcluidas }}%</span>
         </div>
-        <span class="kpi-subtext">Metas e entregas registradas</span>
+        <span class="kpi-subtext">Ações do PAT registradas</span>
       </div>
     </div>
 
@@ -121,7 +123,16 @@
       </div>
 
       <!-- MODO CARDS COM FLIP ANIMATION -->
-      <div class="leaderboard-grid" *ngIf="modoVisualizacao === 'cards'">
+      <div class="ranking-status" *ngIf="carregandoRanking">Carregando todas as UGs...</div>
+      <div class="ranking-status ranking-status-error" *ngIf="erroRanking">
+        <span>{{ erroRanking }}</span>
+        <button type="button" (click)="carregarRanking()">Tentar novamente</button>
+      </div>
+      <div class="ranking-status" *ngIf="!carregandoRanking && !erroRanking && !ugs.length">
+        Nenhuma UG foi encontrada para o ranking.
+      </div>
+
+      <div class="leaderboard-grid" *ngIf="modoVisualizacao === 'cards' && !carregandoRanking && !erroRanking">
         <div 
           class="ug-card" 
           *ngFor="let ug of ugs; let i = index; trackBy: trackByUgId"
@@ -174,7 +185,7 @@
               {{ ug.percentual }}%
             </div>
             <div class="metric-sub">
-              {{ ug.tarefasConcluidas }}/{{ ug.totalTarefas }} tarefas
+              {{ ug.tarefasConcluidas }}/{{ ug.totalTarefas }} ações
             </div>
           </div>
 
@@ -182,7 +193,7 @@
       </div>
 
       <!-- MODO COMPARAÇÃO ECHARTS REALTIME SORT -->
-      <div class="echarts-wrap" *ngIf="modoVisualizacao === 'echarts'">
+      <div class="echarts-wrap" *ngIf="modoVisualizacao === 'echarts' && !carregandoRanking && !erroRanking && ugs.length">
         <div echarts [options]="echartsOptions" class="echarts-chart"></div>
       </div>
     </section>
