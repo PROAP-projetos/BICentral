@@ -19,10 +19,12 @@ import java.util.UUID;
 public class ChatHistoricoService {
 
     private final JdbcTemplate jdbcTemplate;
+    private final TituloSessaoService tituloSessaoService;
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    public ChatHistoricoService(JdbcTemplate jdbcTemplate) {
+    public ChatHistoricoService(JdbcTemplate jdbcTemplate, TituloSessaoService tituloSessaoService) {
         this.jdbcTemplate = jdbcTemplate;
+        this.tituloSessaoService = tituloSessaoService;
         garantirTabelas();
     }
 
@@ -59,22 +61,29 @@ public class ChatHistoricoService {
             """);
     }
 
-    private void garantirSessao(String sessaoId, Long usuarioId, String tituloSugerido) {
+    /** @return true se a sessão foi criada agora (primeira mensagem dela), false se já existia. */
+    private boolean garantirSessao(String sessaoId, Long usuarioId, String tituloSugerido) {
         Integer existe = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM chat_sessao WHERE id = ?", Integer.class, sessaoId);
         if (existe != null && existe > 0) {
             jdbcTemplate.update("UPDATE chat_sessao SET atualizado_em = NOW() WHERE id = ?", sessaoId);
-            return;
+            return false;
         }
+        // Título provisório — cortado, sem entendimento do conteúdo. Some assim que
+        // TituloSessaoService.gerarEAtualizarTitulo() terminar (ver salvarUser).
         String titulo = tituloSugerido.length() > 25 ? tituloSugerido.substring(0, 25) + "..." : tituloSugerido;
         jdbcTemplate.update(
                 "INSERT INTO chat_sessao (id, usuario_id, titulo) VALUES (?, ?, ?) ON CONFLICT (id) DO NOTHING",
                 sessaoId, usuarioId, titulo);
+        return true;
     }
 
     public void salvarUser(String sessaoId, Long usuarioId, String texto) {
-        garantirSessao(sessaoId, usuarioId, texto);
+        boolean sessaoNova = garantirSessao(sessaoId, usuarioId, texto);
         inserirMensagem(sessaoId, "user", texto, null, null, null, null);
+        if (sessaoNova) {
+            tituloSessaoService.gerarEAtualizarTitulo(sessaoId, texto);
+        }
     }
 
     public void salvarBot(String sessaoId, Long usuarioId, String texto, Object spec,

@@ -381,14 +381,14 @@ public class EmailService {
     }
 
     public void sendVersaoAnuncioEmail(String toAddress, String nome) {
-        String assunto = "proIAp — versão 1.2 já está no ar";
+        String assunto = "proIAp — versão 1.3 já está no ar";
         String content = """
                 <!DOCTYPE html>
                 <html lang="pt-BR">
                 <head>
                     <meta charset="UTF-8">
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <title>proIAp — versão 1.2</title>
+                    <title>proIAp — versão 1.3</title>
                 </head>
                 <body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#1a1a1a;">
                     <table border="0" cellpadding="0" cellspacing="0" width="100%%">
@@ -398,7 +398,7 @@ public class EmailService {
                                     <tr>
                                         <td style="padding:28px 32px;background:#004a80;color:#ffffff;">
                                             <div style="font-size:24px;font-weight:700;letter-spacing:0.2px;">BICentral</div>
-                                            <div style="margin-top:8px;font-size:14px;opacity:0.92;">proIAp — versão 1.2</div>
+                                            <div style="margin-top:8px;font-size:14px;opacity:0.92;">proIAp — versão 1.3</div>
                                         </td>
                                     </tr>
                                     <tr>
@@ -413,17 +413,19 @@ public class EmailService {
                                                 O proIAp acabou de ganhar uma leva grande de melhorias a partir do que vocês reportaram nos testes. Principais mudanças:
                                             </p>
                                             <ul style="margin:0 0 24px;padding-left:20px;font-size:15px;line-height:1.8;color:#3b556b;">
-                                                <li><strong>Relatórios completamente redesenhados</strong> — capa, visão executiva com números grandes, tabelas de pontos de atenção e destaques, e uma seção de metodologia explicando como ler os indicadores.</li>
-                                                <li><strong>Números corrigidos</strong> — um bug fazia alguns relatórios e rankings contarem ações em dobro; já está corrigido.</li>
-                                                <li><strong>Respostas do chat mais diretas</strong> — menos texto de enrolação, mais número e tabela logo de cara.</li>
-                                                <li><strong>Não trava mais em 10 itens</strong> — se você pedir "todas as tarefas" ou uma quantidade específica, o chat agora respeita.</li>
-                                                <li><strong>F5 não perde mais a conversa</strong> — recarregar a página volta pro mesmo chat, não abre um novo.</li>
+                                                <li><strong>Relatório sob medida</strong> — peça pra ver o nome da ação em vez do código, uma lista completa ordenada por execução, ou o relatório também em Excel, além de PDF e Word.</li>
+                                                <li><strong>Relatório com as tarefas de cada ação</strong> — peça "com as tarefas" e o relatório ganha uma seção mostrando as tarefas, responsável e prazo de cada ação do departamento, não só o percentual.</li>
+                                                <li><strong>Relatório sobre uma pessoa</strong> — peça "um relatório sobre mim" ou sobre outra pessoa da sua unidade, com as tarefas dela em vez do panorama do departamento inteiro.</li>
+                                                <li><strong>Chat pergunta em vez de recusar</strong> — se você pedir um dado com outro nome, o proIAp propõe o que ele tem de mais parecido e confirma com você, em vez de simplesmente dizer que não tem.</li>
+                                                <li><strong>Título automático da conversa</strong> — cada chat novo na barra lateral já nasce com um nome que resume o assunto, sem precisar renomear.</li>
+                                                <li><strong>Relatórios mais limpos</strong> — tabelas sem corte de departamento, sem negrito em excesso, e com os textos mais longos legíveis (sem sobrepor).</li>
+                                                <li><strong>Encontre a ação pelo nome</strong> — não precisa saber o código: pergunte algo como "as tarefas da ação de monitorar os indicadores" e o proIAp acha pelo nome real, com o título completo (sem resumir). Também dá pra pedir a lista ordenada pelo número da ação.</li>
                                             </ul>
                                             <table border="0" cellpadding="0" cellspacing="0">
                                                 <tr>
                                                     <td>
                                                         <a href="%s" target="_blank" style="display:inline-block;padding:14px 24px;background:#004a80;color:#ffffff;text-decoration:none;font-weight:700;border-radius:10px;">
-                                                            Testar a versão 1.2
+                                                            Testar a versão 1.3
                                                         </a>
                                                     </td>
                                                 </tr>

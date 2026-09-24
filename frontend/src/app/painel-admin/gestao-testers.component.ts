@@ -21,6 +21,13 @@ import { AgentComponent } from '../agent/agent.component';
     .hero a.btn { text-decoration: none; display: inline-block; white-space: nowrap; }
     .pendente-texto { font-size: 0.78rem; color: #b45309; font-weight: 600; }
     .role-chip-small.pendente { background: #fef3c7; color: #92400e; }
+    .btn-link-inline {
+      background: none; border: none; padding: 0; margin-left: 0.4rem;
+      color: var(--color-primary); font-size: 0.78rem; cursor: pointer; text-decoration: underline;
+    }
+    .btn-link-inline:disabled { opacity: 0.5; cursor: default; }
+    .form-compact-inline { display: flex; align-items: center; flex-wrap: wrap; gap: 0.1rem; }
+    .input-limite { width: 4.5rem; font-size: 0.78rem; padding: 0.1rem 0.3rem; }
 
     @media (max-width: 700px) {
       .table-head.tester-row { display: none; }
@@ -42,6 +49,9 @@ export class GestaoTestersComponent implements OnInit {
   versaoAgente = AgentComponent.VERSAO_AGENTE;
   versaoJaNotificada = false;
   notificandoVersao = false;
+
+  editandoLimiteId: number | null = null;
+  novoLimite: number | null = null;
 
   constructor(private adminService: AdminService) {}
 
@@ -125,6 +135,53 @@ export class GestaoTestersComponent implements OnInit {
       error: () => {
         this.salvando = false;
         this.aviso('Erro ao remover tester.', 'erro');
+      }
+    });
+  }
+
+  iniciarEdicaoLimite(t: TesterProiap): void {
+    this.editandoLimiteId = t.usuarioId;
+    this.novoLimite = t.limite;
+  }
+
+  cancelarEdicaoLimite(): void {
+    this.editandoLimiteId = null;
+    this.novoLimite = null;
+  }
+
+  salvarLimite(t: TesterProiap): void {
+    if (t.usuarioId == null || this.novoLimite == null || this.novoLimite <= 0 || this.salvando) return;
+
+    this.salvando = true;
+    this.adminService.definirLimiteTester(t.usuarioId, this.novoLimite).subscribe({
+      next: () => {
+        this.salvando = false;
+        this.cancelarEdicaoLimite();
+        this.aviso('Limite atualizado.', 'sucesso');
+        this.carregar();
+      },
+      error: (err) => {
+        this.salvando = false;
+        this.aviso(err?.error?.mensagem || 'Erro ao atualizar o limite.', 'erro');
+      }
+    });
+  }
+
+  // Volta pro padrão global (US$ 1,00) — limite null no backend.
+  restaurarLimitePadrao(t: TesterProiap): void {
+    if (t.usuarioId == null || this.salvando) return;
+
+    this.salvando = true;
+    this.adminService.definirLimiteTester(t.usuarioId, null).subscribe({
+      next: () => {
+        this.salvando = false;
+        this.cancelarEdicaoLimite();
+        this.aviso('Limite restaurado pro padrão.', 'sucesso');
+        this.carregar();
+      },
+      error: () => {
+        this.salvando = false;
+        this.aviso('Erro ao restaurar o limite.', 'erro');
       }
     });
   }

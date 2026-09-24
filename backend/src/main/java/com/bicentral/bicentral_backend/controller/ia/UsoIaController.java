@@ -42,7 +42,7 @@ public class UsoIaController {
     public UsoIaResponseDTO consultarUso(@AuthenticationPrincipal UserDetails userDetails) {
         Usuario usuario = usuarioService.buscarPorEmail(userDetails.getUsername());
         boolean souTester = usoIaService.ehTester(usuario.getId());
-        return new UsoIaResponseDTO(usoIaService.custoDoUsuario(usuario.getId()), UsoIaService.LIMITE_DOLARES, souTester);
+        return new UsoIaResponseDTO(usoIaService.custoDoUsuario(usuario.getId()), usoIaService.limiteDoUsuario(usuario.getId()), souTester);
     }
 
     @GetMapping("/interacoes")
@@ -85,6 +85,16 @@ public class UsoIaController {
     public void removerTester(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long usuarioId) {
         exigirAdmin(userDetails);
         usoIaService.removerTester(usuarioId);
+    }
+
+    public record LimiteRequestDTO(Double limite) {}
+
+    // limite null reseta pro padrão global (US$ 1,00) — não é possível remover um tester do
+    // padrão de outra forma além de zerar esse campo de volta.
+    @PostMapping("/testers/{usuarioId}/limite")
+    public void definirLimiteTester(@AuthenticationPrincipal UserDetails userDetails, @PathVariable Long usuarioId, @RequestBody LimiteRequestDTO requisicao) {
+        exigirAdmin(userDetails);
+        usoIaService.definirLimiteTester(usuarioId, requisicao.limite());
     }
 
     @DeleteMapping("/testers/pendentes")

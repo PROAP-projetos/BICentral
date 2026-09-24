@@ -43,7 +43,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   // Sobe esse número (e a data no comentário) a cada leva de mudança que valha avisar os
   // testers — o "gracejo" do logo e o banner de atualização aparecem sozinhos, uma vez só,
   // pra quem já tinha usado o chat antes com uma versão diferente (ver VERSAO_VISTA_KEY).
-  static readonly VERSAO_AGENTE = '1.2'; // 2026-09-17 — relatório redesenhado, chat mais direto, F5 e gráfico vazio corrigidos
+  static readonly VERSAO_AGENTE = '1.3'; // 2026-09-22 — relatório customizável, título de sessão por IA, chat confirma em vez de recusar dado
   private static readonly VERSAO_VISTA_KEY = 'bicentral_versao_vista';
 
   isDarkMode = false;
@@ -97,6 +97,10 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   erroPainelAtrasos = false;
 
   mostrarPainelRelatorio = false;
+  @ViewChild('relatorioWrapperRef') relatorioWrapperRef?: ElementRef<HTMLElement>;
+  @ViewChild('notifWrapperRef') notifWrapperRef?: ElementRef<HTMLElement>;
+  @ViewChild('settingsWrapperRef') settingsWrapperRef?: ElementRef<HTMLElement>;
+  @ViewChild('settingsPanelRef') settingsPanelRef?: ElementRef<HTMLElement>;
   meusRelatorios: RelatorioHistoricoItem[] = [];
   carregandoMeusRelatorios = false;
   relatorioExcluindoId?: number;
@@ -166,15 +170,31 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
         if (sessaoLembrada) {
           this.selecionarChat(sessaoLembrada);
         } else {
-          // Nada pra restaurar (aba nova, ou o id lembrado era de uma "Nova Conversa" que
-          // recarregou sem nunca virar mensagem de verdade) — registra o id desta "Nova
-          // Conversa" atual, senão um F5 antes da primeira mensagem fica com um id "morto" no
-          // sessionStorage que nunca vai bater com a sessão que o usuário efetivamente enviar.
+          // this.sessoes foi substituído pela lista do backend acima — sem re-adicionar
+          // sessaoAtual, uma "Nova Conversa" em branco fica órfã (some da sidebar até F5).
+          this.sessoes.unshift(this.sessaoAtual);
           sessionStorage.setItem(AgentComponent.SESSAO_ABA_KEY, this.sessaoAtual.id);
         }
       },
       error: () => { /* silencioso — começa do zero se falhar */ }
     });
+  }
+
+  // Título de verdade é gerado async no backend (TituloSessaoService) — busca de novo após um
+  // tempo de folga. Silencioso se falhar: fica o título provisório, sem efeito colateral.
+  private atualizarTituloAposGeracao(sessaoId: string): void {
+    window.setTimeout(() => {
+      this.agentService.listarSessoes().subscribe({
+        next: (lista) => {
+          const atualizada = lista.find((s) => s.id === sessaoId);
+          const local = this.sessoes.find((s) => s.id === sessaoId);
+          if (atualizada && local) {
+            local.titulo = atualizada.titulo;
+          }
+        },
+        error: () => { }
+      });
+    }, 2500);
   }
 
   // ==========================================
@@ -196,16 +216,44 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     return this.sessoes.filter((s) => !s.fixado);
   }
 
-  // Fecha o menu "..." se o clique foi fora dele — os botões que abrem/agem nesse menu chamam
-  // stopPropagation(), então só chega aqui clique em qualquer outro lugar da tela.
-  @HostListener('document:click')
-  aoClicarFora(): void {
+  // Fecha menu/painéis flutuantes só quando o clique é realmente fora do respectivo wrapper.
+  @HostListener('document:click', ['$event'])
+  aoClicarFora(event: MouseEvent): void {
     this.menuAbertoId = null;
+
+    const alvo = event.target as Node;
+
+    if (this.mostrarPainelRelatorio && !this.relatorioWrapperRef?.nativeElement.contains(alvo)) {
+      this.mostrarPainelRelatorio = false;
+      this.pararPollingRelatorio();
+    }
+    if (this.mostrarPainelNotificacoes && !this.notifWrapperRef?.nativeElement.contains(alvo)) {
+      this.mostrarPainelNotificacoes = false;
+    }
+    if (this.mostrarSettings
+        && !this.settingsWrapperRef?.nativeElement.contains(alvo)
+        && !this.settingsPanelRef?.nativeElement.contains(alvo)) {
+      this.mostrarSettings = false;
+    }
   }
 
   toggleMenuSessao(sessao: ChatSession, event: MouseEvent): void {
     event.stopPropagation();
     this.menuAbertoId = this.menuAbertoId === sessao.id ? null : sessao.id;
+  }
+
+  // Só anima (efeito letreiro) quando o título realmente não cabe — mede na hora do hover.
+  onHoverTituloSessao(event: MouseEvent): void {
+    const container = event.currentTarget as HTMLElement;
+    const wrapper = container.querySelector<HTMLElement>('.chat-history-titulo-scroll');
+    const texto = container.querySelector<HTMLElement>('.chat-history-titulo-texto');
+    if (wrapper && texto && texto.scrollWidth > wrapper.clientWidth) {
+      container.classList.add('titulo-estourando');
+    }
+  }
+
+  onLeaveTituloSessao(event: MouseEvent): void {
+    (event.currentTarget as HTMLElement).classList.remove('titulo-estourando');
   }
 
   iniciarRenomear(sessao: ChatSession, event: MouseEvent): void {
@@ -539,7 +587,10 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     const text = (this.input || '').trim();
     if (!text || this.carregando) return;
 
-    if (this.sessaoAtual.titulo === 'Nova Conversa') {
+    const sessaoEhNova = this.sessaoAtual.titulo === 'Nova Conversa';
+    if (sessaoEhNova) {
+      // Título provisório (cortado) — a IA gera um de verdade em segundo plano no backend
+      // (TituloSessaoService) e a sidebar atualiza sozinha, ver atualizarTituloAposGeracao.
       this.sessaoAtual.titulo = text.substring(0, 25) + (text.length > 25 ? '...' : '');
     }
 
@@ -553,7 +604,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
 
     const idDaSessao = String(this.sessaoAtual.id);
     this.sessaoGerandoId = idDaSessao;
-    this.enviarConsulta(text, idDaSessao, false);
+    this.enviarConsulta(text, idDaSessao, false, sessaoEhNova);
   }
 
   // Limpeza só client-side, sem avisar o backend — reaproveitada por confirmarExclusao(), que espera cancelarGeracao() antes de excluir.
@@ -576,7 +627,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.agentService.cancelarGeracao().subscribe({ error: () => {} });
   }
 
-  private enviarConsulta(text: string, idDaSessao: string, isRetry: boolean) {
+  private enviarConsulta(text: string, idDaSessao: string, isRetry: boolean, sessaoEhNova = false) {
     this.consultaSub = this.agentService.consultar(text, this.equipeId ?? null, this.modeloAtivo, idDaSessao)
       .pipe(finalize(() => {
         if (!this.acordandoServidor) {
@@ -589,6 +640,10 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
       .subscribe({
         next: (resposta: any) => {
           this.acordandoServidor = false;
+
+          if (sessaoEhNova) {
+            this.atualizarTituloAposGeracao(idDaSessao);
+          }
 
           if (resposta.skill === 'painel') {
             this.sessaoAtual.messages.push({
@@ -622,7 +677,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
 
           if (!isRetry && provavelServidorDormindo) {
             this.acordandoServidor = true;
-            this.acordarServidorTimer = window.setTimeout(() => this.enviarConsulta(text, idDaSessao, true), 3000);
+            this.acordarServidorTimer = window.setTimeout(() => this.enviarConsulta(text, idDaSessao, true, sessaoEhNova), 3000);
             return;
           }
 

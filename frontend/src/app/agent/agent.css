@@ -309,14 +309,37 @@
 .chat-history li:hover, .chat-history li.active { background: var(--bg-sidebar-hover); }
 
 .chat-history-titulo {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   min-width: 0;
   flex: 1;
   display: flex;
   align-items: center;
   gap: 5px;
+}
+
+.chat-history-titulo-scroll {
+  overflow: hidden;
+  min-width: 0;
+  flex: 1;
+}
+
+.chat-history-titulo-texto {
+  display: inline-block;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 100%;
+  vertical-align: top;
+}
+
+/* Só entra quando o título estoura a largura disponível (ver onHoverTituloSessao) — título curto não anima. */
+.chat-history-titulo.titulo-estourando .chat-history-titulo-texto {
+  overflow: visible;
+  animation: chat-history-titulo-marquee 6s linear infinite;
+}
+
+@keyframes chat-history-titulo-marquee {
+  0%, 10% { transform: translateX(0); }
+  90%, 100% { transform: translateX(-100%); }
 }
 
 .chat-history-pin-icon {

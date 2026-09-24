@@ -51,8 +51,16 @@ public class ProiapService {
         Map.entry("contarAcoesUnicasPAT", List.of("Qual departamento tem mais ações no PAT?")),
         Map.entry("buscarAcoesPorMarcador", List.of("Quero um relatório completo desse departamento")),
         Map.entry("contarTarefasPorDepartamento", List.of("Qual departamento tem mais tarefas atrasadas?")),
+        Map.entry("contarTarefasPorAcao", List.of("Quero ver as tarefas dessa ação")),
         Map.entry("salvarPreferenciaUsuario", List.of("O que você lembra sobre mim?")),
-        Map.entry("listarMinhasMemorias", List.of("Quero atualizar uma dessas preferências"))
+        Map.entry("listarMinhasMemorias", List.of("Quero atualizar uma dessas preferências")),
+        Map.entry("solicitarGeracaoRelatorio", List.of(
+            "Quero também em Excel",
+            "Mostra as tarefas de cada ação",
+            "Quero ver o nome da ação em vez do código")),
+        Map.entry("solicitarRelatorioPessoa", List.of(
+            "Quero também em Excel",
+            "E o relatório do departamento inteiro?"))
     );
 
     public ProiapService(AgenteProiap agenteProiap, AgenteConsultaSql agenteConsultaSql, EstadoSessao estadoSessao,

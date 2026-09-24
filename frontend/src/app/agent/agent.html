@@ -76,11 +76,11 @@
           (blur)="confirmarRenomear(sessao)" />
       </ng-container>
       <ng-template #tituloNormal>
-        <span class="chat-history-titulo">
+        <span class="chat-history-titulo" (mouseenter)="onHoverTituloSessao($event)" (mouseleave)="onLeaveTituloSessao($event)">
           <svg *ngIf="sessao.fixado" class="chat-history-pin-icon" width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M12 2a1 1 0 0 1 1 1v6.5l3.4 5.6a1 1 0 0 1-.85 1.5H13v4.4a1 1 0 1 1-2 0V16.6H8.45a1 1 0 0 1-.85-1.5L11 9.5V3a1 1 0 0 1 1-1z"></path>
           </svg>
-          {{ sessao.titulo }}
+          <span class="chat-history-titulo-scroll"><span class="chat-history-titulo-texto">{{ sessao.titulo }}</span></span>
         </span>
       </ng-template>
 
@@ -139,7 +139,7 @@
       <div class="user-config">
         <div class="user-info">{{ usuarioLogado }}</div>
 
-        <div class="notif-wrapper">
+        <div class="notif-wrapper" #settingsWrapperRef>
           <button class="settings-gear-btn" type="button" (click)="toggleSettings()" aria-label="Configurações" title="Configurações">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round">
@@ -153,7 +153,7 @@
   </aside>
 
   <!-- Painel de configurações: fora da sidebar de propósito, pra não ser cortado pelo overflow dela -->
-  <div class="notif-panel settings-panel settings-panel-floating" *ngIf="mostrarSettings">
+  <div class="notif-panel settings-panel settings-panel-floating" #settingsPanelRef *ngIf="mostrarSettings">
     <div class="notif-panel-header">Configurações</div>
 
     <div class="notif-panel-body settings-body">
@@ -205,7 +205,7 @@
       </div>
 
       <div class="top-nav-links">
-        <div class="notif-wrapper">
+        <div class="notif-wrapper" #relatorioWrapperRef>
           <button class="notif-bell" type="button" (click)="toggleRelatorio()" aria-label="Gerar relatório" title="Gerar relatório">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round">
@@ -239,7 +239,7 @@
                       <span *ngSwitchCase="'PROCESSANDO'">Processando</span>
                       <span *ngSwitchCase="'ERRO'">Erro</span>
                       <span *ngSwitchCase="'PRONTO'" class="relatorio-action-group">
-                        <a [href]="r.arquivo_url" target="_blank" rel="noopener" title="Baixar DOCX">DOCX</a>
+                        <a [href]="r.arquivo_url" target="_blank" rel="noopener" [title]="'Baixar ' + r.formato">{{ r.formato }}</a>
                         <button
                           type="button"
                           class="relatorio-pdf-btn"
@@ -276,7 +276,7 @@
           </div>
         </div>
 
-        <div class="notif-wrapper">
+        <div class="notif-wrapper" #notifWrapperRef>
           <!-- Não é "notificação" de verdade (evento novo que aparece e some) — é o status
                recalculado na hora dos departamentos que a pessoa gerencia, sempre vai ter algo
                aqui enquanto existir departamento fora da faixa esperada. Por isso o ícone e a
@@ -376,8 +376,8 @@
     <div class="aviso-api-banner aviso-atualizacao-banner" *ngIf="houveAtualizacaoVisivel">
       <span class="aviso-api-icon">✨</span>
       <div class="aviso-api-texto">
-        <strong>O proIAp mudou bastante desde a última vez que você testou! (versão 1.2)</strong>
-        Os relatórios ficaram bem mais completos e fáceis de ler, corrigi um bug que duplicava números em alguns relatórios e rankings, e as respostas do chat ficaram mais diretas. Bom teste de novo — e se achar algo estranho, me conta 💙
+        <strong>O proIAp mudou bastante desde a última vez que você testou! (versão 1.3)</strong>
+        Agora dá pra pedir o relatório em Excel, ver o nome da ação em vez do código, pedir a lista completa ordenada por execução e até gerar um relatório sobre uma pessoa específica. A conversa também ganha um título automático, e se o chat não entender exatamente o que você pediu, ele passa a perguntar em vez de dizer que não tem o dado. Bom teste de novo — e se achar algo estranho, me conta 💙
       </div>
       <button type="button" class="aviso-api-fechar" (click)="dispensarAvisoAtualizacao()" aria-label="Fechar aviso" title="Fechar">×</button>
     </div>

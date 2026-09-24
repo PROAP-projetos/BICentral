@@ -76,9 +76,21 @@
             <div class="budget-preenchido" [class.esgotado]="percentual(t) >= 100"
               [style.width.%]="percentual(t)"></div>
           </div>
-          <span class="budget-texto">
-            ${{ t.gastoIndividual.toFixed(2) }} de ${{ t.limite.toFixed(2) }}
-          </span>
+
+          <ng-container *ngIf="editandoLimiteId !== t.usuarioId; else editandoLimite">
+            <span class="budget-texto">
+              ${{ t.gastoIndividual.toFixed(2) }} de ${{ t.limite.toFixed(2) }}
+              <button class="btn-link-inline" type="button" title="Alterar limite" (click)="iniciarEdicaoLimite(t)">editar</button>
+            </span>
+          </ng-container>
+          <ng-template #editandoLimite>
+            <span class="budget-texto form-compact-inline">
+              US$ <input type="number" min="0.01" step="0.5" [(ngModel)]="novoLimite" class="input-limite" />
+              <button class="btn-link-inline" type="button" (click)="salvarLimite(t)" [disabled]="salvando">salvar</button>
+              <button class="btn-link-inline" type="button" (click)="cancelarEdicaoLimite()" [disabled]="salvando">cancelar</button>
+              <button class="btn-link-inline" type="button" *ngIf="t.limite !== 1" (click)="restaurarLimitePadrao(t)" [disabled]="salvando">restaurar padrão</button>
+            </span>
+          </ng-template>
         </div>
         <ng-template #pendenteInfo>
           <span class="pendente-texto">Vira tester assim que se cadastrar no BICentral</span>

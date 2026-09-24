@@ -181,6 +181,11 @@ export class AdminService {
     return this.http.delete<void>(`/api/uso-ia/testers/${usuarioId}`);
   }
 
+  // limite null reseta pro padrão global (US$ 1,00).
+  definirLimiteTester(usuarioId: number, limite: number | null): Observable<void> {
+    return this.http.post<void>(`/api/uso-ia/testers/${usuarioId}/limite`, { limite });
+  }
+
   removerTesterPendente(email: string): Observable<void> {
     return this.http.delete<void>('/api/uso-ia/testers/pendentes', { params: { email } });
   }
