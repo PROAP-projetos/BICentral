@@ -137,6 +137,13 @@ public class RelatorioService {
         // desatualizado sem avisar ninguém. Reverter isso (tirar essa linha) quando a integração
         // real da API do PDI estiver pronta.
         tipo = "PAT";
+        // Valida o marcador ANTES de gerar qualquer coisa — sem isso, um marcador que não bate
+        // com nenhuma ação do departamento produz um arquivo quase vazio 20-30s depois, sem
+        // explicar por quê (foi exatamente isso que aconteceu testando "filtrando por risco" na
+        // PROGRAD, que não tem nenhuma ação com esse marcador).
+        if (marcador != null && !marcador.isBlank() && contarAcoesComMarcador(departamento, marcador) == 0) {
+            throw new IllegalStateException("Nenhuma ação com o marcador \"" + marcador.trim() + "\" encontrada em " + departamento + ".");
+        }
         String formatoFinal = normalizarFormato(formato);
         String chaveOpcoes = montarChaveOpcoes(mostrarNomeAcao, ordenacao, incluirTarefas, secoes, marcador);
 
@@ -737,6 +744,13 @@ public class RelatorioService {
                 : new Object[]{"%" + departamento.trim() + "%"};
     }
 
+    private int contarAcoesComMarcador(String departamento, String filtroMarcador) {
+        Integer total = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM pat_execucao_departamento WHERE departamento ILIKE ?" + clausulaMarcador(filtroMarcador),
+                Integer.class, paramsComMarcador(departamento, filtroMarcador));
+        return total != null ? total : 0;
+    }
+
     /**
      * Busca os dados exatos do banco (indicadores, piores e melhores ações) — nada disso
      * passa pela IA, é montado direto em Java pra garantir que os números batem com o banco.
@@ -1180,7 +1194,7 @@ public class RelatorioService {
         XWPFParagraph subtitulo = document.createParagraph();
         subtitulo.setAlignment(ParagraphAlignment.CENTER);
         XWPFRun subtituloRun = subtitulo.createRun();
-        subtituloRun.setText("Plano de Acompanhamento do Trabalho — " + r.tipo());
+        subtituloRun.setText("Plano Anual de Trabalho — " + r.tipo());
         subtituloRun.setFontSize(13);
         subtituloRun.setColor(COR_TEXTO_CORPO);
 
@@ -1988,7 +2002,7 @@ public class RelatorioService {
                 yAtual -= 30;
             }
             yAtual -= 6;
-            escreverCentralizado("Plano de Acompanhamento do Trabalho — " + normalizarTextoPdf(r.tipo()), PDType1Font.HELVETICA, 12, yAtual, corTexto);
+            escreverCentralizado("Plano Anual de Trabalho — " + normalizarTextoPdf(r.tipo()), PDType1Font.HELVETICA, 12, yAtual, corTexto);
             yAtual -= 36;
             escreverCentralizado(r.geradoEm(), PDType1Font.HELVETICA_OBLIQUE, 9, yAtual, corMetadado);
 

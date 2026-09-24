@@ -33,6 +33,11 @@ public class ProiapService {
 
     private static final int MAX_SUGESTOES = 3;
 
+    // Prefixo fixo que RelatorioContextoTool devolve quando a geração falha (marcador sem
+    // match, pessoa sem permissão etc.) — sem isso, chips tipo "Quero também em Excel"
+    // apareciam mesmo quando o relatório não foi gerado, sem sentido nenhum pro contexto.
+    private static final String PREFIXO_FALHA_RELATORIO = "Não foi possível gerar esse relatório:";
+
     private static final Map<String, List<String>> SUGESTOES_POR_FERRAMENTA = Map.ofEntries(
         Map.entry("ranquearDepartamentosPorExecucaoPAT", List.of(
             "Alguma dessas ações é compartilhada entre departamentos?",
@@ -226,6 +231,10 @@ public class ProiapService {
         }
         LinkedHashSet<String> sugestoes = new LinkedHashSet<>();
         for (ToolExecution execucao : execucoes) {
+            String resultado = execucao.result();
+            if (resultado != null && resultado.startsWith(PREFIXO_FALHA_RELATORIO)) {
+                continue;
+            }
             List<String> candidatas = SUGESTOES_POR_FERRAMENTA.get(execucao.request().name());
             if (candidatas != null) {
                 sugestoes.addAll(candidatas);

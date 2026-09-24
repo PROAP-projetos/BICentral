@@ -64,7 +64,11 @@ public class RelatorioContextoTool {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         var usuario = usuarioService.buscarPorEmail(email);
 
-        relatorioService.solicitarRelatorio(usuario.getId(), departamento.trim(), tipoFinal, formato, mostrarNomeAcaoFinal, ordenacaoFinal, incluirTarefasFinal, secoesFinal, marcadorFinal);
+        try {
+            relatorioService.solicitarRelatorio(usuario.getId(), departamento.trim(), tipoFinal, formato, mostrarNomeAcaoFinal, ordenacaoFinal, incluirTarefasFinal, secoesFinal, marcadorFinal);
+        } catch (IllegalStateException e) {
+            return "Não foi possível gerar esse relatório: " + e.getMessage();
+        }
         estadoSessao.setRelatorioGerado(true);
 
         return "Relatório solicitado! Já abri o painel de relatórios pra você acompanhar — deve ficar pronto em cerca de 20-30 segundos.";
