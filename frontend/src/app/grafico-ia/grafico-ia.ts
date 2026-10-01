@@ -133,6 +133,11 @@ export class GraficoIaComponent implements OnChanges, OnDestroy {
       return;
     }
 
+    if (tipo === 'pie') {
+      this.mapearPizza(rawSeries, eixoX);
+      return;
+    }
+
     // Muitas categorias OU nomes compridos (nome de departamento institucional raramente é curto,
     // mesmo com só 4-5 categorias já sobrepõe) espremidos na horizontal viram ilegíveis — Power BI
     // resolve isso virando o gráfico de barras deitado, categoria no eixo vertical. Vale pra
@@ -170,7 +175,7 @@ export class GraficoIaComponent implements OnChanges, OnDestroy {
         smooth: tipoSerie === 'line',
         itemStyle: {
           borderRadius: tipoSerie === 'bar' && tipo !== 'empilhado' ? (horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0]) : 0,
-          color: tipo === 'pie' ? undefined : PALETA_POWER_BI[i % PALETA_POWER_BI.length]
+          color: PALETA_POWER_BI[i % PALETA_POWER_BI.length]
         },
         label: {
           show: this.compacto ? false : this.mostrarValores,
@@ -291,6 +296,61 @@ export class GraficoIaComponent implements OnChanges, OnDestroy {
         data: [{ value: valor, name: rotulo }]
       }]
     };
+  }
+
+  // Pizza não tem eixo — precisa de pares {name, value} por fatia, não array plano de números.
+  private mapearPizza(rawSeries: any[], eixoX: any[]): void {
+    const primeiraSerie = rawSeries[0];
+    const valoresBrutos = Array.isArray(primeiraSerie?.valores) ? primeiraSerie.valores : [];
+
+    const dados = eixoX.map((nome: string, i: number) => {
+      const bruto = valoresBrutos[i];
+      const numerico = typeof bruto === 'number'
+        ? bruto
+        : Number(String(bruto ?? '').replace(/[^0-9eE+\-\.]/g, ''));
+      return { name: String(nome ?? ''), value: Number.isFinite(numerico) ? numerico : 0 };
+    });
+
+    this.chartHeight = 320;
+
+    this.chartOptions = {
+      color: PALETA_POWER_BI,
+      title: this.compacto ? undefined : {
+        text: this.spec?.titulo || '',
+        left: 'center',
+        textStyle: { fontFamily: 'sans-serif', color: '#333', fontWeight: 600, fontSize: 14 },
+        padding: [0, 8, 0, 8]
+      },
+      tooltip: {
+        trigger: 'item',
+        formatter: '{b}: {c}'
+      },
+      legend: this.compacto ? undefined : {
+        bottom: 0,
+        textStyle: { fontSize: 10 },
+        formatter: (nome: string) => this.rotuloLegendaPizza(nome)
+      },
+      series: [{
+        type: 'pie',
+        radius: this.compacto ? '75%' : '62%',
+        center: this.compacto ? ['50%', '50%'] : ['50%', '44%'],
+        data: dados,
+        // Valor real, não {d} (participação na pizza) — confundiria com percentuais já individuais.
+        label: {
+          show: this.compacto ? false : this.mostrarValores,
+          formatter: '{b}\n{c}',
+          fontSize: 10
+        },
+        labelLine: { show: this.compacto ? false : this.mostrarValores }
+      }]
+    };
+  }
+
+  // Nome completo corta igual pra todo item (mesmo prefixo longo) — prioriza a sigla entre parênteses.
+  private rotuloLegendaPizza(nome: string): string {
+    const sigla = String(nome ?? '').match(/\(([^()]+)\)\s*$/);
+    if (sigla) return sigla[1];
+    return this.quebrarRotulo(nome, 18);
   }
 
   // Quebra por PALAVRA respeitando um limite de caracteres por linha (em vez de partir o texto

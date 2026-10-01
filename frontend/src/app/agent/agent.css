@@ -195,10 +195,37 @@
 .logo-mark {
   flex-shrink: 0;
   color: var(--text-primary);
+  transform-origin: center;
+}
+
+/* Toca só quando VERSAO_AGENTE muda (ver agent.component.ts) — iteration-count finito de
+   propósito, pra ser um "oi, mudei!" rápido e não um ícone piscando pra sempre. */
+.logo-mark.gracejo {
+  animation: logo-gracejo 0.7s ease-in-out 2;
+}
+
+@keyframes logo-gracejo {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  20% { transform: scale(1.18) rotate(-14deg); }
+  45% { transform: scale(0.92) rotate(10deg); }
+  70% { transform: scale(1.1) rotate(-6deg); }
 }
 
 .logo-accent {
   color: var(--logo-accent);
+}
+
+.versao-badge {
+  flex-shrink: 0;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+  background: var(--bg-sidebar-hover);
+  border-radius: 999px;
+  padding: 1px 6px;
+  margin-left: 1px;
+  align-self: center;
 }
 
 .sidebar-collapse-btn {
@@ -274,11 +301,154 @@
 .chat-history { flex-grow: 1; overflow-y: auto; }
 .chat-history ul { list-style: none; padding: 0; margin: 0; }
 .chat-history li {
+  position: relative;
   padding: 0.6rem; border-radius: 6px; cursor: pointer;
   font-size: 0.9rem; color: var(--text-primary);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
 }
 .chat-history li:hover, .chat-history li.active { background: var(--bg-sidebar-hover); }
+
+.chat-history-titulo {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.chat-history-titulo-scroll {
+  overflow: hidden;
+  min-width: 0;
+  flex: 1;
+}
+
+.chat-history-titulo-texto {
+  display: inline-block;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 100%;
+  vertical-align: top;
+}
+
+/* Só entra quando o título estoura a largura disponível (ver onHoverTituloSessao) — título curto não anima. */
+.chat-history-titulo.titulo-estourando .chat-history-titulo-texto {
+  overflow: visible;
+  animation: chat-history-titulo-marquee 6s linear infinite;
+}
+
+@keyframes chat-history-titulo-marquee {
+  0%, 10% { transform: translateX(0); }
+  90%, 100% { transform: translateX(-100%); }
+}
+
+.chat-history-pin-icon {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.chat-history-rename-input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  color: var(--text-primary);
+  background: var(--bg-main);
+  border: 1px solid var(--logo-accent);
+  border-radius: 5px;
+  padding: 2px 6px;
+}
+
+.chat-history-menu-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.chat-history-menu-btn {
+  width: 22px;
+  height: 22px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 5px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+
+.chat-history li:hover .chat-history-menu-btn,
+.chat-history-menu-btn.forcar-aberto {
+  display: inline-flex;
+}
+
+.chat-history-menu-btn:hover,
+.chat-history-menu-btn.forcar-aberto {
+  background: var(--bg-sidebar-hover);
+  color: var(--text-primary);
+}
+
+.chat-history-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 60;
+  width: 190px;
+  padding: 6px;
+  border-radius: 10px;
+  background: var(--bg-main);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  cursor: default;
+}
+
+.chat-history-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0.5rem 0.55rem;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.14s ease;
+}
+
+.chat-history-menu button:hover:not(:disabled) {
+  background: rgba(0, 74, 128, 0.08);
+}
+
+.dark-theme .chat-history-menu button:hover:not(:disabled) {
+  background: rgba(91, 155, 213, 0.16);
+}
+
+.chat-history-menu button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.chat-history-menu-divider {
+  height: 1px;
+  margin: 4px 2px;
+  background: var(--border-color);
+}
+
+.chat-history-menu-excluir {
+  color: #ef4444 !important;
+}
+
+.chat-history-menu-excluir:hover {
+  background: rgba(239, 68, 68, 0.12) !important;
+}
 
 .sidebar-footer { padding-top: 1rem; margin-top: 1rem; border-top: 1px solid var(--border-color); }
 .user-config {
@@ -310,12 +480,6 @@
   height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 1.5rem;
 }
 
-.model-selector {
-  display: flex; align-items: center; gap: 6px; cursor: pointer;
-  font-weight: 600; font-size: 1.1rem; color: var(--text-secondary);
-  padding: 8px; border-radius: 8px;
-}
-.model-selector:hover { background: var(--bg-sidebar-hover); color: var(--text-primary); }
 .top-nav-links a { color: var(--text-secondary); text-decoration: none; font-size: 0.9rem; }
 .top-nav-links a:hover { color: var(--text-primary); }
 
@@ -397,6 +561,29 @@
 .dark-theme .aviso-api-fechar:hover {
   color: #fff3cf;
 }
+
+/* Banner de "o agente mudou desde sua última visita" — mesma estrutura do aviso-api-banner,
+   mas com paleta própria (roxo/azul) pra não parecer um aviso de warning igual o amarelo. */
+.aviso-atualizacao-banner {
+  background: linear-gradient(90deg, #f0ecff, #e6defe);
+  border-color: #b9a4f5;
+  border-left-color: #7c5cea;
+  box-shadow: 0 2px 8px rgba(124, 92, 234, 0.15);
+}
+.aviso-atualizacao-banner .aviso-api-texto { color: #4a3a80; }
+.aviso-atualizacao-banner .aviso-api-texto strong { color: #3a2c66; }
+.aviso-atualizacao-banner .aviso-api-fechar { color: #7c5cea; }
+.aviso-atualizacao-banner .aviso-api-fechar:hover { color: #4a3a80; }
+
+.dark-theme .aviso-atualizacao-banner {
+  background: linear-gradient(90deg, #362a52, #2c2044);
+  border-color: #6b4fc4;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+.dark-theme .aviso-atualizacao-banner .aviso-api-texto { color: #dcd2f7; }
+.dark-theme .aviso-atualizacao-banner .aviso-api-texto strong { color: #f0eaff; }
+.dark-theme .aviso-atualizacao-banner .aviso-api-fechar { color: #c3b3ee; }
+.dark-theme .aviso-atualizacao-banner .aviso-api-fechar:hover { color: #f0eaff; }
 
 .chat-body {
   flex-grow: 1; display: flex; flex-direction: column;
@@ -480,15 +667,30 @@
 
 .chat-body.is-empty { justify-content: center; }
 
+/* No estado vazio, a saudação e o input formam um bloco só, centralizado na tela — igual
+   ao Claude. Sem isso, o margin-top:auto do .composer (que existe pra grudar ele embaixo
+   quando já tem mensagens) ignora o justify-content:center do container e empurra o input
+   pro fundo mesmo assim, deixando saudação e input longe um do outro. */
+.chat-body.is-empty .composer {
+  margin-top: 0;
+}
+
 .empty-title {
-  margin-bottom: 2rem; 
+  margin-bottom: 1.75rem;
   text-align: center;
+  animation: empty-title-entrada 0.4s ease;
 }
 .empty-title h2 {
-  font-size: 1.5rem; 
-  font-weight: 600; 
-  color: var(--text-primary); 
+  font-size: 1.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
   margin: 0;
+  letter-spacing: -0.01em;
+}
+
+@keyframes empty-title-entrada {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .messages {
@@ -522,7 +724,8 @@
 
 .message-actions {
   position: absolute;
-  top: -34px;
+  top: 100%;
+  margin-top: 6px;
   right: 0;
   display: flex;
   gap: 4px;
@@ -565,6 +768,130 @@
   border-color: rgba(16, 185, 129, 0.55);
 }
 
+.message-actions.forcar-aberto {
+  opacity: 1;
+}
+
+.message-action.ativo {
+  color: var(--logo-accent);
+  border-color: var(--logo-accent);
+}
+
+.message-action.enviado {
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.55);
+}
+
+.feedback-painel {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-sidebar);
+}
+
+.feedback-painel label {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.feedback-painel textarea {
+  width: 100%;
+  min-height: 60px;
+  resize: vertical;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-main);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.88rem;
+  padding: 8px 10px;
+  box-sizing: border-box;
+}
+
+.feedback-painel textarea:focus {
+  outline: none;
+  border-color: var(--logo-accent);
+}
+
+.feedback-acoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.btn-feedback {
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 7px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.btn-feedback.cancelar {
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: var(--border-color);
+}
+
+.btn-feedback.cancelar:hover {
+  color: var(--text-primary);
+}
+
+.btn-feedback.enviar {
+  background: var(--logo-accent);
+  color: #ffffff;
+}
+
+.btn-feedback.enviar:hover {
+  opacity: 0.88;
+}
+
+.btn-feedback.enviar:disabled {
+  background: var(--border-color);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+}
+
+.confirmacao {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: #10b981;
+}
+
+.memoria-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 5px 12px 5px 8px;
+  border-radius: 999px;
+  background: var(--bg-sidebar-hover);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+
+.memoria-estrela {
+  flex-shrink: 0;
+  color: var(--logo-accent);
+  transform-origin: center;
+  animation: memoria-estrela-girar 0.8s ease-in-out 1;
+}
+
+@keyframes memoria-estrela-girar {
+  0% { transform: scale(0.6) rotate(0deg); opacity: 0; }
+  55% { transform: scale(1.25) rotate(200deg); opacity: 1; }
+  100% { transform: scale(1) rotate(360deg); opacity: 1; }
+}
+
 .message-text {
   white-space: normal;
   overflow-wrap: anywhere;
@@ -596,11 +923,23 @@
 :host ::ng-deep .message-text h3,
 :host ::ng-deep .message-text h4,
 :host ::ng-deep .message-text h5 {
-  margin: 0 0 0.55rem;
-  font-size: 0.98rem;
+  margin: 1rem 0 0.4rem;
   line-height: 1.3;
   font-weight: 700;
+  color: var(--text-primary);
 }
+
+/* Sem isso, todo título que abre a resposta (o caso mais comum) ganha um respiro em cima
+   que não faz sentido — ele já é a primeira coisa dentro da bolha. */
+:host ::ng-deep .message-text h3:first-child,
+:host ::ng-deep .message-text h4:first-child,
+:host ::ng-deep .message-text h5:first-child {
+  margin-top: 0;
+}
+
+:host ::ng-deep .message-text h3 { font-size: 1.15rem; }
+:host ::ng-deep .message-text h4 { font-size: 1.08rem; }
+:host ::ng-deep .message-text h5 { font-size: 1.02rem; }
 
 :host ::ng-deep .message-table-wrap {
   width: 100%;
@@ -700,7 +1039,71 @@
 .send:active:not(:disabled) { transform: scale(0.96); }
 .send:disabled { background: var(--border-color); color: var(--text-secondary); cursor: not-allowed; box-shadow: none; }
 
+/* Enquanto carregando, o botão de enviar vira botão de parar (cancela a chamada em
+   andamento) — precisa continuar clicável, diferente do :disabled de "sem texto". */
+.send.stop { background: var(--text-primary); color: var(--bg-main); cursor: pointer; }
+
+.msg-pensando {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  margin-bottom: 24px;
+  max-width: 920px;
+  margin-inline: auto;
+  width: 100%;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.pensando-estrela {
+  flex-shrink: 0;
+  color: var(--logo-accent);
+  transform-origin: center;
+  animation: pensando-girar 1.6s ease-in-out infinite;
+}
+
+@keyframes pensando-girar {
+  0% { transform: scale(0.8) rotate(0deg); opacity: 0.5; }
+  50% { transform: scale(1.15) rotate(180deg); opacity: 1; }
+  100% { transform: scale(0.8) rotate(360deg); opacity: 0.5; }
+}
+
 .agent-error { color: #ef4444; font-size: 0.85rem; text-align: center; margin-bottom: 8px; }
+
+.uso-ia-barra {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.uso-ia-trilho {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border-color);
+  overflow: hidden;
+}
+
+.uso-ia-preenchido {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--logo-accent);
+  transition: width 0.3s ease;
+}
+
+.uso-ia-preenchido.critico {
+  background: #ef4444;
+}
+
+.uso-ia-texto {
+  flex-shrink: 0;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  white-space: nowrap;
+}
 .disclaimer { font-size: 0.75rem; color: var(--text-secondary); text-align: center; margin-top: 12px; }
 .chart-message {
   margin-top: 16px;
@@ -778,6 +1181,37 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+/* Pequeno de propósito — só a quantidade, sem título de tarefa, sem cor de alarme (amarelo
+   suave em vez de vermelho) — é um indicativo, não um alerta gritando na tela. */
+.aviso-tarefa-discreto {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(217, 119, 6, 0.3);
+  background: rgba(217, 119, 6, 0.08);
+  color: #b45309;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.aviso-tarefa-discreto:hover {
+  background: rgba(217, 119, 6, 0.16);
+}
+
+.dark-theme .aviso-tarefa-discreto {
+  border-color: rgba(251, 191, 36, 0.3);
+  background: rgba(251, 191, 36, 0.1);
+  color: #fbbf24;
+}
+
+.dark-theme .aviso-tarefa-discreto:hover {
+  background: rgba(251, 191, 36, 0.18);
 }
 
 .sugestao-chip {
@@ -899,6 +1333,8 @@
   color: var(--text-primary);
 }
 
+/* Cor neutra (âmbar suave) de propósito, não vermelho de alerta — é status recalculado toda
+   hora, não evento novo, então "sempre tem número aqui" é normal, não uma emergência. */
 .notif-badge {
   position: absolute;
   top: 2px;
@@ -907,7 +1343,7 @@
   height: 16px;
   padding: 0 4px;
   border-radius: 999px;
-  background: #ef4444;
+  background: #d97706;
   color: #fff;
   font-size: 0.65rem;
   font-weight: 700;
@@ -1099,6 +1535,12 @@
   color: var(--text-secondary);
   font-size: 0.85rem;
   margin: 0;
+}
+
+.notif-erro-painel {
+  color: #ef4444;
+  font-size: 0.8rem;
+  margin: 4px 0 0;
 }
 
 /* ==========================================
@@ -1357,3 +1799,234 @@
   font-size: 0.78rem;
   font-weight: 700;
 }
+
+.sidebar-backdrop {
+  display: none;
+}
+
+/* ==========================================
+   MOBILE — sidebar vira overlay em vez de coluna do grid, painéis flutuantes
+   ficam largura de tela, e o chat ganha mais espaço útil.
+   ========================================== */
+@media (max-width: 768px) {
+  .agent-shell,
+  .agent-shell.sidebar-collapsed {
+    grid-template-columns: 1fr;
+  }
+
+  /* Com a sidebar em position:fixed (fora do fluxo do grid), ela deixa de "contar" como item
+     do grid — sem isso o chat-area sozinho cai na 1ª faixa de coluna do grid antigo (0px) em
+     vez de ocupar a tela inteira. */
+  .chat-area {
+    grid-column: 1;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 300;
+    width: min(70vw, 250px);
+    height: 100vh;
+    box-shadow: 8px 0 24px rgba(0, 0, 0, 0.22);
+    transition: transform 0.22s ease;
+    transform: translateX(-100%);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .agent-shell:not(.sidebar-collapsed) .sidebar {
+    transform: translateX(0);
+  }
+
+  .agent-shell.sidebar-collapsed .sidebar {
+    transform: translateX(-100%);
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 290;
+  }
+
+  .chat-header {
+    padding: 0 1rem;
+  }
+
+  /* Frase de boas-vindas grande demais colada embaixo do header no celular. */
+  .empty-title {
+    margin-bottom: 1.25rem;
+  }
+
+  .empty-title h2 {
+    font-size: 1.15rem;
+    line-height: 1.4;
+  }
+
+  .messages {
+    padding: 1rem;
+  }
+
+  .composer {
+    padding: 0.75rem;
+  }
+
+  /* Com --font-size-base (1rem) o placeholder "Pergunte ao proIAp sobre os dados da
+     PROAP..." quebra em 2 linhas dentro da caixa de 1 linha (rows="1") e fica cortado/
+     rolável até a pessoa digitar algo (só aí o ajustarAlturaPrompt() cresce a caixa).
+     Menor ainda quebra em 2 linhas, então dá min-height pras 2 linhas caberem sem cortar. */
+  .agent-input-container textarea {
+    font-size: 0.9rem;
+    min-height: 54px;
+  }
+
+  .notif-panel,
+  .settings-panel {
+    width: min(88vw, 320px);
+  }
+
+  .relatorio-panel {
+    width: min(88vw, 340px);
+  }
+
+  .settings-panel-floating {
+    left: 10px;
+    bottom: 64px;
+    /* Tem que ficar por CIMA da sidebar (z-index:300) e do backdrop (290) — sem isso o painel
+       de configurações renderiza atrás da sidebar em vez de sobrepor ela. */
+    z-index: 310;
+  }
+
+  .painel-atrasos-content {
+    width: 94vw;
+    height: 88vh;
+  }
+
+  .pdf-viewer-content {
+    width: 94vw;
+    height: 88vh;
+  }
+
+  .painel-atrasos-body {
+    overflow-x: auto;
+  }
+
+  .aviso-api-banner {
+    margin: 10px 10px 0;
+    padding: 12px;
+  }
+}
+
+/* ==========================================
+   MODAIS CUSTOMIZADOS (excluir conversa / link de compartilhamento) — não usa
+   window.confirm() nativo do navegador.
+   ========================================== */
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 400;
+  padding: 20px;
+}
+
+.confirm-card {
+  width: 100%;
+  max-width: min(90vw, 380px);
+  background: var(--bg-main);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 22px;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.3);
+}
+
+.confirm-card h3 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  color: var(--text-primary);
+}
+
+.confirm-card p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.confirm-acoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.btn-confirm {
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.btn-confirm.cancelar {
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: var(--border-color);
+}
+
+.btn-confirm.cancelar:hover {
+  color: var(--text-primary);
+  background: var(--bg-sidebar-hover);
+}
+
+.btn-confirm.excluir {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.btn-confirm.excluir:hover {
+  background: #dc2626;
+}
+
+.compartilhar-link-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.compartilhar-link-row input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.btn-copiar-link {
+  flex-shrink: 0;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--logo-accent);
+  background: var(--logo-accent);
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.btn-copiar-link:hover {
+  opacity: 0.88;
+}
+

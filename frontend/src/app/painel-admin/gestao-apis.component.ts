@@ -64,6 +64,16 @@ export class GestaoApisComponent implements OnInit {
     });
   }
 
+  // O backend grava ultima_execucao em UTC sem marcar o fuso no JSON — sem isso, o pipe
+  // "date" do Angular mostra a hora crua como se já fosse local (3h adiantado no horário de
+  // Brasília). Mesmo helper já usado em agent.component.ts pro histórico de relatórios.
+  paraDataUtc(valor: string | null | undefined): Date | null {
+    if (!valor) return null;
+    const temFuso = /(Z|[+-]\d{2}:?\d{2})$/.test(valor);
+    const data = new Date(temFuso ? valor : valor + 'Z');
+    return isNaN(data.getTime()) ? null : data;
+  }
+
   testar(api: ConfiguracaoUft): void {
     if (this.testando[api.tipoApi] || !api.url) return;
 

@@ -39,6 +39,21 @@ export interface ConfiguracaoNotificacao {
   limiteBomPct: number;
 }
 
+export interface TesterProiap {
+  usuarioId: number | null;
+  nome: string | null;
+  email: string | null;
+  gastoIndividual: number;
+  limite: number;
+  criadoEm: string;
+  pendente: boolean;
+}
+
+export interface TesterAdicionadoResponse {
+  pendente: boolean;
+  mensagem: string;
+}
+
 export interface ConfiguracaoUft {
   id: number;
   tipoApi: string;
@@ -151,5 +166,36 @@ export class AdminService {
 
   testarConexaoUft(tipoApi: string, request: ConfiguracaoUftRequest): Observable<ResultadoTesteUft> {
     return this.http.post<ResultadoTesteUft>(`${this.apiURL}/integracao-uft/${tipoApi}/testar`, request);
+  }
+
+  // Testers do proIAp — endpoints em /api/uso-ia, não em /api/admin
+  listarTesters(): Observable<TesterProiap[]> {
+    return this.http.get<TesterProiap[]>('/api/uso-ia/testers');
+  }
+
+  adicionarTester(email: string): Observable<TesterAdicionadoResponse> {
+    return this.http.post<TesterAdicionadoResponse>('/api/uso-ia/testers', { email });
+  }
+
+  removerTester(usuarioId: number): Observable<void> {
+    return this.http.delete<void>(`/api/uso-ia/testers/${usuarioId}`);
+  }
+
+  // limite null reseta pro padrão global (US$ 1,00).
+  definirLimiteTester(usuarioId: number, limite: number | null): Observable<void> {
+    return this.http.post<void>(`/api/uso-ia/testers/${usuarioId}/limite`, { limite });
+  }
+
+  removerTesterPendente(email: string): Observable<void> {
+    return this.http.delete<void>('/api/uso-ia/testers/pendentes', { params: { email } });
+  }
+
+  statusNotificacaoVersao(versao: string): Observable<{ enviado: boolean }> {
+    return this.http.get<{ enviado: boolean }>('/api/uso-ia/testers/notificar-versao', { params: { versao } });
+  }
+
+  notificarVersaoTesters(versao: string): Observable<{ enviados: number; jaEnviado: boolean }> {
+    return this.http.post<{ enviados: number; jaEnviado: boolean }>(
+      '/api/uso-ia/testers/notificar-versao', null, { params: { versao } });
   }
 }

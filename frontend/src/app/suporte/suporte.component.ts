@@ -16,8 +16,8 @@ type AlertType = 'error' | 'success' | 'info';
 export class SuporteComponent {
   readonly faqs = [
     {
-      pergunta: 'Como recupero meu acesso?',
-      resposta: 'Use a tela de login com seu e-mail já cadastrado. Se a conta ainda não estiver ativada, verifique o e-mail de confirmação.'
+      pergunta: 'Esqueci minha senha, e agora?',
+      resposta: 'Na tela de login, clique em "Esqueci minha senha" e informe seu e-mail. Você recebe um link (válido por 1 hora) pra escolher uma senha nova. Se não achar o e-mail, confira a caixa de spam.'
     },
     {
       pergunta: 'Não consigo visualizar meu painel, o que fazer?',
@@ -26,6 +26,22 @@ export class SuporteComponent {
     {
       pergunta: 'Como editar ou remover um painel?',
       resposta: 'Na Home, abra o painel e use as ações de edição/exclusão disponíveis para seu perfil.'
+    },
+    {
+      pergunta: 'O que é o proIAp?',
+      resposta: 'É o agente de IA do BICentral. Ele lê os dados reais da PROAP (PAT do ano corrente, tarefas por unidade) e responde suas perguntas na hora, em texto ou em gráfico — é só clicar em "Pergunte ao agente".'
+    },
+    {
+      pergunta: 'O que eu posso perguntar pro proIAp?',
+      resposta: 'Rankings de execução por unidade, detalhamento de uma unidade ou ação específica, suas próprias tarefas e prazos, contagem de ações por departamento, e pedidos de relatório completo de uma unidade (fica pronto em até 30s e aparece no ícone de documento no topo da tela).'
+    },
+    {
+      pergunta: 'Posso parar uma resposta do proIAp no meio?',
+      resposta: 'Sim — enquanto ele está respondendo, o botão de enviar vira um botão de parar. Clicar nele cancela a geração em andamento.'
+    },
+    {
+      pergunta: 'Por que meu acesso ao proIAp tem um limite de uso?',
+      resposta: 'Durante o período de teste, cada tester tem um orçamento individual de uso — a barra abaixo do campo de pergunta mostra quanto já foi usado. É só pra controlar custo no período de teste, não afeta o resto do BICentral.'
     },
     {
       pergunta: 'Com quem falo para dúvidas gerais?',

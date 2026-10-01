@@ -1,0 +1,37 @@
+<div class="form-container">
+  <div *ngIf="!enviado; else sucesso">
+    <form (ngSubmit)="enviar()">
+      <h2>Esqueceu sua senha?</h2>
+      <p class="subtitulo">Digite o e-mail da sua conta e mandamos um link pra você escolher uma senha nova.</p>
+
+      <div class="log-wrapper" *ngIf="message">
+        <div class="premium-alert error">
+          <p class="alert-message">{{ message }}</p>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" [(ngModel)]="email" name="email" required autofocus>
+      </div>
+
+      <button type="submit" class="btn btn-primary" [disabled]="carregando || !email.trim()">
+        {{ carregando ? 'Enviando...' : 'Enviar link de redefinição' }}
+      </button>
+
+      <div class="footer-link">
+        <a routerLink="/login">Voltar para o login</a>
+      </div>
+    </form>
+  </div>
+
+  <ng-template #sucesso>
+    <div class="card">
+      <h2>Verifique seu e-mail</h2>
+      <p class="alert-message">{{ message }}</p>
+      <div class="footer-link">
+        <a routerLink="/login">Voltar para o login</a>
+      </div>
+    </div>
+  </ng-template>
+</div>

@@ -82,7 +82,11 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.55);
-  z-index: 999;
+  /* Precisa ficar acima do maior z-index do app (o modal de painel de atrasos usa 9999) —
+     um gráfico expandido de dentro desse modal ficava ESCONDIDO atrás dele (o backdrop/card
+     tinham z-index 999/1000, bem menor), com a tabela de responsáveis aparecendo na frente
+     do gráfico em vez do gráfico cobrir a tela toda. */
+  z-index: 10000;
 }
 
 .card-grafico.expandido {
@@ -95,7 +99,7 @@
   max-width: none;
   height: auto;
   margin: 0;
-  z-index: 1000;
+  z-index: 10001;
   padding: 20px 24px 16px;
   border-radius: 14px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);

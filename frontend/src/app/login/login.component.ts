@@ -15,11 +15,19 @@ export class LoginComponent {
   credentials = { email: '', password: '' };
   message: string | null = null;
   messageType: 'error' | 'success' | 'info' = 'error';
+  mostrarSenha = false;
+  carregando = false;
 
   constructor(private http: HttpClient, private router: Router) { }
 
+  alternarMostrarSenha(): void {
+    this.mostrarSenha = !this.mostrarSenha;
+  }
+
   login() {
+    if (this.carregando) return;
     this.message = null;
+    this.carregando = true;
     console.log('Iniciando tentativa de login...');
     this.http.post('/api/usuarios/login', this.credentials)
       .subscribe({
@@ -41,21 +49,25 @@ export class LoginComponent {
               token: response.token
             }));
 
-            console.log('Dados salvos no localStorage. Redirecionando para a Home...');
+            // Tester do proIAp cai direto no agente em vez da Home (é pra isso que ela está aqui).
+            const destino = response.tester ? '/agente' : '/';
+            console.log(`Dados salvos no localStorage. Redirecionando para ${destino}...`);
 
             // 3. Força a navegação e verifica se ela ocorreu
-            this.router.navigate(['/']).then(success => {
+            this.router.navigate([destino]).then(success => {
               if (success) {
                 console.log('Navegação concluída com sucesso!');
               } else {
-                console.error('Falha na navegação. Verifique se a rota "/" existe.');
+                console.error(`Falha na navegação. Verifique se a rota "${destino}" existe.`);
               }
             });
           } else {
+            this.carregando = false;
             console.warn('Backend respondeu, mas sem o campo token esperado.');
           }
         },
         error: (error) => {
+          this.carregando = false;
           this.messageType = 'error';
           this.message = this.extractErrorMessage(error);
           console.error('Erro detalhado no login:', error);

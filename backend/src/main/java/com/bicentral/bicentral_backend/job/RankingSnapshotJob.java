@@ -13,7 +13,15 @@ public class RankingSnapshotJob {
 
     public RankingSnapshotJob(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
-        garantirTabela();
+        // Best-effort: essa classe é varrida junto com o pacote "job" no modo manual de
+        // sincronização (ver SincronizacaoUftApplication), que às vezes sobe sem banco
+        // disponível de propósito (fase "fetch") — sem o try/catch, essa checagem de tabela
+        // derrubaria o processo inteiro à toa, e essa classe nem participa daquele fluxo.
+        try {
+            garantirTabela();
+        } catch (Exception e) {
+            System.err.println(">>> RANKING SNAPSHOT: não foi possível confirmar/criar a tabela agora: " + e.getMessage());
+        }
     }
 
     private void garantirTabela(){

@@ -48,6 +48,12 @@ ROADMAP_PROXIMAS_SPRINTS_IA.md
 EVIDENCIAS_RESULTADOS_PARCIAIS_IA.md
 docs/manual-admin.md
 backend/docs/regras-de-negocio.md
+docs/opiniao-proiap.md
+docs/tcc-mudancas-agente.md
+docs/tcc2-estrutura.md
+
+# --- Sincronização manual UFT (guarda token/payload da API local, nunca subir) ---
+backend/sync-data/
 
 # --- Claude Code (config/memória local, não é pra subir) ---
 CLAUDE.md

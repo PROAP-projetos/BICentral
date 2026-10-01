@@ -3,67 +3,63 @@ package com.bicentral.bicentral_backend.state;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.annotation.SessionScope;
 
-import com.bicentral.bicentral_backend.dto.painel.PainelSpecDTO;
-
 import lombok.Getter;
 import lombok.Setter;
 
-/**
- * Esta classe atua como a memória estruturada de cada usuário logado.
- * O Spring cria uma instância separada dessa classe para cada sessão ativa.
- */
+import java.util.concurrent.Future;
+
 @Component
 @SessionScope
 @Getter
 @Setter
 public class EstadoSessao {
 
-    // Valores padrão ao iniciar o chat
     private String tipoGrafico = "bar";
     private Integer ano = 2024;
     private String curso = "Todos";
     private String indicador = "Matrículas";
 
-    // O modelo selecionado pelo usuário no Angular
     private String modelo;
-
-    // Equipe selecionada
     private Long equipeId;
 
-    private boolean aguardandoConfirmacaoGrafico = false;
-    private PainelSpecDTO painelPendente = null;
-
-    // Sinaliza que um relatório foi solicitado durante o processamento da pergunta atual,
-    // pra o front saber que deve abrir o painel de relatórios sozinho.
     private boolean relatorioGerado = false;
+    private boolean memoriaAtualizada = false;
 
-    // =====================================================
-    // SETTERS COM LOG DE DEPURAÇÃO
-    // =====================================================
+    // Rastreia a execução de pergunta em andamento nessa sessão, pro botão de "parar"
+    // conseguir cancelar de verdade (ver ProiapController). "transient" porque isso é só
+    // controle de concorrência do processo atual — nunca deve ir pra serialização de sessão.
+    private transient volatile Future<?> execucaoAtual;
 
-    public void setAguardandoConfirmacaoGrafico(boolean valor) {
-        System.out.println(
-            "\n[DEBUG ESTADO] setAguardandoConfirmacaoGrafico(" + valor + ")"
-        );
-
-        Thread.dumpStack();
-
-        this.aguardandoConfirmacaoGrafico = valor;
+    public void registrarExecucao(Future<?> execucao) {
+        this.execucaoAtual = execucao;
     }
 
-    public void setPainelPendente(PainelSpecDTO painel) {
-        System.out.println(
-            "\n[DEBUG ESTADO] setPainelPendente(" +
-            (painel != null ? "OBJETO" : "NULL") +
-            ")"
-        );
-
-        Thread.dumpStack();
-
-        this.painelPendente = painel;
+    // Chamado pelo endpoint /cancelar: pede a interrupção da thread que está processando a
+    // pergunta atual e espera ela realmente terminar de desligar antes de devolver — sem
+    // esse espera, uma pergunta nova poderia começar enquanto a cancelada ainda está mexendo
+    // nesse mesmo EstadoSessao, que não tem nenhuma trava própria.
+    public void cancelarExecucaoAtual() {
+        Future<?> execucao = this.execucaoAtual;
+        if (execucao == null || execucao.isDone()) return;
+        execucao.cancel(true);
+        aguardarTerminoSeAtivo();
     }
 
-    // Depuração
+    // Chamado no início de toda pergunta nova: se a pergunta anterior dessa sessão ainda não
+    // terminou de desligar (por exemplo, acabou de ser cancelada), espera aqui antes de
+    // começar uma execução nova — garante que nunca haja duas threads mexendo nesse mesmo
+    // EstadoSessao ao mesmo tempo.
+    public void aguardarTerminoSeAtivo() {
+        Future<?> execucao = this.execucaoAtual;
+        if (execucao == null) return;
+        try {
+            execucao.get();
+        } catch (Exception ignorado) {
+            // CancellationException, InterruptedException, ExecutionException — não importa
+            // o motivo aqui, só precisamos garantir que ela realmente terminou.
+        }
+    }
+
     @Override
     public String toString() {
         return "EstadoSessao{" +
@@ -73,8 +69,6 @@ public class EstadoSessao {
                 ", tipoGrafico='" + tipoGrafico + '\'' +
                 ", modelo='" + modelo + '\'' +
                 ", equipeId=" + equipeId +
-                ", aguardandoConfirmacaoGrafico=" + aguardandoConfirmacaoGrafico +
-                ", painelPendente=" + (painelPendente != null ? "OBJETO" : "NULL") +
                 '}';
     }
 }

@@ -2,6 +2,7 @@ package com.bicentral.bicentral_backend.config;
 
 import com.bicentral.bicentral_backend.security.JwtAuthenticationFilter;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
@@ -20,6 +21,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 
 @Configuration
@@ -31,14 +33,23 @@ public class SecurityConfig {
             "/api/usuarios/cadastro",
             "/api/usuarios/login",
             "/api/usuarios/verify",
-            "/api/convites/aceitar",
-            "/auth/**",
+            "/api/usuarios/esqueci-senha",
+            "/api/usuarios/redefinir-senha",
+            "/auth/**", //removi api/convites/aceitar
             "/error",
-            "/api/proiap/**",
-            "/favicon.ico"
+            "/favicon.ico",
+            "/api/health",
+            "/email/**", // imagens usadas dentro de e-mails (Brevo) — clientes de e-mail não mandam JWT
+            "/api/proiap/compartilhado/**" // link público de conversa compartilhada — sem login
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    // URL pública do frontend em produção (ex: https://bicentral-frontend.onrender.com) —
+    // liberada no CORS além do localhost, pra chamada direta funcionar mesmo sem passar
+    // pelo proxy/_redirects do Render. Em dev local fica vazia e não afeta nada.
+    @Value("${app.frontend-base-url:}")
+    private String frontendBaseUrl;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
@@ -52,7 +63,16 @@ public class SecurityConfig {
 
                 .headers(headers -> headers
                         .frameOptions(frameOptions -> frameOptions.disable()))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+                // sessionFixation().none(): por padrão, o Spring troca o ID da sessão a cada
+                // autenticação bem-sucedida (proteção contra session fixation). Como aqui a
+                // autenticação é 100% via JWT stateless (não tem "login" que crie sessão), isso
+                // acontecia em TODA requisição autenticada — cada uma trocava o ID e "perdia" a
+                // sessão anterior do navegador, quebrando qualquer @SessionScope bean
+                // (EstadoSessao, StatusExecucaoAgente) que dependa da mesma sessão persistir
+                // entre requisições diferentes.
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                        .sessionFixation().none())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
                     // Esse é o log que você vê quando dá 401
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -61,6 +81,11 @@ public class SecurityConfig {
                     response.getWriter().write("{\"error\":\"UNAUTHORIZED\"}");
                 }))
                 .authorizeHttpRequests(authorize -> authorize
+                        // Preflight de CORS (OPTIONS) nunca carrega o header Authorization — sem
+                        // isso, toda chamada cross-origin com token (agora que o frontend e o
+                        // backend estão em domínios diferentes no Render) falha no preflight
+                        // antes mesmo de chegar nos headers de CORS.
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
@@ -76,10 +101,14 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowedOriginPatterns(List.of(
+        List<String> origensPermitidas = new ArrayList<>(List.of(
                 "http://localhost:*",
                 "http://127.0.0.1:*",
                 "http://*.localhost:*"));
+        if (frontendBaseUrl != null && !frontendBaseUrl.isBlank()) {
+            origensPermitidas.add(frontendBaseUrl);
+        }
+        config.setAllowedOriginPatterns(origensPermitidas);
 
         config.setAllowedMethods(List.of(
                 HttpMethod.GET.name(),

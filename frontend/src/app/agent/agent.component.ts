@@ -1,19 +1,23 @@
 import { CommonModule } from '@angular/common';
-import { AfterViewChecked, AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { AfterViewChecked, AfterViewInit, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { finalize } from 'rxjs';
+import { finalize, interval, Subscription, switchMap } from 'rxjs';
 import { GraficoIaComponent } from '../grafico-ia/grafico-ia';
 import { GrafoAtividadesComponent } from '../grafo-atividades/grafo-atividades.component';
 import { LeaderboardUgComponent } from '../leaderboard-ug/leaderboard-ug.component';
-import { AgentService, Notificacao, PainelAtrasos, RelatorioHistoricoItem } from '../services/agent.service';
+import { AgentService, Notificacao, PainelAtrasos, RelatorioHistoricoItem, TarefasAtrasadasResumo, UsoIa } from '../services/agent.service';
 import { AdminService } from '../services/admin.service';
 import { SafeUrlPipe } from '../pipes/safe-url.pipe';
 
 interface ChatSession {
-  id: number;
+  id: string;
   titulo: string;
-  messages: { from: 'bot' | 'user'; text?: string; spec?: any; fontes?: string[]; sugestoes?: string[]; salvandoPainel?: boolean; painelSalvo?: boolean }[];
+  carregada?: boolean;
+  // true só pra sessão vinda do GET /sessoes — distingue de uma "Nova Conversa" local nunca enviada.
+  persistida?: boolean;
+  fixado?: boolean;
+  messages: { from: 'bot' | 'user'; text?: string; spec?: any; fontes?: string[]; sugestoes?: string[]; salvandoPainel?: boolean; painelSalvo?: boolean; interacaoId?: number; feedbackAberto?: boolean; feedbackTexto?: string; feedbackEnviado?: boolean; memoriaAtualizada?: boolean }[];
 }
 
 @Component({
@@ -29,20 +33,36 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   @ViewChild('promptInput') private promptInput?: ElementRef<HTMLTextAreaElement>;
 
   private static readonly AVISO_API_DISPENSADO_KEY = 'bicentral_aviso_api_openai_dispensado';
+  private static readonly AVISO_TESTER_DISPENSADO_KEY = 'bicentral_aviso_tester_dispensado';
+
+  // sessionStorage (não localStorage) de propósito: dura só enquanto essa ABA fica aberta —
+  // um F5 na mesma aba volta pra conversa que estava aberta, mas abrir o agente numa aba/janela
+  // nova de novo continua caindo em conversa nova, sem misturar os dois comportamentos.
+  private static readonly SESSAO_ABA_KEY = 'bicentral_sessao_atual_aba';
+
+  // Sobe esse número (e a data no comentário) a cada leva de mudança que valha avisar os
+  // testers — o "gracejo" do logo e o banner de atualização aparecem sozinhos, uma vez só,
+  // pra quem já tinha usado o chat antes com uma versão diferente (ver VERSAO_VISTA_KEY).
+  static readonly VERSAO_AGENTE = '1.3'; // 2026-09-22 — relatório customizável, título de sessão por IA, chat confirma em vez de recusar dado
+  private static readonly VERSAO_VISTA_KEY = 'bicentral_versao_vista';
 
   isDarkMode = false;
   painelAtivo: 'chat' | 'ranking' | 'grafo' = 'chat';
   avisoApiVisivel = localStorage.getItem(AgentComponent.AVISO_API_DISPENSADO_KEY) !== '1';
+  avisoTesterVisivel = localStorage.getItem(AgentComponent.AVISO_TESTER_DISPENSADO_KEY) !== '1';
+  versaoAgente = AgentComponent.VERSAO_AGENTE;
+  houveAtualizacao = false;
+  houveAtualizacaoVisivel = false;
   private scrollPendente = true;
   usuarioLogado = 'dallyla.moraes';
   equipeSelecionada = 'Orçamento';
   equipeId?: number;
 
-  modelos = ['Llama 3 (Groq)', 'Gemini 2.5 Flash', 'Ollama Local'];
+  modelos = ['Gemini 2.5 Flash', 'Ollama Local'];
   modeloAtivoIndex = 0;
 
   sessoes: ChatSession[] = [
-    { id: Date.now(), titulo: 'Nova Conversa', messages: [] }
+    { id: String(Date.now()), titulo: 'Nova Conversa', messages: [] }
   ];
   sessaoAtual: ChatSession = this.sessoes[0];
 
@@ -55,24 +75,18 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   mensagemBoasVindas = '';
   isAdminSistema = false;
 
-  // ==========================================
-  // SIDEBAR
-  // ==========================================
   private static readonly SIDEBAR_KEY = 'bicentral_sidebar_colapsada';
-  sidebarColapsada = false;
+  private static readonly MOBILE_BREAKPOINT = 768;
+  // Em telas pequenas a sidebar vira um overlay (ver agent.css) — começa fechada pra não
+  // cobrir o chat inteiro assim que a tela abre; em telas maiores começa aberta como sempre.
+  sidebarColapsada = window.innerWidth <= AgentComponent.MOBILE_BREAKPOINT;
 
-  // ==========================================
-  // CONFIGURAÇÕES (aparência)
-  // ==========================================
   private static readonly FONT_SIZE_KEY = 'bicentral_font_size';
   private static readonly FONT_FAMILY_KEY = 'bicentral_font_family';
   mostrarSettings = false;
   fontSize: 'small' | 'medium' | 'large' = 'medium';
   fontFamily: 'default' | 'serif' | 'rounded' = 'default';
 
-  // ==========================================
-  // NOTIFICAÇÕES
-  // ==========================================
   notificacoes: Notificacao[] = [];
   carregandoNotificacoes = false;
   mostrarPainelNotificacoes = false;
@@ -80,11 +94,13 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
 
   painelAtrasos: PainelAtrasos | null = null;
   carregandoPainelAtrasos = false;
+  erroPainelAtrasos = false;
 
-  // ==========================================
-  // RELATÓRIO (.docx assíncrono)
-  // ==========================================
   mostrarPainelRelatorio = false;
+  @ViewChild('relatorioWrapperRef') relatorioWrapperRef?: ElementRef<HTMLElement>;
+  @ViewChild('notifWrapperRef') notifWrapperRef?: ElementRef<HTMLElement>;
+  @ViewChild('settingsWrapperRef') settingsWrapperRef?: ElementRef<HTMLElement>;
+  @ViewChild('settingsPanelRef') settingsPanelRef?: ElementRef<HTMLElement>;
   meusRelatorios: RelatorioHistoricoItem[] = [];
   carregandoMeusRelatorios = false;
   relatorioExcluindoId?: number;
@@ -97,6 +113,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.carregarNotificacoes();
     this.verificarAdminSistema();
     this.verificarTarefasAtrasadas();
+    this.carregarUsoIa();
 
     if (localStorage.getItem('theme') === 'dark') {
       this.isDarkMode = true;
@@ -115,10 +132,272 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     if (tipoSalvo === 'default' || tipoSalvo === 'serif' || tipoSalvo === 'rounded') {
       this.fontFamily = tipoSalvo;
     }
+
+    // Só avisa se já existia uma versão vista ANTES e ela é diferente da atual — na primeira
+    // visita de todas (sem nada salvo ainda) não tem "atualização" nenhuma pra anunciar.
+    const versaoVista = localStorage.getItem(AgentComponent.VERSAO_VISTA_KEY);
+    if (versaoVista && versaoVista !== AgentComponent.VERSAO_AGENTE) {
+      this.houveAtualizacao = true;
+      this.houveAtualizacaoVisivel = true;
+    }
+    localStorage.setItem(AgentComponent.VERSAO_VISTA_KEY, AgentComponent.VERSAO_AGENTE);
   }
 
   ngOnInit() {
     this.gerarMensagemBoasVindas();
+    this.carregarSessoes();
+  }
+
+  // Só carrega a LISTA de conversas passadas pra sidebar — não seleciona nenhuma delas
+  // automaticamente. Quem abre o agente numa aba/janela NOVA sempre entra numa conversa nova
+  // em branco (retomar uma conversa antiga é escolha explícita, clicando nela na lista) — mas
+  // um F5 na MESMA aba restaura a conversa que já estava aberta (ver SESSAO_ABA_KEY), pra não
+  // perder o lugar por acidente.
+  private carregarSessoes(): void {
+    this.agentService.listarSessoes().subscribe({
+      next: (lista) => {
+        if (lista.length === 0) {
+          // Sem histórico ainda — mantém a "Nova Conversa" padrão desta instância, mas registra
+          // o id dela: se o usuário mandar a primeira mensagem antes de recarregar de novo, um
+          // F5 seguinte precisa achar esse id pra restaurar a conversa certa.
+          sessionStorage.setItem(AgentComponent.SESSAO_ABA_KEY, this.sessaoAtual.id);
+          return;
+        }
+        this.sessoes = lista.map((s) => ({ id: s.id, titulo: s.titulo, fixado: s.fixado, messages: [], carregada: false, persistida: true }));
+
+        const idLembrado = sessionStorage.getItem(AgentComponent.SESSAO_ABA_KEY);
+        const sessaoLembrada = idLembrado ? this.sessoes.find((s) => s.id === idLembrado) : undefined;
+        if (sessaoLembrada) {
+          this.selecionarChat(sessaoLembrada);
+        } else {
+          // this.sessoes foi substituído pela lista do backend acima — sem re-adicionar
+          // sessaoAtual, uma "Nova Conversa" em branco fica órfã (some da sidebar até F5).
+          this.sessoes.unshift(this.sessaoAtual);
+          sessionStorage.setItem(AgentComponent.SESSAO_ABA_KEY, this.sessaoAtual.id);
+        }
+      },
+      error: () => { /* silencioso — começa do zero se falhar */ }
+    });
+  }
+
+  // Título de verdade é gerado async no backend (TituloSessaoService) — busca de novo após um
+  // tempo de folga. Silencioso se falhar: fica o título provisório, sem efeito colateral.
+  private atualizarTituloAposGeracao(sessaoId: string): void {
+    window.setTimeout(() => {
+      this.agentService.listarSessoes().subscribe({
+        next: (lista) => {
+          const atualizada = lista.find((s) => s.id === sessaoId);
+          const local = this.sessoes.find((s) => s.id === sessaoId);
+          if (atualizada && local) {
+            local.titulo = atualizada.titulo;
+          }
+        },
+        error: () => { }
+      });
+    }, 2500);
+  }
+
+  // ==========================================
+  // MENU "..." DE CADA CONVERSA (renomear / fixar / compartilhar / excluir)
+  // ==========================================
+  menuAbertoId: string | null = null;
+  renomeandoId: string | null = null;
+  tituloEditando = '';
+  sessaoParaExcluir: ChatSession | null = null;
+  compartilhandoId: string | null = null;
+  linkCompartilhado: string | null = null;
+  linkCopiado = false;
+
+  get sessoesFixadas(): ChatSession[] {
+    return this.sessoes.filter((s) => s.fixado);
+  }
+
+  get sessoesRecentes(): ChatSession[] {
+    return this.sessoes.filter((s) => !s.fixado);
+  }
+
+  // Fecha menu/painéis flutuantes só quando o clique é realmente fora do respectivo wrapper.
+  @HostListener('document:click', ['$event'])
+  aoClicarFora(event: MouseEvent): void {
+    this.menuAbertoId = null;
+
+    const alvo = event.target as Node;
+
+    if (this.mostrarPainelRelatorio && !this.relatorioWrapperRef?.nativeElement.contains(alvo)) {
+      this.mostrarPainelRelatorio = false;
+      this.pararPollingRelatorio();
+    }
+    if (this.mostrarPainelNotificacoes && !this.notifWrapperRef?.nativeElement.contains(alvo)) {
+      this.mostrarPainelNotificacoes = false;
+    }
+    if (this.mostrarSettings
+        && !this.settingsWrapperRef?.nativeElement.contains(alvo)
+        && !this.settingsPanelRef?.nativeElement.contains(alvo)) {
+      this.mostrarSettings = false;
+    }
+  }
+
+  toggleMenuSessao(sessao: ChatSession, event: MouseEvent): void {
+    event.stopPropagation();
+    this.menuAbertoId = this.menuAbertoId === sessao.id ? null : sessao.id;
+  }
+
+  // Só anima (efeito letreiro) quando o título realmente não cabe — mede na hora do hover.
+  onHoverTituloSessao(event: MouseEvent): void {
+    const container = event.currentTarget as HTMLElement;
+    const wrapper = container.querySelector<HTMLElement>('.chat-history-titulo-scroll');
+    const texto = container.querySelector<HTMLElement>('.chat-history-titulo-texto');
+    if (wrapper && texto && texto.scrollWidth > wrapper.clientWidth) {
+      container.classList.add('titulo-estourando');
+    }
+  }
+
+  onLeaveTituloSessao(event: MouseEvent): void {
+    (event.currentTarget as HTMLElement).classList.remove('titulo-estourando');
+  }
+
+  iniciarRenomear(sessao: ChatSession, event: MouseEvent): void {
+    event.stopPropagation();
+    this.menuAbertoId = null;
+    this.renomeandoId = sessao.id;
+    this.tituloEditando = sessao.titulo;
+
+    // O input só existe no DOM depois que o Angular processar essa mudança — por isso o foco
+    // é agendado pro próximo frame, em vez de tentar focar antes dele existir. Seleciona tudo
+    // de propósito: digitar já substitui o título inteiro, sem precisar apagar na mão antes.
+    window.requestAnimationFrame(() => {
+      const input = document.querySelector<HTMLInputElement>('.chat-history-rename-input');
+      input?.focus();
+      input?.select();
+    });
+  }
+
+  confirmarRenomear(sessao: ChatSession): void {
+    const novoTitulo = this.tituloEditando.trim();
+    this.renomeandoId = null;
+    if (!novoTitulo || novoTitulo === sessao.titulo) return;
+
+    sessao.titulo = novoTitulo;
+    this.agentService.renomearSessao(sessao.id, novoTitulo).subscribe({
+      error: () => { this.erro = 'Não foi possível renomear a conversa agora.'; }
+    });
+  }
+
+  cancelarRenomear(): void {
+    this.renomeandoId = null;
+  }
+
+  toggleFixar(sessao: ChatSession, event: MouseEvent): void {
+    event.stopPropagation();
+    this.menuAbertoId = null;
+    const novoValor = !sessao.fixado;
+    sessao.fixado = novoValor;
+    this.agentService.fixarSessao(sessao.id, novoValor).subscribe({
+      error: () => {
+        sessao.fixado = !novoValor;
+        this.erro = 'Não foi possível fixar a conversa agora.';
+      }
+    });
+  }
+
+  compartilharChat(sessao: ChatSession, event: MouseEvent): void {
+    event.stopPropagation();
+    this.menuAbertoId = null;
+
+    if (sessao.messages.length === 0 && !sessao.carregada) {
+      this.erro = 'Envie ao menos uma mensagem antes de compartilhar essa conversa.';
+      return;
+    }
+
+    this.compartilhandoId = sessao.id;
+    this.agentService.compartilharSessao(sessao.id).subscribe({
+      next: ({ token }) => {
+        this.compartilhandoId = null;
+        this.linkCopiado = false;
+        this.linkCompartilhado = `${window.location.origin}/chat-compartilhado/${token}`;
+      },
+      error: () => {
+        this.compartilhandoId = null;
+        this.erro = 'Não foi possível gerar o link agora.';
+      }
+    });
+  }
+
+  copiarLinkCompartilhado(): void {
+    if (!this.linkCompartilhado) return;
+    navigator.clipboard?.writeText(this.linkCompartilhado)
+      .then(() => {
+        this.linkCopiado = true;
+        window.setTimeout(() => (this.linkCopiado = false), 1800);
+      })
+      .catch(() => { /* clipboard indisponível — o link já está visível pra copiar manualmente */ });
+  }
+
+  fecharCompartilhar(): void {
+    this.linkCompartilhado = null;
+  }
+
+  selecionarTudo(event: Event): void {
+    (event.target as HTMLInputElement).select();
+  }
+
+  pedirExclusao(sessao: ChatSession, event: MouseEvent): void {
+    event.stopPropagation();
+    this.menuAbertoId = null;
+    this.sessaoParaExcluir = sessao;
+  }
+
+  cancelarExclusao(): void {
+    this.sessaoParaExcluir = null;
+  }
+
+  confirmarExclusao(): void {
+    const sessao = this.sessaoParaExcluir;
+    if (!sessao) return;
+    this.sessaoParaExcluir = null;
+
+    // Sem persistida, a conversa nunca existiu no banco — só remove localmente.
+    if (!sessao.persistida && sessao.messages.length === 0) {
+      this.removerSessaoLocal(sessao);
+      return;
+    }
+
+    // Cancela antes de excluir — senão a resposta pendente salva depois do DELETE e recria a sessão sozinha.
+    if (this.sessaoGerandoId === sessao.id) {
+      this.pararGeracaoLocal();
+      this.agentService.cancelarGeracao().subscribe({
+        next: () => this.excluirSessaoNoBackend(sessao),
+        error: () => this.excluirSessaoNoBackend(sessao)
+      });
+      return;
+    }
+
+    this.excluirSessaoNoBackend(sessao);
+  }
+
+  private excluirSessaoNoBackend(sessao: ChatSession): void {
+    this.agentService.excluirSessao(sessao.id).subscribe({
+      next: () => this.removerSessaoLocal(sessao),
+      error: (err) => {
+        // 404 = sessão nunca existiu no banco — não é erro, só remove localmente.
+        if (err?.status === 404) {
+          this.removerSessaoLocal(sessao);
+          return;
+        }
+        this.erro = 'Não foi possível excluir a conversa agora.';
+      }
+    });
+  }
+
+  private removerSessaoLocal(sessao: ChatSession): void {
+    this.sessoes = this.sessoes.filter((s) => s.id !== sessao.id);
+    if (this.sessaoAtual.id === sessao.id) {
+      if (this.sessoes.length > 0) {
+        this.selecionarChat(this.sessoes[0]);
+      } else {
+        this.iniciarNovoChat();
+      }
+    }
   }
 
   sair(): void {
@@ -138,9 +417,24 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     });
   }
 
-  // ==========================================
-  // GETTERS DE INTERFACE
-  // ==========================================
+  usoIa: UsoIa | null = null;
+
+  carregarUsoIa(): void {
+    this.agentService.consultarUsoIa().subscribe({
+      next: (uso) => { this.usoIa = uso; },
+      error: () => { /* silencioso — não é crítico pro chat funcionar */ }
+    });
+  }
+
+  get usoIaPercentual(): number {
+    if (!this.usoIa || this.usoIa.limite <= 0) return 0;
+    return Math.min(100, (this.usoIa.gastoTotal / this.usoIa.limite) * 100);
+  }
+
+  get usoIaCritico(): boolean {
+    return this.usoIaPercentual >= 85;
+  }
+
   get messages() {
     return this.sessaoAtual.messages;
   }
@@ -155,9 +449,6 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     return primeiroNome.charAt(0).toUpperCase() + primeiroNome.slice(1);
   }
 
-  // ==========================================
-  // LÓGICA DE BOAS-VINDAS DINÂMICA
-  // ==========================================
   private gerarMensagemBoasVindas() {
     const hora = new Date().getHours();
     let saudacaoTempo = 'Olá';
@@ -171,31 +462,32 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     const frases = [
       `${saudacaoTempo}, ${nome}. O que vamos analisar hoje?`,
       `${saudacaoTempo}, ${nome}! Quais as ideias criativas para hoje?`,
-      `Pronta para explorar os dados da PROAP, ${nome}?`,
+      `Vamos explorar os dados da PROAP, ${nome}?`,
       `${saudacaoTempo}! Qual indicador vamos investigar agora, ${nome}?`,
       `${nome}, que dados vamos transformar em conhecimento hoje?`,
-      `Como posso otimizar o seu planejamento hoje, ${nome}?`
+      `Como posso otimizar o seu planejamento hoje, ${nome}?`,
+      `${saudacaoTempo}, ${nome}! Bora dar uma olhada nos números da PROAP?`,
+      `${nome}, precisa de um gráfico rápido ou prefere só bater um papo com os dados?`,
+      `${saudacaoTempo}! Sobre o que a gente conversa hoje, ${nome}?`,
+      `${nome}, quer ver como anda o ranking das unidades hoje?`,
+      `Tem algum indicador te tirando o sono, ${nome}? Bora resolver.`,
+      `${saudacaoTempo}, ${nome}. Posso ajudar com o PAT, relatórios ou algum painel — é só pedir.`,
+      `${nome}, bora transformar dado bruto em decisão?`,
+      `Diz aí, ${nome}: o que você precisa saber sobre a PROAP agora?`
     ];
 
     const randomIndex = Math.floor(Math.random() * frases.length);
     this.mensagemBoasVindas = frases[randomIndex];
   }
 
-  // ==========================================
-  // AÇÕES DO USUÁRIO
-  // ==========================================
   toggleTheme() {
     this.isDarkMode = !this.isDarkMode;
     localStorage.setItem('theme', this.isDarkMode ? 'dark' : 'light');
   }
 
-  mudarModelo() {
-    this.modeloAtivoIndex = (this.modeloAtivoIndex + 1) % this.modelos.length;
-  }
-
   iniciarNovoChat() {
     const novaSessao: ChatSession = {
-      id: Date.now(),
+      id: String(Date.now()),
       titulo: 'Nova Conversa',
       messages: []
     };
@@ -203,6 +495,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.sessaoAtual = novaSessao;
     this.erro = '';
     this.gerarMensagemBoasVindas();
+    sessionStorage.setItem(AgentComponent.SESSAO_ABA_KEY, novaSessao.id);
   }
 
   encodeURIComponent(url: string | null): string {
@@ -213,18 +506,91 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.sessaoAtual = sessao;
     this.erro = '';
     this.agendarScrollParaFim();
+    sessionStorage.setItem(AgentComponent.SESSAO_ABA_KEY, sessao.id);
+
+    if (sessao.carregada) return;
+
+    this.agentService.listarMensagens(sessao.id).subscribe({
+      next: (mensagens) => {
+        sessao.messages = mensagens.map((m) => ({
+          from: m.remetente,
+          text: m.texto,
+          spec: m.spec,
+          fontes: m.fontes || undefined,
+          sugestoes: m.sugestoes || undefined,
+          interacaoId: m.interacaoId || undefined,
+          feedbackEnviado: m.feedbackEnviado
+        }));
+        sessao.carregada = true;
+        this.agendarScrollParaFim();
+      },
+      error: () => { /* mantém a sessão vazia se falhar */ }
+    });
   }
+
+  private static readonly PALAVRAS_GRAFICO = [
+    'gráfico', 'grafico', 'painel', 'indicador', 'pizza', 'barra',
+    'kpi', 'velocímetro', 'velocimetro', 'combo', 'gauge'
+  ];
+
+  private acordandoServidor = false;
+  private consultaSub?: Subscription;
+  private acordarServidorTimer?: number;
+  // Sessão com pergunta em andamento, independente do chat exibido agora — usado em confirmarExclusao().
+  private sessaoGerandoId?: string;
+
+  // etapaAtual vem do polling no backend (qual ferramenta está rodando agora — ver
+  // iniciarPollingStatus) e tem prioridade sobre o palpite por palavra-chave abaixo, que
+  // só serve de fallback pro instante antes da primeira resposta do polling chegar.
+  etapaAtual: string | null = null;
+  private statusPollingSub?: Subscription;
+
+  get textoPensando(): string {
+    if (this.acordandoServidor) {
+      return 'Servidor estava inativo, reconectando (pode levar até 1 minuto)';
+    }
+    if (this.etapaAtual) {
+      return this.etapaAtual;
+    }
+    const ultimaDoUsuario = [...(this.sessaoAtual?.messages || [])].reverse().find(m => m.from === 'user');
+    const texto = (ultimaDoUsuario?.text || '').toLowerCase();
+    const pareceGrafico = AgentComponent.PALAVRAS_GRAFICO.some(p => texto.includes(p));
+    return pareceGrafico ? 'Montando o painel' : 'Pensando';
+  }
+
+  // Faz polling no backend enquanto carregando=true pra saber qual ferramenta está rodando
+  // agora (ver StatusExecucaoAgente) — não é streaming de tokens, é streaming "de etapa": dá
+  // pra mostrar "Consultando o PAT da AUDIN..." em vez de um "Pensando" parado sem contexto.
+  private iniciarPollingStatus(): void {
+    this.pararPollingStatus();
+    this.statusPollingSub = interval(800)
+      .pipe(switchMap(() => this.agentService.consultarStatusExecucao()))
+      .subscribe({
+        next: (resposta) => this.etapaAtual = resposta.etapa,
+        error: () => { } // falha no polling não trava o chat, só perde o texto específico
+      });
+  }
+
+  private pararPollingStatus(): void {
+    this.statusPollingSub?.unsubscribe();
+    this.statusPollingSub = undefined;
+    this.etapaAtual = null;
+  }
+
+  // Render (free tier) derruba o backend depois de um tempo sem uso — a primeira
+  // mensagem depois disso costuma falhar (500/502/503/timeout) e só funciona ao
+  // reenviar, porque aí o servidor já acordou. Em vez de mostrar erro assustador pro
+  // tester de cara, tenta de novo uma vez, silenciosamente, antes de desistir.
+  private static readonly STATUS_PROVAVEL_SERVIDOR_DORMINDO = [0, 500, 502, 503, 504];
 
   send() {
     const text = (this.input || '').trim();
     if (!text || this.carregando) return;
 
-    if (!this.equipeId) {
-      this.erro = 'Selecione uma equipe antes de consultar o agente.';
-      return;
-    }
-
-    if (this.sessaoAtual.titulo === 'Nova Conversa') {
+    const sessaoEhNova = this.sessaoAtual.titulo === 'Nova Conversa';
+    if (sessaoEhNova) {
+      // Título provisório (cortado) — a IA gera um de verdade em segundo plano no backend
+      // (TituloSessaoService) e a sidebar atualiza sozinha, ver atualizarTituloAposGeracao.
       this.sessaoAtual.titulo = text.substring(0, 25) + (text.length > 25 ? '...' : '');
     }
 
@@ -233,47 +599,90 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.agendarAjusteAlturaPrompt();
     this.erro = '';
     this.carregando = true;
+    this.iniciarPollingStatus();
     this.agendarScrollParaFim();
 
-    // MUDANÇA AQUI: Obtém o ID da sessão atual em formato de String
     const idDaSessao = String(this.sessaoAtual.id);
+    this.sessaoGerandoId = idDaSessao;
+    this.enviarConsulta(text, idDaSessao, false, sessaoEhNova);
+  }
 
-    // MUDANÇA AQUI: Passa o idDaSessao como quarto parâmetro
-    this.agentService.consultar(text, this.equipeId, this.modeloAtivo, idDaSessao)
-      .pipe(finalize(() => this.carregando = false))
+  // Limpeza só client-side, sem avisar o backend — reaproveitada por confirmarExclusao(), que espera cancelarGeracao() antes de excluir.
+  private pararGeracaoLocal(): void {
+    if (this.acordarServidorTimer) {
+      window.clearTimeout(this.acordarServidorTimer);
+      this.acordarServidorTimer = undefined;
+    }
+    this.consultaSub?.unsubscribe();
+    this.consultaSub = undefined;
+    this.acordandoServidor = false;
+    this.carregando = false;
+    this.sessaoGerandoId = undefined;
+    this.pararPollingStatus();
+  }
+
+  // Aborta a chamada em andamento e avisa o backend pra interromper de verdade (best-effort).
+  pararGeracao(): void {
+    this.pararGeracaoLocal();
+    this.agentService.cancelarGeracao().subscribe({ error: () => {} });
+  }
+
+  private enviarConsulta(text: string, idDaSessao: string, isRetry: boolean, sessaoEhNova = false) {
+    this.consultaSub = this.agentService.consultar(text, this.equipeId ?? null, this.modeloAtivo, idDaSessao)
+      .pipe(finalize(() => {
+        if (!this.acordandoServidor) {
+          this.carregando = false;
+          this.sessaoGerandoId = undefined;
+          this.pararPollingStatus();
+          this.carregarUsoIa();
+        }
+      }))
       .subscribe({
         next: (resposta: any) => {
+          this.acordandoServidor = false;
 
-          // 1. Se a resposta for um PAINEL (1 ou mais gráficos)
+          if (sessaoEhNova) {
+            this.atualizarTituloAposGeracao(idDaSessao);
+          }
+
           if (resposta.skill === 'painel') {
             this.sessaoAtual.messages.push({
               from: 'bot',
               text: resposta.mensagemContexto || 'Aqui está a visualização dos dados:',
               spec: resposta,
-              fontes: resposta.fontes // Guarda as fontes lidas
+              fontes: resposta.fontes,
+              interacaoId: resposta.interacaoId
             });
-          }
-          // 2. Se a resposta for um TEXTO NATURAL (RespostaTextual)
-          else if (resposta.texto) {
+          } else if (resposta.texto) {
             this.sessaoAtual.messages.push({
               from: 'bot',
               text: resposta.texto,
-              fontes: resposta.fontes, // Guarda as fontes lidas
-              sugestoes: resposta.sugestoes
+              fontes: resposta.fontes,
+              sugestoes: resposta.sugestoes,
+              interacaoId: resposta.interacaoId,
+              memoriaAtualizada: resposta.memoriaAtualizada
             });
 
             if (resposta.relatorioGerado) {
               this.abrirPainelRelatorios();
             }
-          }
-          // 3. Fallback genérico caso o formato venha diferente
-          else {
+          } else {
             this.sessaoAtual.messages.push({ from: 'bot', text: resposta });
           }
 
           this.agendarScrollParaFim();
         },
         error: (err) => {
+          const provavelServidorDormindo = AgentComponent.STATUS_PROVAVEL_SERVIDOR_DORMINDO.includes(err?.status);
+
+          if (!isRetry && provavelServidorDormindo) {
+            this.acordandoServidor = true;
+            this.acordarServidorTimer = window.setTimeout(() => this.enviarConsulta(text, idDaSessao, true, sessaoEhNova), 3000);
+            return;
+          }
+
+          this.acordandoServidor = false;
+          this.carregando = false;
           const mensagem = err?.error?.mensagem || 'Não foi possível consultar o agente agora.';
           this.erro = mensagem;
           this.sessaoAtual.messages.push({ from: 'bot', text: mensagem });
@@ -303,9 +712,36 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     });
   }
 
+  alternarFeedback(mensagem: { feedbackAberto?: boolean }): void {
+    mensagem.feedbackAberto = !mensagem.feedbackAberto;
+  }
+
+  enviarFeedback(mensagem: { interacaoId?: number; feedbackTexto?: string; feedbackAberto?: boolean; feedbackEnviado?: boolean }): void {
+    if (!mensagem.interacaoId || !mensagem.feedbackTexto) return;
+
+    this.agentService.enviarFeedbackInteracao(mensagem.interacaoId, mensagem.feedbackTexto).subscribe({
+      next: () => {
+        mensagem.feedbackAberto = false;
+        mensagem.feedbackEnviado = true;
+      },
+      error: () => {
+        this.erro = 'Não foi possível enviar o feedback agora.';
+      }
+    });
+  }
+
   dispensarAvisoApi(): void {
     this.avisoApiVisivel = false;
     localStorage.setItem(AgentComponent.AVISO_API_DISPENSADO_KEY, '1');
+  }
+
+  dispensarAvisoTester(): void {
+    this.avisoTesterVisivel = false;
+    localStorage.setItem(AgentComponent.AVISO_TESTER_DISPENSADO_KEY, '1');
+  }
+
+  dispensarAvisoAtualizacao(): void {
+    this.houveAtualizacaoVisivel = false;
   }
 
   get sugestoesAtuais(): string[] {
@@ -315,13 +751,13 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     return ultima.from === 'bot' && ultima.sugestoes ? ultima.sugestoes : [];
   }
 
-  // ==========================================
-  // CICLO DE VIDA E CARREGAMENTOS
-  // ==========================================
   ngAfterViewInit(): void { this.agendarScrollParaFim(); }
 
   ngOnDestroy(): void {
     this.pararPollingRelatorio();
+    if (this.acordarServidorTimer) window.clearTimeout(this.acordarServidorTimer);
+    this.consultaSub?.unsubscribe();
+    this.statusPollingSub?.unsubscribe();
   }
 
   ngAfterViewChecked(): void {
@@ -337,9 +773,27 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     } catch { }
   }
 
+  // Mesma chave escopada por usuário que HomeComponent/EquipeComponent usam pra salvar
+  // (ver bug corrigido em Neci/feature/auditoria-convites-membros: chave sem escopo
+  // fazia um usuário herdar a equipe selecionada de outro). Sem isso aqui, essa tela
+  // nunca acha a equipe salva e sempre pede "selecione uma equipe".
+  private getEquipeStorageKey(): string | null {
+    try {
+      const userRaw = localStorage.getItem('user');
+      if (!userRaw) return null;
+      const user = JSON.parse(userRaw) as { id?: string | number };
+      if (!user?.id) return null;
+      return `${AgentComponent.SELECTED_EQUIPE_KEY}:${user.id}`;
+    } catch {
+      return null;
+    }
+  }
+
   private carregarEquipeSelecionada(): void {
     try {
-      const raw = localStorage.getItem(AgentComponent.SELECTED_EQUIPE_KEY);
+      const key = this.getEquipeStorageKey();
+      if (!key) return;
+      const raw = localStorage.getItem(key);
       if (raw) {
         const equipe = JSON.parse(raw);
         this.equipeId = equipe.id;
@@ -348,17 +802,11 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     } catch { }
   }
 
-  // ==========================================
-  // SIDEBAR
-  // ==========================================
   toggleSidebar(): void {
     this.sidebarColapsada = !this.sidebarColapsada;
     localStorage.setItem(AgentComponent.SIDEBAR_KEY, this.sidebarColapsada ? '1' : '0');
   }
 
-  // ==========================================
-  // CONFIGURAÇÕES (aparência)
-  // ==========================================
   toggleSettings(): void {
     this.mostrarSettings = !this.mostrarSettings;
     if (this.mostrarSettings) {
@@ -377,28 +825,25 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     localStorage.setItem(AgentComponent.FONT_FAMILY_KEY, tipo);
   }
 
-  // ==========================================
-  // NOTIFICAÇÕES
-  // ==========================================
+  // Discreto de propósito: nunca põe título de tarefa nem quantidade como mensagem do bot na
+  // conversa (ficava visível de cara pra qualquer um que estivesse olhando a tela — ex: reunião
+  // com compartilhamento de tela — mesmo sem a pessoa ter pedido nada ainda). Só guarda o resumo
+  // pra um indicativo pequeno no composer, que revela detalhe só se a pessoa clicar.
+  resumoTarefasAtrasadas: TarefasAtrasadasResumo | null = null;
+
   private verificarTarefasAtrasadas(): void {
     this.agentService.buscarMinhasTarefasAtrasadas().subscribe({
       next: (resumo) => {
-        if (resumo.quantidade > 0 && this.sessaoAtual.messages.length === 0) {
-          const dias = resumo.diasAtraso ?? 0;
-          const diaOuDias = dias === 1 ? 'dia' : 'dias';
-          const texto = resumo.quantidade === 1
-            ? `⚠️ Antes de começarmos: você tem 1 tarefa atrasada — "${resumo.tituloMaisUrgente}", há ${dias} ${diaOuDias}. Quer que eu liste os detalhes?`
-            : `⚠️ Antes de começarmos: você tem ${resumo.quantidade} tarefas atrasadas. A mais urgente é "${resumo.tituloMaisUrgente}", há ${dias} ${diaOuDias}. Quer que eu liste todas?`;
-
-          this.sessaoAtual.messages.push({
-            from: 'bot',
-            text: texto,
-            sugestoes: ['Quais são minhas tarefas atrasadas?']
-          });
+        if (resumo.quantidade > 0) {
+          this.resumoTarefasAtrasadas = resumo;
         }
       },
       error: () => { /* silencioso: uma falha aqui não pode travar a abertura do chat */ }
     });
+  }
+
+  perguntarTarefasAtrasadas(): void {
+    this.enviarSugestao('Quais são minhas tarefas atrasadas?');
   }
 
   private carregarNotificacoes(): void {
@@ -434,11 +879,15 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   abrirPainelAtrasos(departamento: string): void {
     this.mostrarPainelNotificacoes = false;
     this.carregandoPainelAtrasos = true;
+    this.erroPainelAtrasos = false;
     this.agentService.buscarPainelAtrasos(departamento)
       .pipe(finalize(() => this.carregandoPainelAtrasos = false))
       .subscribe({
         next: (painel) => this.painelAtrasos = painel,
-        error: () => this.painelAtrasos = null
+        error: () => {
+          this.painelAtrasos = null;
+          this.erroPainelAtrasos = true;
+        }
       });
   }
 
@@ -446,9 +895,6 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.painelAtrasos = null;
   }
 
-  // ==========================================
-  // RELATÓRIO (.docx assíncrono) — histórico "Meus Relatórios"
-  // ==========================================
   toggleRelatorio(): void {
     this.mostrarPainelRelatorio = !this.mostrarPainelRelatorio;
     if (this.mostrarPainelRelatorio) {

@@ -19,15 +19,29 @@ img {
 
 .menu-toggle {
   display: none;
+  background: transparent;
+  border: none;
+  color: white;
+  padding: 6px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.menu-toggle:hover {
+  background: rgba(255, 255, 255, 0.14);
 }
 
 header {
-  background-color: var(--color-primary);
+  background: linear-gradient(180deg, #0c5f91 0%, var(--color-primary) 100%);
   color: white;
   padding: 0 2rem;
   display: flex;
   align-items: center;
   height: 60px;
+  box-shadow: 0 2px 10px rgba(0, 45, 82, 0.18);
 }
 
 .logo {
@@ -219,18 +233,20 @@ nav ul li a:hover,
   background-color: var(--color-nav-button-bg);
   color: white;
   padding: 0.8rem 1.5rem;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 1rem;
   font-weight: bold;
   cursor: pointer;
-  transition: background-color 0.2s ease, border-radius 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 184, 117, 0.28);
+  transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
   margin-left: 0;
 }
 
 .nav-button:hover {
-  background-color: var(--color-nav-button-bg);
+  background-color: #00a368;
   color: white;
-  border-radius: 25px;
+  box-shadow: 0 6px 16px rgba(0, 184, 117, 0.38);
+  transform: translateY(-1px);
 }
 
 .agent-menu {
@@ -247,35 +263,60 @@ nav ul li a:hover,
 }
 
 .agent-btn {
-  min-height: 32px;
+  min-height: 34px;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 6px 13px;
+  gap: 9px;
+  padding: 7px 15px 7px 11px;
   border: 1px solid rgba(255, 255, 255, 0.28) !important;
   border-radius: 999px;
-  background: var(--color-primary);
+  background: linear-gradient(135deg, #0c5f91 0%, var(--color-primary) 100%);
   color: #ffffff;
   font: inherit;
   font-size: 0.86rem;
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
-  box-shadow: 0 12px 26px rgba(0, 45, 82, 0.22);
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  box-shadow: 0 12px 28px rgba(0, 45, 82, 0.3), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .agent-btn:hover {
-  background: var(--color-primary-hover);
-  transform: translateY(-1px);
+  background: linear-gradient(135deg, #12699e 0%, var(--color-primary-hover) 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 18px 36px rgba(0, 45, 82, 0.36), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
-.agent-btn span {
-  width: 9px;
-  height: 9px;
+.agent-btn-icone {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  color: #ffd873;
+  flex-shrink: 0;
+}
+
+.agent-btn-icone svg {
+  animation: agentBtnRespirar 2.6s ease-in-out infinite;
+}
+
+.agent-btn-status {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: #38d979;
-  box-shadow: 0 0 0 3px rgba(56, 217, 121, 0.12);
+  border: 2px solid var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(56, 217, 121, 0.2);
+}
+
+@keyframes agentBtnRespirar {
+  0%, 100% { opacity: 0.75; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.08); }
 }
 
 .agent-bubble {
@@ -557,38 +598,6 @@ h2 {
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-}
-
-.sub-nav-agent-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 28px;
-  padding: 4px 10px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.14);
-  color: #ffffff;
-  font-size: 0.88rem;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.sub-nav-agent-link span {
-  width: 21px;
-  height: 21px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  background: #ffffff;
-  color: var(--color-info);
-  font-size: 0.66rem;
-  font-weight: 800;
-}
-
-.sub-nav-agent-link:hover {
-  background: rgba(255, 255, 255, 0.22);
-  color: #ffffff;
 }
 
 .sub-nav-actions {
@@ -909,6 +918,150 @@ label {
 .modal-err {
   color: #d32f2f;
   font-size: 12px;
+}
+
+@media (max-width: 768px) {
+  header {
+    padding: 0 1rem;
+  }
+
+  .logo {
+    font-size: 1.5rem;
+    margin-right: auto;
+  }
+
+  .menu-toggle {
+    display: inline-flex;
+  }
+
+  /* "header nav" (não só "nav") de propósito — a página também tem um <nav
+     class="sub-nav-button-container"> FORA do header (Ingestão IA / Adicionar Painel), e um
+     seletor "nav" genérico pegava ele também, jogando esse segundo nav pra position:absolute
+     em cima do conteúdo (era o "texto em conflito com a navbar"). */
+  header nav {
+    display: none;
+    position: absolute;
+    top: 60px;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    height: auto;
+    max-height: calc(100vh - 60px);
+    overflow-y: auto;
+    background: linear-gradient(180deg, #0c5f91 0%, var(--color-primary) 100%);
+    box-shadow: 0 12px 24px rgba(0, 45, 82, 0.25);
+    padding: 0.5rem 0;
+    z-index: 200;
+  }
+
+  header nav.mobile-nav-open {
+    display: flex;
+  }
+
+  header nav ul {
+    flex-direction: column;
+    height: auto;
+    width: 100%;
+    align-items: stretch;
+  }
+
+  header nav ul li {
+    height: auto;
+    width: 100%;
+  }
+
+  header nav ul li a {
+    height: auto;
+    width: 100%;
+    padding: 0.85rem 1.25rem;
+  }
+
+  .nav-right-section {
+    flex-direction: column;
+    align-items: stretch;
+    margin-left: 0;
+    gap: 0;
+    width: 100%;
+    padding: 0.25rem 1.25rem 0.75rem;
+  }
+
+  .nav-right-section > * {
+    padding: 0.6rem 0;
+  }
+
+  .user-greeting {
+    margin-right: 0;
+  }
+
+  .nav-button {
+    margin-top: 6px;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .sub-nav-button-container {
+    padding: 7px 14px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .content-area {
+    padding: 16px 14px;
+  }
+
+  /* Em vez de empilhar (1 coluna cabendo na tela), os painéis viram um carrossel horizontal
+     que se arrasta — mais rápido de escanear no dedo do que rolar a página inteira pra baixo. */
+  .dashboard-grid,
+  .paineis-ia-grid {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    padding: 4px 14px 10px;
+    gap: 12px;
+  }
+
+  .dashboard-card-link {
+    flex: 0 0 auto;
+    width: 78vw;
+    max-width: 260px;
+    scroll-snap-align: start;
+  }
+
+  .painel-ia-card {
+    flex: 0 0 auto;
+    width: 78vw;
+    max-width: 260px;
+    scroll-snap-align: start;
+  }
+
+  h2,
+  .dashboard-cabecalho {
+    padding: 0 14px;
+  }
+
+  .paineis-ia-section {
+    padding: 0 14px 20px;
+  }
+
+  .agent-float {
+    right: 14px;
+    bottom: 14px;
+  }
+
+  .agent-btn {
+    padding: 6px 12px 6px 10px;
+    font-size: 0.8rem;
+  }
+
+  .modal-card {
+    padding: 24px;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
 }
 
 /* Ajuste fino do onboarding na Home (garante espaçamento mesmo com resets globais) */

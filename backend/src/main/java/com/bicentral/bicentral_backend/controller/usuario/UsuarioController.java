@@ -5,9 +5,11 @@ import com.bicentral.bicentral_backend.exception.RecursoJaExistenteException;
 import com.bicentral.bicentral_backend.model.Usuario;
 import com.bicentral.bicentral_backend.repository.UsuarioRepository;
 import com.bicentral.bicentral_backend.service.auth.UsuarioService;
+import com.bicentral.bicentral_backend.service.ia.UsoIaService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,18 +23,42 @@ public class UsuarioController {
 
     private final UsuarioService usuarioService;
     private final UsuarioRepository usuarioRepository;
+    private final UsoIaService usoIaService;
 
-    public UsuarioController(UsuarioService usuarioService, UsuarioRepository usuarioRepository) {
+    // Enquanto o deploy for só pro período de teste, só quem já foi convidado como
+    // tester (ver UsoIaService.emailTesterPendente) consegue completar o cadastro —
+    // ninguém de fora descobre o link e cria conta sozinho. Desliga isso (via env var
+    // no Render, sem precisar mexer em código) quando abrir cadastro pra todo mundo.
+    @Value("${app.cadastro-restrito-a-testers:true}")
+    private boolean cadastroRestritoATesters;
+
+    public UsuarioController(UsuarioService usuarioService, UsuarioRepository usuarioRepository, UsoIaService usoIaService) {
         this.usuarioService = usuarioService;
         this.usuarioRepository = usuarioRepository;
+        this.usoIaService = usoIaService;
     }
 
     @PostMapping("/cadastro")
     public ResponseEntity<?> cadastrarUsuario(@Valid @RequestBody Usuario usuario, HttpServletRequest request) {
         try {
-            usuarioService.cadastrar(usuario, getSiteURL(request));
+            // Quem já foi convidado como tester do proIAp por e-mail pula a verificação de
+            // e-mail no cadastro (ver UsoIaService.emailTesterPendente).
+            boolean pularVerificacao = usoIaService.emailTesterPendente(usuario.getEmail());
+
+            if (cadastroRestritoATesters && !pularVerificacao) {
+                Map<String, String> bloqueado = new HashMap<>();
+                bloqueado.put("mensagem", "Cadastro disponível só por convite durante o período de teste do proIAp. Peça pra um admin te adicionar como tester.");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(bloqueado);
+            }
+
+            Usuario cadastrado = usuarioService.cadastrar(usuario, getSiteURL(request), pularVerificacao);
+            // Se esse e-mail já tinha sido adicionado como tester do proIAp antes de existir
+            // conta, vira tester de verdade agora (ver UsoIaService.promoverPendentesParaTester).
+            usoIaService.promoverPendentesParaTester(cadastrado.getId(), cadastrado.getEmail());
             Map<String, String> response = new HashMap<>();
-            response.put("mensagem", "Cadastro realizado com sucesso! Verifique seu e-mail para ativar sua conta.");
+            response.put("mensagem", pularVerificacao
+                    ? "Cadastro realizado! Você já pode entrar — como tester do proIAp, não precisa verificar o e-mail."
+                    : "Cadastro realizado com sucesso! Verifique seu e-mail para ativar sua conta.");
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (RecursoJaExistenteException e) {
             Map<String, String> response = new HashMap<>();
@@ -43,6 +69,31 @@ public class UsuarioController {
             response.put("mensagem", "Erro ao processar cadastro. Tente novamente.");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
+    }
+
+    public record EsqueciSenhaRequest(String email) {}
+
+    @PostMapping("/esqueci-senha")
+    public ResponseEntity<?> esqueciSenha(@RequestBody EsqueciSenhaRequest requisicao, HttpServletRequest request) {
+        Map<String, String> response = new HashMap<>();
+        response.put("mensagem", "Se esse e-mail tiver uma conta no BICentral, você vai receber um link de redefinição em instantes.");
+
+        if (requisicao.email() == null || requisicao.email().isBlank()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+
+        usuarioService.solicitarRedefinicaoSenha(requisicao.email(), getSiteURL(request));
+        return ResponseEntity.ok(response);
+    }
+
+    public record RedefinirSenhaRequest(String token, String novaSenha) {}
+
+    @PostMapping("/redefinir-senha")
+    public ResponseEntity<?> redefinirSenha(@RequestBody RedefinirSenhaRequest requisicao) {
+        usuarioService.redefinirSenha(requisicao.token(), requisicao.novaSenha());
+        Map<String, String> response = new HashMap<>();
+        response.put("mensagem", "Senha redefinida com sucesso! Você já pode entrar com a nova senha.");
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/verify")
@@ -64,13 +115,15 @@ public class UsuarioController {
         try {
             String token = usuarioService.login(loginRequest.getEmail(), loginRequest.getPassword());
 
-            Usuario usuario = usuarioRepository.findByEmail(loginRequest.getEmail())
+            Usuario usuario = usuarioRepository.findByEmail(loginRequest.getEmail().trim().toLowerCase())
                     .orElseThrow(() -> new RuntimeException("Erro ao recuperar dados do usuário."));
 
-            Map<String, String> response = new HashMap<>();
+            Map<String, Object> response = new HashMap<>();
             response.put("token", token);
             response.put("username", usuario.getNomeExibicao());
             response.put("id", usuario.getId().toString());
+            // Tester do proIAp cai direto no agente em vez da Home após o login (ver LoginComponent).
+            response.put("tester", usoIaService.ehTester(usuario.getId()));
             return ResponseEntity.ok(response);
 
         } catch (AutenticacaoException e) {

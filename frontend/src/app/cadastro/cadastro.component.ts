@@ -1,8 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-cadastro',
@@ -10,26 +10,71 @@ import { RouterLink } from '@angular/router';
   imports: [
     CommonModule,
     FormsModule,
-    HttpClientModule,
     RouterLink
   ],
   templateUrl: './cadastro.component.html',
   styleUrls: ['./cadastro.component.css']
 })
-export class CadastroComponent {
+export class CadastroComponent implements OnInit {
 
   usuario = {
     username: '',
     email: '',
     password: ''
   };
+  confirmarSenha = '';
   message: string | null = null;
   messageType: 'error' | 'success' | 'info' = 'info';
   alertTitle = 'Atenção';
   showLoginShortcut = false;
   registrationSuccess = false;
+  emailTravado = false;
+  mostrarSenha = false;
+  mostrarConfirmarSenha = false;
 
-  constructor(private http: HttpClient) { }
+  requisitosSenha = {
+    tamanho: false,
+    letra: false,
+    numero: false,
+    especial: false
+  };
+
+  alternarMostrarSenha(): void {
+    this.mostrarSenha = !this.mostrarSenha;
+  }
+
+  alternarMostrarConfirmarSenha(): void {
+    this.mostrarConfirmarSenha = !this.mostrarConfirmarSenha;
+  }
+
+  atualizarRequisitosSenha(): void {
+    const senha = this.usuario.password;
+    this.requisitosSenha = {
+      tamanho: senha.length >= 8,
+      letra: /[a-zA-Z]/.test(senha),
+      numero: /[0-9]/.test(senha),
+      especial: /[^a-zA-Z0-9]/.test(senha)
+    };
+  }
+
+  get senhaAtendeRequisitos(): boolean {
+    const r = this.requisitosSenha;
+    return r.tamanho && r.letra && r.numero && r.especial;
+  }
+
+  constructor(private http: HttpClient, private route: ActivatedRoute) { }
+
+  ngOnInit(): void {
+    // Vem de um link tipo /cadastro?email=fulano@uft.edu.br (convite de tester mandado pelo
+    // admin) — trava o campo pra pessoa não trocar sem querer (ou de propósito) pra outro
+    // e-mail que não foi convidado. O backend também recusa no fim, mas travar aqui evita
+    // a pessoa preencher tudo e só descobrir o bloqueio depois de enviar.
+    const emailNaUrl = this.route.snapshot.queryParamMap.get('email');
+    if (emailNaUrl) {
+      this.usuario.email = emailNaUrl;
+      this.emailTravado = true;
+    }
+  }
 
   cadastrar() {
     this.message = null;
@@ -37,11 +82,29 @@ export class CadastroComponent {
     this.alertTitle = 'Atenção';
     this.showLoginShortcut = false;
 
-    this.http.post('/api/usuarios/cadastro', this.usuario)
+    if (!this.senhaAtendeRequisitos) {
+      this.messageType = 'error';
+      this.alertTitle = 'Atenção';
+      this.message = 'A senha precisa ter no mínimo 8 caracteres, com letra, número e caractere especial.';
+      return;
+    }
+
+    // Confere aqui pra evitar que um typo na senha (digitada só uma vez) crie uma conta
+    // com senha diferente da que a pessoa acha que colocou, e ela não conseguir mais entrar.
+    if (this.usuario.password !== this.confirmarSenha) {
+      this.messageType = 'error';
+      this.alertTitle = 'Atenção';
+      this.message = 'As senhas digitadas não são iguais.';
+      return;
+    }
+
+    this.http.post<{ mensagem?: string }>('/api/usuarios/cadastro', this.usuario)
       .subscribe({
         next: (response) => {
           this.registrationSuccess = true;
-          this.message = 'Cadastro realizado com sucesso! Por favor, verifique seu e-mail para ativar sua conta.';
+          // O backend já diferencia tester (pula verificação) de cadastro normal — usa a
+          // mensagem dele em vez de um texto fixo que sempre manda "verifique seu e-mail".
+          this.message = response?.mensagem || 'Cadastro realizado com sucesso!';
           this.messageType = 'success';
           this.alertTitle = 'Sucesso';
           this.showLoginShortcut = false;

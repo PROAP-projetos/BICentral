@@ -4,12 +4,16 @@ import { AceitarConviteComponent } from './aceitar-convite/aceitar-convite.compo
 import { AddPainelComponent } from './add-painel/add-painel.component';
 import { AgentComponent } from './agent/agent.component';
 import { CadastroComponent } from './cadastro/cadastro.component';
+import { ChatCompartilhadoComponent } from './chat-compartilhado/chat-compartilhado.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { EquipeComponent } from './equipe/equipe.component';
+import { EsqueciSenhaComponent } from './esqueci-senha/esqueci-senha.component';
+import { RedefinirSenhaComponent } from './redefinir-senha/redefinir-senha.component';
 import { HomeComponent } from './home/home';
 import { IngestaoIaComponent } from './ingestao-ia/ingestao-ia';
 import { LoginComponent } from './login/login.component';
 import { PainelAdminComponent } from './painel-admin/painel-admin.component';
+import { GestaoTestersComponent } from './painel-admin/gestao-testers.component';
 import { SuporteComponent } from './suporte/suporte.component';
 import { VerificacaoComponent } from './verificacao/verificacao.component';
 
@@ -23,8 +27,11 @@ export const routes: Routes = [
   // Auth
   { path: 'login', component: LoginComponent },
   { path: 'cadastro', component: CadastroComponent },
+  { path: 'esqueci-senha', component: EsqueciSenhaComponent },
+  { path: 'redefinir-senha', component: RedefinirSenhaComponent },
   { path: 'verificar-email', component: VerificacaoComponent },
   { path: 'aceitar-convite', component: AceitarConviteComponent },
+  { path: 'chat-compartilhado/:token', component: ChatCompartilhadoComponent },
 
   // Equipes
   { path: 'equipe', component: EquipeComponent, canActivate: [authGuard] },
@@ -40,6 +47,7 @@ export const routes: Routes = [
 
   // Outras páginas protegidas
   { path: 'admin', component: PainelAdminComponent, canActivate: [authGuard, adminGuard] },
+  { path: 'admin/testers', component: GestaoTestersComponent, canActivate: [authGuard, adminGuard] },
   { path: 'dashboard', component: DashboardComponent, canActivate: [authGuard] },
 
   // Fallback

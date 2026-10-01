@@ -51,6 +51,7 @@ export interface RelatorioHistoricoItem {
   id: number;
   departamento: string;
   tipo: string;
+  formato: string;
   status: 'PROCESSANDO' | 'PRONTO' | 'ERRO';
   arquivo_url: string | null;
   pdf_url: string | null;
@@ -90,6 +91,34 @@ export interface PainelIa {
   criadoEm: string;
 }
 
+export interface UsoIa {
+  gastoTotal: number;
+  limite: number;
+  souTester: boolean;
+}
+
+export interface SessaoResumo {
+  id: string;
+  titulo: string;
+  criadoEm: string;
+  fixado: boolean;
+}
+
+export interface MensagemHistorico {
+  remetente: 'user' | 'bot';
+  texto: string;
+  spec: any;
+  fontes: string[] | null;
+  sugestoes: string[] | null;
+  interacaoId: number | null;
+  feedbackEnviado: boolean;
+}
+
+export interface SessaoCompartilhada {
+  titulo: string;
+  mensagens: MensagemHistorico[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -98,11 +127,9 @@ export class AgentService {
 
   constructor(private http: HttpClient) { }
 
-  // MUDANÇA: sessaoId adicionado como parâmetro
-  consultar(texto: string, equipeId: number, modelo: string, sessaoId: string): Observable<any> {
-    const urlNova = 'http://localhost:8080/api/proiap/perguntar';
+  consultar(texto: string, equipeId: number | null, modelo: string, sessaoId: string): Observable<any> {
+    const urlNova = '/api/proiap/perguntar';
 
-    // MUDANÇA: sessaoId incluído no payload enviado ao Spring Boot
     const body = {
       texto: texto,
       equipeId: equipeId,
@@ -115,69 +142,120 @@ export class AgentService {
     });
   }
 
+  // Best-effort: pede pro backend interromper a pergunta em andamento dessa sessão
+  // (ver ProiapController.cancelarPergunta / EstadoSessao.cancelarExecucaoAtual).
+  cancelarGeracao(): Observable<void> {
+    return this.http.post<void>('/api/proiap/cancelar', {}, { withCredentials: true });
+  }
+
+  // Polling: dá o texto de qual ferramenta está rodando agora, pro "Pensando" do chat não
+  // ficar parado (ver StatusExecucaoAgente/ProiapController.obterStatusExecucao no backend).
+  consultarStatusExecucao(): Observable<{ etapa: string }> {
+    return this.http.get<{ etapa: string }>('/api/proiap/status-execucao', { withCredentials: true });
+  }
+
+  listarSessoes(): Observable<SessaoResumo[]> {
+    return this.http.get<SessaoResumo[]>('/api/proiap/sessoes', { withCredentials: true });
+  }
+
+  listarMensagens(sessaoId: string): Observable<MensagemHistorico[]> {
+    return this.http.get<MensagemHistorico[]>(`/api/proiap/sessoes/${sessaoId}/mensagens`, { withCredentials: true });
+  }
+
+  renomearSessao(sessaoId: string, titulo: string): Observable<void> {
+    return this.http.patch<void>(`/api/proiap/sessoes/${sessaoId}/titulo`, { titulo }, { withCredentials: true });
+  }
+
+  fixarSessao(sessaoId: string, valor: boolean): Observable<void> {
+    return this.http.patch<void>(`/api/proiap/sessoes/${sessaoId}/fixar`, { valor }, { withCredentials: true });
+  }
+
+  compartilharSessao(sessaoId: string): Observable<{ token: string }> {
+    return this.http.post<{ token: string }>(`/api/proiap/sessoes/${sessaoId}/compartilhar`, {}, { withCredentials: true });
+  }
+
+  // Rota pública — quem abre o link não precisa estar logado, por isso sem withCredentials.
+  buscarSessaoCompartilhada(token: string): Observable<SessaoCompartilhada> {
+    return this.http.get<SessaoCompartilhada>(`/api/proiap/compartilhado/${token}`);
+  }
+
+  excluirSessao(sessaoId: string): Observable<void> {
+    return this.http.delete<void>(`/api/proiap/sessoes/${sessaoId}`, { withCredentials: true });
+  }
+
   listarFontes(equipeId: number): Observable<FontesAgenteResponse> {
     const params = new HttpParams().set('equipeId', equipeId);
     return this.http.get<FontesAgenteResponse>(`${this.apiUrl}/fontes`, { params });
   }
 
   listarNotificacoes(): Observable<Notificacao[]> {
-    const urlNotificacoes = 'http://localhost:8080/api/proiap/notificacoes';
+    const urlNotificacoes = '/api/proiap/notificacoes';
     return this.http.get<Notificacao[]>(urlNotificacoes, { withCredentials: true });
   }
 
   buscarMinhasTarefasAtrasadas(): Observable<TarefasAtrasadasResumo> {
-    const url = 'http://localhost:8080/api/tarefas/minhas-atrasadas';
+    const url = '/api/tarefas/minhas-atrasadas';
     return this.http.get<TarefasAtrasadasResumo>(url, { withCredentials: true });
   }
 
   salvarPainelIa(titulo: string, especificacao: any): Observable<PainelIa> {
-    const url = 'http://localhost:8080/api/paineis-ia';
+    const url = '/api/paineis-ia';
     return this.http.post<PainelIa>(url, { titulo, especificacao }, { withCredentials: true });
   }
 
   listarPaineisIa(): Observable<PainelIa[]> {
-    const url = 'http://localhost:8080/api/paineis-ia';
+    const url = '/api/paineis-ia';
     return this.http.get<PainelIa[]>(url, { withCredentials: true });
   }
 
+  consultarUsoIa(): Observable<UsoIa> {
+    const url = '/api/uso-ia';
+    return this.http.get<UsoIa>(url, { withCredentials: true });
+  }
+
+  enviarFeedbackInteracao(interacaoId: number, comentario: string): Observable<void> {
+    const url = `/api/uso-ia/interacoes/${interacaoId}/feedback`;
+    return this.http.post<void>(url, { comentario }, { withCredentials: true });
+  }
+
   excluirPainelIa(id: number): Observable<void> {
-    const url = `http://localhost:8080/api/paineis-ia/${id}`;
+    const url = `/api/paineis-ia/${id}`;
     return this.http.delete<void>(url, { withCredentials: true });
   }
 
   buscarPainelAtrasos(departamento: string): Observable<PainelAtrasos> {
-    const url = 'http://localhost:8080/api/proiap/painel-atrasos';
+    const url = '/api/proiap/painel-atrasos';
     const params = new HttpParams().set('departamento', departamento);
     return this.http.get<PainelAtrasos>(url, { params, withCredentials: true });
   }
 
   gerarRelatorio(departamento: string, tipo: string): Observable<RelatorioSolicitadoResponse> {
-    const url = 'http://localhost:8080/api/proiap/relatorio/gerar';
+    const url = '/api/proiap/relatorio/gerar';
     return this.http.post<RelatorioSolicitadoResponse>(url, { departamento, tipo }, { withCredentials: true });
   }
 
   statusRelatorio(id: number): Observable<RelatorioStatusResponse> {
-    const url = `http://localhost:8080/api/proiap/relatorio/status/${id}`;
+    const url = `/api/proiap/relatorio/status/${id}`;
     return this.http.get<RelatorioStatusResponse>(url, { withCredentials: true });
   }
 
   listarDepartamentosRelatorio(): Observable<string[]> {
-    const url = 'http://localhost:8080/api/proiap/relatorio/departamentos';
+    const url = '/api/proiap/relatorio/departamentos';
     return this.http.get<string[]>(url, { withCredentials: true });
   }
 
   listarMeusRelatorios(): Observable<RelatorioHistoricoItem[]> {
-    const url = 'http://localhost:8080/api/proiap/relatorio/meus';
+    const url = '/api/proiap/relatorio/meus';
     return this.http.get<RelatorioHistoricoItem[]>(url, { withCredentials: true });
   }
 
   gerarPdfRelatorio(id: number): Observable<RelatorioPdfResponse> {
-    const url = `http://localhost:8080/api/proiap/relatorio/${id}/pdf`;
+    const url = `/api/proiap/relatorio/${id}/pdf`;
     return this.http.post<RelatorioPdfResponse>(url, {}, { withCredentials: true });
   }
 
   excluirRelatorio(id: number): Observable<void> {
-    const url = `http://localhost:8080/api/proiap/relatorio/${id}`;
+    const url = `/api/proiap/relatorio/${id}`;
     return this.http.delete<void>(url, { withCredentials: true });
   }
 }

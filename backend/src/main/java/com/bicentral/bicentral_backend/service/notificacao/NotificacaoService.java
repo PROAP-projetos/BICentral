@@ -71,6 +71,7 @@ public class NotificacaoService {
                 JOIN pat_execucao_departamento p ON p.departamento = gd.departamento
                 WHERE gd.usuario_id = ?
                 GROUP BY gd.departamento
+                ORDER BY media_atual ASC NULLS LAST
                 """;
             resultados = jdbcTemplate.queryForList(sql, snapshots.get(0), snapshots.get(1), usuarioId);
         } else {
@@ -80,6 +81,7 @@ public class NotificacaoService {
                 JOIN pat_execucao_departamento p ON p.departamento = gd.departamento
                 WHERE gd.usuario_id = ?
                 GROUP BY gd.departamento
+                ORDER BY media_atual ASC NULLS LAST
                 """;
             try {
                 resultados = jdbcTemplate.queryForList(sql, usuarioId);

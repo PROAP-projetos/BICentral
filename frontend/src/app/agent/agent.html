@@ -6,14 +6,18 @@
   [class.font-family-serif]="fontFamily === 'serif'"
   [class.font-family-rounded]="fontFamily === 'rounded'">
 
+  <!-- Fundo escurecido atrás da sidebar quando ela vira overlay no mobile (ver agent.css) -->
+  <div class="sidebar-backdrop" *ngIf="!sidebarColapsada" (click)="toggleSidebar()"></div>
+
   <!-- BARRA LATERAL (Sidebar) -->
   <aside class="sidebar">
     <div class="sidebar-header">
       <a class="logo" routerLink="/" aria-label="proIAp">
-        <svg class="logo-mark" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <svg class="logo-mark" [class.gracejo]="houveAtualizacao" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"></path>
         </svg>
         <span class="logo-text">pro<span class="logo-accent">IA</span>p</span>
+        <span class="versao-badge" [title]="'Versão ' + versaoAgente">{{ versaoAgente }}</span>
       </a>
       <button class="sidebar-collapse-btn" type="button" (click)="toggleSidebar()" aria-label="Fechar barra lateral" title="Fechar barra lateral">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -41,20 +45,101 @@
     </button>
 
     <div class="chat-history">
-      <p class="section-title">Hoje</p>
+      <ng-container *ngIf="sessoesFixadas.length > 0">
+        <p class="section-title">Fixada</p>
+        <ul>
+          <li *ngFor="let sessao of sessoesFixadas" [class.active]="sessao.id === sessaoAtual.id"
+            (click)="selecionarChat(sessao)">
+            <ng-container *ngTemplateOutlet="itemSessao; context: { $implicit: sessao }"></ng-container>
+          </li>
+        </ul>
+      </ng-container>
+
+      <p class="section-title">Recentes</p>
       <ul>
-        <li *ngFor="let sessao of sessoes" [class.active]="sessao.id === sessaoAtual.id"
+        <li *ngFor="let sessao of sessoesRecentes" [class.active]="sessao.id === sessaoAtual.id"
           (click)="selecionarChat(sessao)">
-          {{ sessao.titulo }}
+          <ng-container *ngTemplateOutlet="itemSessao; context: { $implicit: sessao }"></ng-container>
         </li>
       </ul>
     </div>
+
+    <ng-template #itemSessao let-sessao>
+      <ng-container *ngIf="renomeandoId === sessao.id; else tituloNormal">
+        <input
+          type="text"
+          class="chat-history-rename-input"
+          [(ngModel)]="tituloEditando"
+          (click)="$event.stopPropagation()"
+          (keydown.enter)="confirmarRenomear(sessao)"
+          (keydown.escape)="cancelarRenomear()"
+          (blur)="confirmarRenomear(sessao)" />
+      </ng-container>
+      <ng-template #tituloNormal>
+        <span class="chat-history-titulo" (mouseenter)="onHoverTituloSessao($event)" (mouseleave)="onLeaveTituloSessao($event)">
+          <svg *ngIf="sessao.fixado" class="chat-history-pin-icon" width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 2a1 1 0 0 1 1 1v6.5l3.4 5.6a1 1 0 0 1-.85 1.5H13v4.4a1 1 0 1 1-2 0V16.6H8.45a1 1 0 0 1-.85-1.5L11 9.5V3a1 1 0 0 1 1-1z"></path>
+          </svg>
+          <span class="chat-history-titulo-scroll"><span class="chat-history-titulo-texto">{{ sessao.titulo }}</span></span>
+        </span>
+      </ng-template>
+
+      <div class="chat-history-menu-wrapper">
+        <button
+          type="button"
+          class="chat-history-menu-btn"
+          [class.forcar-aberto]="menuAbertoId === sessao.id"
+          (click)="toggleMenuSessao(sessao, $event)"
+          aria-label="Mais opções"
+          title="Mais opções">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <circle cx="5" cy="12" r="2"></circle>
+            <circle cx="12" cy="12" r="2"></circle>
+            <circle cx="19" cy="12" r="2"></circle>
+          </svg>
+        </button>
+
+        <div class="chat-history-menu" *ngIf="menuAbertoId === sessao.id" (click)="$event.stopPropagation()">
+          <button type="button" (click)="compartilharChat(sessao, $event)" [disabled]="compartilhandoId === sessao.id">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"></path>
+              <polyline points="16 6 12 2 8 6"></polyline>
+              <line x1="12" y1="2" x2="12" y2="15"></line>
+            </svg>
+            {{ compartilhandoId === sessao.id ? 'Gerando link...' : 'Compartilhar' }}
+          </button>
+          <button type="button" (click)="iniciarRenomear(sessao, $event)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+            </svg>
+            Renomear
+          </button>
+          <button type="button" (click)="toggleFixar(sessao, $event)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 17v5"></path>
+              <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"></path>
+            </svg>
+            {{ sessao.fixado ? 'Desafixar chat' : 'Fixar chat' }}
+          </button>
+          <div class="chat-history-menu-divider"></div>
+          <button type="button" class="chat-history-menu-excluir" (click)="pedirExclusao(sessao, $event)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18"></path>
+              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+            </svg>
+            Excluir
+          </button>
+        </div>
+      </div>
+    </ng-template>
 
     <div class="sidebar-footer">
       <div class="user-config">
         <div class="user-info">{{ usuarioLogado }}</div>
 
-        <div class="notif-wrapper">
+        <div class="notif-wrapper" #settingsWrapperRef>
           <button class="settings-gear-btn" type="button" (click)="toggleSettings()" aria-label="Configurações" title="Configurações">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round">
@@ -68,7 +153,7 @@
   </aside>
 
   <!-- Painel de configurações: fora da sidebar de propósito, pra não ser cortado pelo overflow dela -->
-  <div class="notif-panel settings-panel settings-panel-floating" *ngIf="mostrarSettings">
+  <div class="notif-panel settings-panel settings-panel-floating" #settingsPanelRef *ngIf="mostrarSettings">
     <div class="notif-panel-header">Configurações</div>
 
     <div class="notif-panel-body settings-body">
@@ -117,18 +202,10 @@
             <line x1="9" y1="3" x2="9" y2="21"></line>
           </svg>
         </button>
-
-        <div class="model-selector" *ngIf="isAdminSistema" (click)="mudarModelo()">
-          <span class="model-name">{{ modeloAtivo }}</span>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
-        </div>
       </div>
 
       <div class="top-nav-links">
-        <div class="notif-wrapper">
+        <div class="notif-wrapper" #relatorioWrapperRef>
           <button class="notif-bell" type="button" (click)="toggleRelatorio()" aria-label="Gerar relatório" title="Gerar relatório">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round">
@@ -162,7 +239,7 @@
                       <span *ngSwitchCase="'PROCESSANDO'">Processando</span>
                       <span *ngSwitchCase="'ERRO'">Erro</span>
                       <span *ngSwitchCase="'PRONTO'" class="relatorio-action-group">
-                        <a [href]="r.arquivo_url" target="_blank" rel="noopener" title="Baixar DOCX">DOCX</a>
+                        <a [href]="r.arquivo_url" target="_blank" rel="noopener" [title]="'Baixar ' + r.formato">{{ r.formato }}</a>
                         <button
                           type="button"
                           class="relatorio-pdf-btn"
@@ -199,22 +276,27 @@
           </div>
         </div>
 
-        <div class="notif-wrapper">
-          <button class="notif-bell" type="button" (click)="toggleNotificacoes()" aria-label="Notificações" title="Notificações">
+        <div class="notif-wrapper" #notifWrapperRef>
+          <!-- Não é "notificação" de verdade (evento novo que aparece e some) — é o status
+               recalculado na hora dos departamentos que a pessoa gerencia, sempre vai ter algo
+               aqui enquanto existir departamento fora da faixa esperada. Por isso o ícone e a
+               cor do selo são neutros, não um alerta vermelho gritando pra sempre. -->
+          <button class="notif-bell" type="button" (click)="toggleNotificacoes()" aria-label="Status dos departamentos" title="Status dos departamentos">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round">
-              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path>
-              <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path>
+              <line x1="18" y1="20" x2="18" y2="10"></line>
+              <line x1="12" y1="20" x2="12" y2="4"></line>
+              <line x1="6" y1="20" x2="6" y2="14"></line>
             </svg>
             <span class="notif-badge" [class.notif-badge-ok]="!temAlertaNegativo" *ngIf="notificacoes.length > 0">{{ notificacoes.length }}</span>
           </button>
 
           <div class="notif-panel" *ngIf="mostrarPainelNotificacoes">
-            <div class="notif-panel-header">Notificações</div>
+            <div class="notif-panel-header">Status dos departamentos</div>
 
             <div class="notif-panel-body">
               <p class="notif-empty" *ngIf="!carregandoNotificacoes && notificacoes.length === 0">
-                Nenhuma notificação no momento.
+                Nenhum departamento fora da faixa esperada no momento.
               </p>
               <p class="notif-empty" *ngIf="carregandoNotificacoes">Carregando...</p>
 
@@ -230,15 +312,17 @@
                   <li *ngFor="let t of n.tarefas">{{ t.titulo }} — {{ t.responsavel || 'Sem responsável' }}<span *ngIf="t.prazo"> — prazo {{ t.prazo }}</span></li>
                 </ul>
                 <button class="notif-ver-painel" type="button" *ngIf="n.tarefas.length && tarefasExpandidas.has(i)"
+                  [disabled]="carregandoPainelAtrasos"
                   (click)="abrirPainelAtrasos(n.departamento)">
-                  ver painel completo
+                  {{ carregandoPainelAtrasos ? 'Carregando...' : 'ver painel completo' }}
                 </button>
+                <p class="notif-erro-painel" *ngIf="erroPainelAtrasos && tarefasExpandidas.has(i)">
+                  Não foi possível abrir o painel agora. Tente de novo.
+                </p>
               </div>
             </div>
           </div>
         </div>
-
-        <a routerLink="/ingestao-ia" *ngIf="isAdminSistema">Ingestão IA</a>
       </div>
     </header>
 
@@ -263,8 +347,9 @@
       <app-grafo-atividades *ngIf="painelAtivo === 'grafo'"></app-grafo-atividades>
     </div>
 
-    <!-- AVISO: o chat só responde com uma chave de API própria, que não vai pro repositório -->
-    <div class="aviso-api-banner" *ngIf="avisoApiVisivel">
+    <!-- AVISO: o chat só responde com uma chave de API própria, que não vai pro repositório —
+         nota técnica pra quem mexe no LangchainConfig.java, não faz sentido pra tester comum -->
+    <div class="aviso-api-banner" *ngIf="avisoApiVisivel && isAdminSistema">
       <span class="aviso-api-icon">⚠️</span>
       <div class="aviso-api-texto">
         <strong>Antes de sair testando o chat:</strong> o proIAp tá configurado com a API paga da OpenAI, e a minha chave é local — não subiu pro repositório. Sem uma chave sua, o chat vai dar erro e não responder nada.
@@ -272,6 +357,29 @@
         Quer testar a versão premium mesmo (mais estável)? me chama que a gente vê uma chave da OpenAI pra você.
       </div>
       <button type="button" class="aviso-api-fechar" (click)="dispensarAvisoApi()" aria-label="Fechar aviso" title="Fechar">×</button>
+    </div>
+
+    <!-- AVISO: só aparece pra quem está participando do teste com o time (ver UsoIaService) -->
+    <div class="aviso-api-banner aviso-tester-banner" *ngIf="usoIa && usoIa.souTester && avisoTesterVisivel">
+      <span class="aviso-api-icon">🧪</span>
+      <div class="aviso-api-texto">
+        <strong>Você está testando o proIAp de verdade, com dados reais da PROAP.</strong>
+        Pergunte do jeito que perguntaria numa situação real — não existe pergunta errada aqui.
+        Embaixo do campo de escrever tem uma barra mostrando quanto do orçamento reservado pro teste já foi usado; quando ela chegar no limite, o chat avisa e para de responder sozinho — é só uma trava técnica, não precisa se preocupar com isso.
+        Suas perguntas e as respostas ficam salvas pra análise depois, pra ajudar a melhorar o proIAp. Obrigada por participar do teste! 💙
+      </div>
+      <button type="button" class="aviso-api-fechar" (click)="dispensarAvisoTester()" aria-label="Fechar aviso" title="Fechar">×</button>
+    </div>
+
+    <!-- AVISO: aparece uma vez quando VERSAO_AGENTE muda (ver constructor) — avisa quem já
+         testou antes que teve mudança desde a última vez, sem precisar ela perguntar no grupo. -->
+    <div class="aviso-api-banner aviso-atualizacao-banner" *ngIf="houveAtualizacaoVisivel">
+      <span class="aviso-api-icon">✨</span>
+      <div class="aviso-api-texto">
+        <strong>O proIAp mudou bastante desde a última vez que você testou! (versão 1.3)</strong>
+        Agora dá pra pedir o relatório em Excel, ver o nome da ação em vez do código, pedir a lista completa ordenada por execução e até gerar um relatório sobre uma pessoa específica. A conversa também ganha um título automático, e se o chat não entender exatamente o que você pediu, ele passa a perguntar em vez de dizer que não tem o dado. Bom teste de novo — e se achar algo estranho, me conta 💙
+      </div>
+      <button type="button" class="aviso-api-fechar" (click)="dispensarAvisoAtualizacao()" aria-label="Fechar aviso" title="Fechar">×</button>
     </div>
 
     <!-- O CORPO DA CONVERSA -->
@@ -286,17 +394,8 @@
       <div class="messages" #messagesContainer *ngIf="messages.length > 0">
         <div *ngFor="let m of messages; let i = index" class="msg" [ngClass]="m.from">
 
-          <div class="avatar bot-avatar" *ngIf="m.from === 'bot'" title="proIAp">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <path
-                d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z">
-              </path>
-            </svg>
-          </div>
-
           <div class="bubble" [class.has-chart]="m.spec">
-            <div class="message-actions" *ngIf="m.text">
+            <div class="message-actions" *ngIf="m.text" [class.forcar-aberto]="m.feedbackAberto || m.feedbackEnviado">
               <button
                 type="button"
                 class="message-action"
@@ -318,6 +417,20 @@
               <button
                 type="button"
                 class="message-action"
+                *ngIf="m.from === 'bot' && m.interacaoId"
+                [class.ativo]="m.feedbackAberto"
+                [class.enviado]="m.feedbackEnviado"
+                (click)="alternarFeedback(m)"
+                aria-label="Dar feedback"
+                title="Dar feedback">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="message-action"
                 *ngIf="m.from === 'user'"
                 (click)="editarPrompt(m.text)"
                 aria-label="Editar prompt"
@@ -330,7 +443,31 @@
               </button>
             </div>
 
+            <!-- Sinaliza que essa resposta atualizou a memória de preferências (ver MemoriaTool). -->
+            <div class="memoria-chip" *ngIf="m.memoriaAtualizada">
+              <svg class="memoria-estrela" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"></path>
+              </svg>
+              Atualizando preferência do usuário
+            </div>
+
             <div *ngIf="m.text" class="message-text" [innerHTML]="formatarMensagem(m.text)"></div>
+
+            <div class="feedback-painel" *ngIf="m.feedbackAberto">
+              <label>O que achou dessa resposta?</label>
+              <textarea [(ngModel)]="m.feedbackTexto" placeholder="Ex: os números batem, mas queria ver isso num gráfico direto..."></textarea>
+              <div class="feedback-acoes">
+                <button type="button" class="btn-feedback cancelar" (click)="m.feedbackAberto = false">Cancelar</button>
+                <button type="button" class="btn-feedback enviar" [disabled]="!m.feedbackTexto" (click)="enviarFeedback(m)">Enviar</button>
+              </div>
+            </div>
+
+            <div class="confirmacao" *ngIf="m.feedbackEnviado">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 6 9 17l-5-5"></path>
+              </svg>
+              Feedback enviado — obrigado por ajudar a melhorar o proIAp
+            </div>
 
             <div *ngIf="m.spec" class="chart-message">
               <app-grafico-ia *ngFor="let g of m.spec.graficos" [spec]="g"></app-grafico-ia>
@@ -357,10 +494,29 @@
 
           </div>
         </div>
+
+        <!-- Indicador "pensando" — só a estrela da logo animada + texto, sem moldura de balão -->
+        <div class="msg-pensando" *ngIf="carregando">
+          <svg class="pensando-estrela" width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path
+              d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z">
+            </path>
+          </svg>
+          <span class="pensando-texto">{{ textoPensando }}</span>
+        </div>
       </div>
 
       <!-- Área do Input de Texto -->
       <div class="composer">
+        <!-- Indicativo discreto de tarefa atrasada — de propósito NÃO mostra título nem detalhe
+             nenhum aqui (só a quantidade), pra não expor conteúdo da tarefa pra quem só olhar
+             a tela por cima do ombro (ex: reunião com compartilhamento de tela). Detalhe só
+             aparece se a pessoa clicar. -->
+        <button type="button" class="aviso-tarefa-discreto" *ngIf="messages.length === 0 && resumoTarefasAtrasadas"
+          (click)="perguntarTarefasAtrasadas()">
+          ⚠️ {{ resumoTarefasAtrasadas.quantidade === 1 ? '1 tarefa atrasada' : resumoTarefasAtrasadas.quantidade + ' tarefas atrasadas' }}
+        </button>
+
         <div *ngIf="sugestoesAtuais.length > 0" class="composer-sugestoes">
           <button type="button" class="sugestao-chip" *ngFor="let s of sugestoesAtuais" (click)="enviarSugestao(s)">
             {{ s }}
@@ -379,14 +535,32 @@
             [disabled]="carregando"
             rows="1"
             autofocus></textarea>
-          <button class="send" [disabled]="carregando || input.length === 0" (click)="send()">
+          <button
+            class="send"
+            [class.stop]="carregando"
+            [disabled]="!carregando && input.length === 0"
+            (click)="carregando ? pararGeracao() : send()"
+            [attr.aria-label]="carregando ? 'Parar geração' : 'Enviar'"
+            [attr.title]="carregando ? 'Parar geração' : 'Enviar'">
             <svg *ngIf="!carregando" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 4l-8 8h6v8h4v-8h6z" />
             </svg>
-            <span *ngIf="carregando" class="loading-dot">...</span>
+            <svg *ngIf="carregando" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <rect x="4" y="4" width="16" height="16" rx="2" />
+            </svg>
           </button>
         </div>
         <p class="disclaimer">O proIAp pode cometer erros. Verifique as informações importantes no sistema.</p>
+
+        <!-- Barra de uso do teste com o time — estimativa, a trava de verdade é o limite da OpenAI -->
+        <div class="uso-ia-barra" *ngIf="usoIa && usoIa.souTester" [title]="'Estimativa — a trava real é o limite configurado na OpenAI'">
+          <div class="uso-ia-trilho">
+            <div class="uso-ia-preenchido" [class.critico]="usoIaCritico" [style.width.%]="usoIaPercentual"></div>
+          </div>
+          <span class="uso-ia-texto">
+            uso do teste: ${{ usoIa.gastoTotal.toFixed(2) }} de ${{ usoIa.limite.toFixed(2) }}
+          </span>
+        </div>
       </div>
 
     </div>
@@ -396,7 +570,7 @@
           <span>Visualizando: {{ arquivoAberto }}</span>
           <button (click)="fecharViewer()">X</button>
         </div>
-        <iframe [src]="'http://localhost:8080/api/documentos/view/' + encodeURIComponent(arquivoAberto) | safeUrl"
+        <iframe [src]="'/api/documentos/view/' + encodeURIComponent(arquivoAberto) | safeUrl"
           width="100%" height="90%"></iframe>
       </div>
     </div>
@@ -428,5 +602,35 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal customizado de confirmação de exclusão (não usa o confirm() nativo do navegador) -->
+    <div class="confirm-overlay" *ngIf="sessaoParaExcluir" (click)="cancelarExclusao()">
+      <div class="confirm-card" (click)="$event.stopPropagation()">
+        <h3>Excluir conversa?</h3>
+        <p>"{{ sessaoParaExcluir.titulo }}" vai ser apagada pra sempre, junto com todas as mensagens.</p>
+        <div class="confirm-acoes">
+          <button type="button" class="btn-confirm cancelar" (click)="cancelarExclusao()">Cancelar</button>
+          <button type="button" class="btn-confirm excluir" (click)="confirmarExclusao()">Excluir</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal com o link gerado ao compartilhar uma conversa -->
+    <div class="confirm-overlay" *ngIf="linkCompartilhado" (click)="fecharCompartilhar()">
+      <div class="confirm-card" (click)="$event.stopPropagation()">
+        <h3>Link de compartilhamento</h3>
+        <p>Qualquer pessoa com esse link consegue ver essa conversa, mesmo sem conta no BICentral.</p>
+        <div class="compartilhar-link-row">
+          <input type="text" [value]="linkCompartilhado" readonly (click)="selecionarTudo($event)" />
+          <button type="button" class="btn-copiar-link" (click)="copiarLinkCompartilhado()">
+            {{ linkCopiado ? 'Copiado ✓' : 'Copiar' }}
+          </button>
+        </div>
+        <div class="confirm-acoes">
+          <button type="button" class="btn-confirm cancelar" (click)="fecharCompartilhar()">Fechar</button>
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>
