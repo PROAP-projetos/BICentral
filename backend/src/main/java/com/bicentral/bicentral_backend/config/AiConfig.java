@@ -9,7 +9,6 @@ import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -31,12 +30,6 @@ public class AiConfig {
     @Value("${sambanova.api.key:}")
     private String sambanovaApiKey;
 
-    @Value("${openrouter.api.key:}")
-    private String openrouterApiKey;
-
-    @Value("${openai.api.key:}")
-    private String openaiApiKey;
-
     @Value("${ollama.base.url:http://localhost:11434}")
     private String ollamaBaseUrl;
 
@@ -49,6 +42,7 @@ public class AiConfig {
     // --- CHAT MODELS (LLMs) ---
 
     @Bean("groqModel")
+    @Primary
     public ChatLanguageModel groqModel() {
         return OpenAiChatModel.builder()
                 .apiKey(groqApiKey)
@@ -77,44 +71,11 @@ public class AiConfig {
                 .build();
     }
 
-    @Bean("openrouterModel")
-    public ChatLanguageModel openrouterModel() {
-        return OpenAiChatModel.builder()
-                .apiKey(openrouterApiKey)
-                .baseUrl("https://openrouter.ai/api/v1")
-                .modelName("openai/gpt-oss-20b:free")
-                .temperature(0.0)
-                .build();
-    }
-
-    @Bean("openaiLunaModel")
-    @Primary
-    public ChatLanguageModel openaiLunaModel() {
-        return OpenAiChatModel.builder()
-                .apiKey(openaiApiKey)
-                .modelName("gpt-5.6-luna")
-                .defaultRequestParameters(OpenAiChatRequestParameters.builder()
-                        .reasoningEffort("none")
-                        .build())
-                .build();
-    }
-
-    @Bean("openaiTerraModel")
-    public ChatLanguageModel openaiTerraModel() {
-        return OpenAiChatModel.builder()
-                .apiKey(openaiApiKey)
-                .modelName("gpt-5.6-terra")
-                .defaultRequestParameters(OpenAiChatRequestParameters.builder()
-                        .reasoningEffort("none")
-                        .build())
-                .build();
-    }
-
     @Bean("geminiModel")
     public ChatLanguageModel geminiModel() {
         return GoogleAiGeminiChatModel.builder()
                 .apiKey(geminiApiKey)
-                .modelName("gemini-3.7-flash")
+                .modelName("gemini-2.5-flash")
                 .build();
     }
 
