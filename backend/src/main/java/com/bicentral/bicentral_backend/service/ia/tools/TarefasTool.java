@@ -1,5 +1,6 @@
 package com.bicentral.bicentral_backend.service.ia.tools;
 
+import com.bicentral.bicentral_backend.service.admin.ConvidadoService;
 import com.bicentral.bicentral_backend.service.auth.UsuarioService;
 import com.bicentral.bicentral_backend.state.StatusExecucaoAgente;
 import dev.langchain4j.agent.tool.P;
@@ -22,11 +23,14 @@ public class TarefasTool {
     private final JdbcTemplate jdbcTemplate;
     private final UsuarioService usuarioService;
     private final StatusExecucaoAgente statusExecucao;
+    private final ConvidadoService convidadoService;
 
-    public TarefasTool(JdbcTemplate jdbcTemplate, UsuarioService usuarioService, StatusExecucaoAgente statusExecucao) {
+    public TarefasTool(JdbcTemplate jdbcTemplate, UsuarioService usuarioService, StatusExecucaoAgente statusExecucao,
+            ConvidadoService convidadoService) {
         this.jdbcTemplate = jdbcTemplate;
         this.usuarioService = usuarioService;
         this.statusExecucao = statusExecucao;
+        this.convidadoService = convidadoService;
     }
 
     @Tool("Busca as tarefas do PAT sob responsabilidade do usuário atualmente logado no chat. Use quando o usuário perguntar 'minhas tarefas', 'o que eu tenho pra fazer', 'como estão minhas pendências', ou pedir um panorama pessoal do próprio trabalho.")
@@ -139,8 +143,24 @@ public class TarefasTool {
         System.out.println(">>> TOOL CHAMADA: buscarTarefas(departamento=" + departamento + ", codigoAcao=" + codigoAcao + ", tituloAcao=" + tituloAcao + ", responsavel=" + responsavel
             + ", palavraChave=" + palavraChave + ", status=" + status + ", ordenarPor=" + ordenarPor + ", limite=" + qtd + ")");
 
+        // Convidado (de fora da PROAP) só vê responsáveis dos departamentos que gerencia; nos
+        // demais a tarefa aparece, mas sem o nome. null = sem restrição (admin / servidor PROAP).
+        String emailLogado = SecurityContextHolder.getContext().getAuthentication().getName();
+        List<String> departamentosVisiveis = convidadoService.departamentosComPessoasVisiveis(
+                usuarioService.buscarPorEmail(emailLogado).getId());
+
         List<Object> params = new ArrayList<>();
         StringBuilder where = new StringBuilder(" WHERE 1=1 ");
+        if (departamentosVisiveis != null && responsavel != null && !responsavel.isBlank()) {
+            // Filtrar por nome de pessoa revelaria onde ela trabalha, mesmo com a coluna mascarada.
+            if (departamentosVisiveis.isEmpty()) {
+                return "Você não tem acesso a informações de responsáveis. Posso mostrar os percentuais e as tarefas sem o nome de quem responde por elas.";
+            }
+            where.append(" AND LOWER(b.departamento) IN (")
+                 .append(String.join(",", java.util.Collections.nCopies(departamentosVisiveis.size(), "?")))
+                 .append(") ");
+            params.addAll(departamentosVisiveis);
+        }
         if (departamento != null && !departamento.isBlank()) {
             where.append(" AND b.departamento ILIKE ? ");
             params.add("%" + departamento.trim() + "%");
@@ -243,7 +263,7 @@ public class TarefasTool {
               .append(" | ").append(temaSemCodigo((String) t.get("titulo_acao"), (String) t.get("codigo_acao")))
               .append(" | ").append(t.get("titulo_tarefa"))
               .append(" | ").append(t.get("departamento"))
-              .append(" | ").append(t.get("responsavel") != null ? t.get("responsavel") : "—")
+              .append(" | ").append(responsavelVisivel(t, departamentosVisiveis))
               .append(" | ").append(percentualAcao == null ? "—" : formatarPercentualEnxuto(percentualAcao) + "%")
               .append(" | ").append(formatarPercentualEnxuto(t.get("percentual_tarefa"))).append("%")
               .append(" | ").append(atraso)
@@ -366,6 +386,15 @@ public class TarefasTool {
               .append(" |\n");
         }
         return sb.toString();
+    }
+
+    private String responsavelVisivel(Map<String, Object> tarefa, List<String> departamentosVisiveis) {
+        Object responsavel = tarefa.get("responsavel");
+        if (responsavel == null) return "—";
+        if (departamentosVisiveis == null) return responsavel.toString();
+        Object departamento = tarefa.get("departamento");
+        boolean pode = departamento != null && departamentosVisiveis.contains(departamento.toString().toLowerCase());
+        return pode ? responsavel.toString() : "—";
     }
 
     /** Tira o sufixo "| Departamento (TIPO)" e o prefixo do código — duplica truncarTituloSemCodigo (privado em ConsultaAcoesTool/RelatorioService). */

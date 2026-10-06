@@ -5,6 +5,7 @@ import com.bicentral.bicentral_backend.exception.RecursoJaExistenteException;
 import com.bicentral.bicentral_backend.model.Usuario;
 import com.bicentral.bicentral_backend.repository.UsuarioRepository;
 import com.bicentral.bicentral_backend.service.auth.UsuarioService;
+import com.bicentral.bicentral_backend.service.admin.ConvidadoService;
 import com.bicentral.bicentral_backend.service.ia.UsoIaService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,6 +25,7 @@ public class UsuarioController {
     private final UsuarioService usuarioService;
     private final UsuarioRepository usuarioRepository;
     private final UsoIaService usoIaService;
+    private final ConvidadoService convidadoService;
 
     // Enquanto o deploy for só pro período de teste, só quem já foi convidado como
     // tester (ver UsoIaService.emailTesterPendente) consegue completar o cadastro —
@@ -32,10 +34,11 @@ public class UsuarioController {
     @Value("${app.cadastro-restrito-a-testers:true}")
     private boolean cadastroRestritoATesters;
 
-    public UsuarioController(UsuarioService usuarioService, UsuarioRepository usuarioRepository, UsoIaService usoIaService) {
+    public UsuarioController(UsuarioService usuarioService, UsuarioRepository usuarioRepository, UsoIaService usoIaService, ConvidadoService convidadoService) {
         this.usuarioService = usuarioService;
         this.usuarioRepository = usuarioRepository;
         this.usoIaService = usoIaService;
+        this.convidadoService = convidadoService;
     }
 
     @PostMapping("/cadastro")
@@ -45,7 +48,12 @@ public class UsuarioController {
             // e-mail no cadastro (ver UsoIaService.emailTesterPendente).
             boolean pularVerificacao = usoIaService.emailTesterPendente(usuario.getEmail());
 
-            if (cadastroRestritoATesters && !pularVerificacao) {
+            // Convidado (de fora da PROAP) também passa no cadastro restrito, mas NÃO pula a
+            // verificação de e-mail: o acesso dele é a dados institucionais, então a posse do
+            // e-mail precisa ser provada.
+            boolean convidadoPendente = convidadoService.emailPendente(usuario.getEmail());
+
+            if (cadastroRestritoATesters && !pularVerificacao && !convidadoPendente) {
                 Map<String, String> bloqueado = new HashMap<>();
                 bloqueado.put("mensagem", "Cadastro disponível só por convite durante o período de teste do proIAp. Peça pra um admin te adicionar como tester.");
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(bloqueado);
@@ -55,6 +63,7 @@ public class UsuarioController {
             // Se esse e-mail já tinha sido adicionado como tester do proIAp antes de existir
             // conta, vira tester de verdade agora (ver UsoIaService.promoverPendentesParaTester).
             usoIaService.promoverPendentesParaTester(cadastrado.getId(), cadastrado.getEmail());
+            convidadoService.promoverPendentes(cadastrado.getId(), cadastrado.getEmail());
             Map<String, String> response = new HashMap<>();
             response.put("mensagem", pularVerificacao
                     ? "Cadastro realizado! Você já pode entrar — como tester do proIAp, não precisa verificar o e-mail."

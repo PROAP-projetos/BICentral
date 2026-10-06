@@ -17,7 +17,6 @@ import com.bicentral.bicentral_backend.state.EstadoSessao;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.tool.ToolExecution;
-import java.util.LinkedHashSet;
 import java.util.Map;
 
 @Service
@@ -137,19 +136,19 @@ public class ProiapService {
         System.out.println("DEBUG - Termo usado na busca: " + termoDeBusca);
         System.out.println("DEBUG - Fontes encontradas: " + contextoRAG.fontes());
 
+        String memoryId = (sessaoId != null && !sessaoId.isBlank())
+                ? sessaoId
+                : "sessao-fallback-" + System.identityHashCode(estadoSessao);
+
         if (analise.intencao() == IntencaoDTO.RESPOSTA) {
-            
-            String memoryId = (sessaoId != null && !sessaoId.isBlank()) 
-                    ? sessaoId 
-                    : "sessao-fallback-" + System.identityHashCode(estadoSessao);
-            
+
             // Memória do usuário (ver MemoriaTool) entra na frente do contexto de RAG.
             String contextoComMemoria = memoriaUsuarioService.montarBlocoMemoria(usuarioId) + contextoRAG.textoContexto();
 
             Result<String> resultado = agenteConsultaSql.responderComFerramentas(memoryId, perguntaUsuario,
                     contextoComMemoria);
             String conteudo = tratarRespostaTruncada(resultado);
-            List<String> sugestoes = montarSugestoes(resultado.toolExecutions());
+            List<String> sugestoes = montarSugestoes(resultado.toolExecutions(), conteudo);
             Long interacaoId = usoIaService.registrarUso(usuarioId, sessaoId, perguntaUsuario, conteudo, resultado.tokenUsage());
 
             chatHistoricoService.salvarUser(sessaoId, usuarioId, perguntaUsuario);
@@ -158,21 +157,22 @@ public class ProiapService {
 
         } else if (analise.intencao() == IntencaoDTO.GRAFICO) {
 
+            // Mesma memória do chat: o gráfico precisa resolver referências como "delas" ou "dessas unidades".
             Result<String> dadosResultado = agenteConsultaSql.responderComFerramentas(
-                    "grafico-" + UUID.randomUUID(), perguntaUsuario, contextoRAG.textoContexto());
+                    memoryId, perguntaUsuario, contextoRAG.textoContexto());
             String dadosConteudo = tratarRespostaTruncada(dadosResultado);
             Long interacaoId = usoIaService.registrarUso(usuarioId, sessaoId, perguntaUsuario, dadosConteudo, dadosResultado.tokenUsage());
 
             PainelSpecDTO spec = agenteProiap.gerarPainel(
                     perguntaUsuario,
                     dadosConteudo,
-                    estadoSessao.getIndicador(),
+                    estadoSessao.getIndicador() != null ? estadoSessao.getIndicador() : "não definido (deduza do pedido e dos dados)",
                     estadoSessao.getTipoGrafico());
 
             if (!painelTemDados(spec)) {
                 // Sem dado real, não tem painel pra exibir — responde como texto explicando o que faltou.
                 System.out.println(">>> PAINEL SEM DADOS — respondendo como texto");
-                List<String> sugestoesVazio = montarSugestoes(dadosResultado.toolExecutions());
+                List<String> sugestoesVazio = List.of();
                 chatHistoricoService.salvarUser(sessaoId, usuarioId, perguntaUsuario);
                 chatHistoricoService.salvarBot(sessaoId, usuarioId, spec.mensagemContexto(), null, contextoRAG.fontes(), sugestoesVazio, interacaoId);
                 return new RespostaTextualDTO(spec.mensagemContexto(), contextoRAG.fontes(), false, sugestoesVazio, interacaoId, false);
@@ -225,22 +225,28 @@ public class ProiapService {
         return false;
     }
 
-    private List<String> montarSugestoes(List<ToolExecution> execucoes) {
+    // Só a última ferramenta do turno conta: é a que sustenta a resposta final. Sem chip quando
+    // ela falhou/voltou vazia, ou quando a própria resposta termina numa pergunta pro usuário
+    // (ex: pedido de confirmação), pra não competir com a resposta esperada.
+    private List<String> montarSugestoes(List<ToolExecution> execucoes, String respostaFinal) {
         if (execucoes == null || execucoes.isEmpty()) {
             return List.of();
         }
-        LinkedHashSet<String> sugestoes = new LinkedHashSet<>();
-        for (ToolExecution execucao : execucoes) {
-            String resultado = execucao.result();
-            if (resultado != null && resultado.startsWith(PREFIXO_FALHA_RELATORIO)) {
-                continue;
-            }
-            List<String> candidatas = SUGESTOES_POR_FERRAMENTA.get(execucao.request().name());
-            if (candidatas != null) {
-                sugestoes.addAll(candidatas);
-            }
-            if (sugestoes.size() >= MAX_SUGESTOES) break;
+        if (respostaFinal != null && respostaFinal.stripTrailing().endsWith("?")) {
+            return List.of();
         }
-        return sugestoes.stream().limit(MAX_SUGESTOES).toList();
+        ToolExecution ultima = execucoes.get(execucoes.size() - 1);
+        if (resultadoSemDado(ultima.result())) {
+            return List.of();
+        }
+        List<String> candidatas = SUGESTOES_POR_FERRAMENTA.get(ultima.request().name());
+        return candidatas == null ? List.of() : candidatas.stream().limit(MAX_SUGESTOES).toList();
+    }
+
+    private boolean resultadoSemDado(String resultado) {
+        if (resultado == null || resultado.isBlank()) return true;
+        return resultado.startsWith(PREFIXO_FALHA_RELATORIO)
+                || resultado.startsWith("Nenhum")
+                || resultado.startsWith("Não encontr");
     }
 }

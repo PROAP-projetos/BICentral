@@ -1,5 +1,6 @@
 package com.bicentral.bicentral_backend.service.ia;
 
+import com.bicentral.bicentral_backend.service.admin.ConvidadoService;
 import org.apache.poi.xwpf.usermodel.*;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -77,9 +78,24 @@ public class RelatorioService {
     @Lazy
     private RelatorioService self;
 
-    public RelatorioService(JdbcTemplate jdbcTemplate, AgenteRelatorio agenteRelatorio) {
+    private final ConvidadoService convidadoService;
+
+    public RelatorioService(JdbcTemplate jdbcTemplate, AgenteRelatorio agenteRelatorio, ConvidadoService convidadoService) {
         this.jdbcTemplate = jdbcTemplate;
         this.agenteRelatorio = agenteRelatorio;
+        this.convidadoService = convidadoService;
+    }
+
+    /** Convidado (de fora da PROAP) só vê responsáveis dos departamentos que gerencia — nos demais o nome vira "—". */
+    private boolean podeVerResponsaveis(Long relatorioId, String departamento) {
+        try {
+            Long solicitante = jdbcTemplate.queryForObject(
+                    "SELECT usuario_id FROM relatorios_gerados WHERE id = ?", Long.class, relatorioId);
+            return convidadoService.podeVerPessoas(solicitante, departamento);
+        } catch (Exception e) {
+            // Sem conseguir identificar quem pediu, não arrisca expor nome de ninguém.
+            return false;
+        }
     }
 
     @PostConstruct
@@ -274,6 +290,7 @@ public class RelatorioService {
                     : (secoesFinal.contains("lista_completa") ? "crescente" : null);
             boolean incluirTarefasEfetivo = incluirTarefas || secoesFinal.contains("tarefas_por_acao");
 
+            boolean verResponsaveis = podeVerResponsaveis(id, departamento);
             DadosQuantitativosRelatorio dados = montarDadosQuantitativos(departamento, tipo, ordenacaoEfetiva, marcador);
             String prompt = montarPromptParaIA(departamento, tipo, dados.piores());
             RelatorioConteudoIADTO conteudo = agenteRelatorio.gerarConteudoRelatorio(prompt);
@@ -286,12 +303,12 @@ public class RelatorioService {
                     conteudo.leituraCenario(),
                     dados.indicadores(),
                     dados.distribuicao(),
-                    combinarAnaliseComJustificativas(departamento, dados.piores(), conteudo.analiseMenorExecucao()),
+                    combinarAnaliseComJustificativas(departamento, dados.piores(), conteudo.analiseMenorExecucao(), verResponsaveis),
                     dados.melhores(),
                     conteudo.pontosDeAcompanhamento(),
                     mostrarNomeAcao,
                     dados.listaCompletaOrdenada(),
-                    incluirTarefasEfetivo && "PAT".equalsIgnoreCase(tipo) ? buscarTarefasPorTodasAsAcoes(departamento, marcador) : List.of(),
+                    incluirTarefasEfetivo && "PAT".equalsIgnoreCase(tipo) ? buscarTarefasPorTodasAsAcoes(departamento, marcador, verResponsaveis) : List.of(),
                     secoesFinal);
 
             byte[] arquivoBytes;
@@ -519,7 +536,7 @@ public class RelatorioService {
      * Se a IA devolver uma quantidade diferente da recebida, pareia só até o menor
      * tamanho em vez de quebrar.
      */
-    private List<AcaoAnalisadaDTO> combinarAnaliseComJustificativas(String departamento, List<AcaoComCodigo> piores, List<JustificativaAcaoDTO> justificativas) {
+    private List<AcaoAnalisadaDTO> combinarAnaliseComJustificativas(String departamento, List<AcaoComCodigo> piores, List<JustificativaAcaoDTO> justificativas, boolean verResponsaveis) {
         int total = Math.min(piores.size(), justificativas.size());
 
         List<String> codigos = piores.stream()
@@ -530,7 +547,7 @@ public class RelatorioService {
 
         // Antes: 1 query de tarefas + 1 query de departamentos parceiros POR ação (até 30 idas ao
         // banco pras 15 piores ações). Agora: busca tudo de uma vez com IN (...) e agrupa em Java.
-        Map<String, List<TarefaResponsavelDTO>> tarefasPorCodigo = buscarTarefasPorAcoes(departamento, codigos);
+        Map<String, List<TarefaResponsavelDTO>> tarefasPorCodigo = buscarTarefasPorAcoes(departamento, codigos, verResponsaveis);
         Map<String, List<DepartamentoParceiroDTO>> parceirosPorCodigo = buscarOutrosDepartamentosPorAcoes(codigos, departamento);
 
         List<AcaoAnalisadaDTO> resultado = new ArrayList<>();
@@ -584,7 +601,7 @@ public class RelatorioService {
      * TODAS as ações recebidas de uma vez (1 query com IN, não 1 query por ação) — agrupadas por
      * código da ação, no máximo 3 tarefas por código (mais recentes/próximas primeiro).
      */
-    private Map<String, List<TarefaResponsavelDTO>> buscarTarefasPorAcoes(String departamento, List<String> codigos) {
+    private Map<String, List<TarefaResponsavelDTO>> buscarTarefasPorAcoes(String departamento, List<String> codigos, boolean verResponsaveis) {
         if (codigos.isEmpty()) {
             return Map.of();
         }
@@ -620,7 +637,7 @@ public class RelatorioService {
                     lista.add(new TarefaResponsavelDTO(
                             (String) t.get("titulo_tarefa"),
                             (String) t.get("descricao_tarefa"),
-                            (String) t.get("responsavel"),
+                            verResponsaveis ? (String) t.get("responsavel") : "—",
                             formatarPrazo((java.sql.Date) t.get("data_final"))));
                 }
             }
@@ -632,7 +649,7 @@ public class RelatorioService {
     }
 
     /** Todas as ações do departamento com suas tarefas, não só as piores — ações sem tarefa cadastrada ficam de fora. */
-    private List<AcaoComTarefasDTO> buscarTarefasPorTodasAsAcoes(String departamento, String filtroMarcador) {
+    private List<AcaoComTarefasDTO> buscarTarefasPorTodasAsAcoes(String departamento, String filtroMarcador, boolean verResponsaveis) {
         List<Map<String, Object>> acoes = jdbcTemplate.queryForList("""
             SELECT codigo_acao, titulo_acao, ROUND(percentual_execucao * 100, 2) AS percentual
             FROM pat_execucao_departamento
@@ -645,7 +662,7 @@ public class RelatorioService {
                 .map(row -> (String) row.get("codigo_acao"))
                 .filter(c -> c != null && !c.isBlank())
                 .toList();
-        Map<String, List<TarefaResponsavelDTO>> tarefasPorCodigo = buscarTarefasPorAcoes(departamento, codigos);
+        Map<String, List<TarefaResponsavelDTO>> tarefasPorCodigo = buscarTarefasPorAcoes(departamento, codigos, verResponsaveis);
 
         List<AcaoComTarefasDTO> resultado = new ArrayList<>();
         for (Map<String, Object> row : acoes) {

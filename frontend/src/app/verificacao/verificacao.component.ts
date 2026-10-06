@@ -1,19 +1,22 @@
-import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
+
+type Estado = 'verificando' | 'sucesso' | 'erro' | 'sem-codigo';
 
 @Component({
   selector: 'app-verificacao',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   templateUrl: './verificacao.component.html',
   styleUrls: ['./verificacao.component.css']
 })
-export class VerificacaoComponent implements OnInit {
+export class VerificacaoComponent implements OnInit, OnDestroy {
 
-  message: string | null = null;
-  verificationSuccess = false;
+  estado: Estado = 'verificando';
+  segundosParaLogin = 5;
+  private timer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private route: ActivatedRoute,
@@ -23,18 +26,45 @@ export class VerificacaoComponent implements OnInit {
 
   ngOnInit(): void {
     const code = this.route.snapshot.queryParamMap.get('code');
-    if (code) {
-      this.http.get(`/api/usuarios/verify?code=${code}`, { responseType: 'text' })
-        .subscribe(() => {
-          this.verificationSuccess = true;
-          this.message = 'Sua conta foi verificada com sucesso! Você será redirecionado para o login em 5 segundos.';
-          setTimeout(() => {
-            this.router.navigate(['/login']);
-          }, 5000);
-        }, () => {
-          this.verificationSuccess = false;
-          this.message = 'Ocorreu um erro ao verificar sua conta. Por favor, tente novamente.';
-        });
+    if (!code) {
+      this.estado = 'sem-codigo';
+      return;
     }
+
+    this.http.get('/api/usuarios/verify', { params: { code }, responseType: 'text' })
+      .subscribe({
+        next: () => {
+          this.estado = 'sucesso';
+          this.iniciarContagem();
+        },
+        error: () => {
+          this.estado = 'erro';
+        }
+      });
+  }
+
+  irParaLogin(): void {
+    this.router.navigate(['/login']);
+  }
+
+  private iniciarContagem(): void {
+    this.timer = setInterval(() => {
+      this.segundosParaLogin--;
+      if (this.segundosParaLogin <= 0) {
+        this.pararContagem();
+        this.irParaLogin();
+      }
+    }, 1000);
+  }
+
+  private pararContagem(): void {
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.pararContagem();
   }
 }

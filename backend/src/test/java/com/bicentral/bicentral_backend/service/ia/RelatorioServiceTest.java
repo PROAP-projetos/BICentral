@@ -28,7 +28,7 @@ import static org.mockito.Mockito.mock;
 class RelatorioServiceTest {
 
     private final JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-    private final RelatorioService relatorioService = new RelatorioService(jdbcTemplate, mock(AgenteRelatorio.class));
+    private final RelatorioService relatorioService = new RelatorioService(jdbcTemplate, mock(AgenteRelatorio.class), mock(com.bicentral.bicentral_backend.service.admin.ConvidadoService.class));
 
     private Object invoke(String metodo, Class<?>[] tipos, Object... args) throws Exception {
         Method m = RelatorioService.class.getDeclaredMethod(metodo, tipos);

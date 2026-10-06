@@ -1,9 +1,35 @@
-<div class="container">
-  <div class="card">
-    <div *ngIf="message">
-      <h2 *ngIf="verificationSuccess">Verificação bem-sucedida!</h2>
-      <h2 *ngIf="!verificationSuccess">Erro na verificação</h2>
-      <p>{{ message }}</p>
-    </div>
+<div class="form-container">
+  <div class="card" [ngSwitch]="estado">
+
+    <ng-container *ngSwitchCase="'verificando'">
+      <div class="icone carregando" aria-hidden="true"></div>
+      <h2>Verificando seu e-mail...</h2>
+      <p class="texto">Só um instante.</p>
+    </ng-container>
+
+    <ng-container *ngSwitchCase="'sucesso'">
+      <div class="icone sucesso" aria-hidden="true">&#10003;</div>
+      <h2>E-mail verificado!</h2>
+      <p class="texto">Sua conta está ativa. Você será levado para o login em {{ segundosParaLogin }}s.</p>
+      <button type="button" class="btn btn-primary" (click)="irParaLogin()">Ir para o login agora</button>
+    </ng-container>
+
+    <ng-container *ngSwitchCase="'erro'">
+      <div class="icone erro" aria-hidden="true">!</div>
+      <h2>Não foi possível verificar</h2>
+      <p class="texto">Este link é inválido ou já foi usado. Se você já verificou seu e-mail antes, é só entrar com sua conta.</p>
+      <button type="button" class="btn btn-primary" (click)="irParaLogin()">Ir para o login</button>
+      <div class="footer-link">
+        <a routerLink="/cadastro">Criar conta de novo</a>
+      </div>
+    </ng-container>
+
+    <ng-container *ngSwitchCase="'sem-codigo'">
+      <div class="icone erro" aria-hidden="true">!</div>
+      <h2>Link incompleto</h2>
+      <p class="texto">Abra o link do e-mail de verificação por inteiro. Se ele não funcionar, copie e cole o endereço completo no navegador.</p>
+      <button type="button" class="btn btn-primary" (click)="irParaLogin()">Ir para o login</button>
+    </ng-container>
+
   </div>
 </div>
