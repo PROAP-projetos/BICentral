@@ -6,9 +6,11 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2.AllMiniLmL6V2EmbeddingModel;
 import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
 import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel;
+import org.springframework.context.annotation.Lazy;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,7 +20,9 @@ import org.springframework.context.annotation.Primary;
 @Configuration
 public class AiConfig {
 
-    @Value("${langchain4j.google-ai-gemini.api-key}")
+    // Sem default: só é exigida de verdade se o embedding local (ONNX) falhar ao carregar
+    // e o fallback abaixo precisar chamar a API do Gemini de verdade.
+    @Value("${langchain4j.google-ai-gemini.api-key:}")
     private String geminiApiKey;
 
     @Value("${groq.api.key:}")
@@ -29,6 +33,12 @@ public class AiConfig {
 
     @Value("${sambanova.api.key:}")
     private String sambanovaApiKey;
+
+    @Value("${openrouter.api.key:}")
+    private String openrouterApiKey;
+
+    @Value("${openai.api.key:}")
+    private String openaiApiKey;
 
     @Value("${ollama.base.url:http://localhost:11434}")
     private String ollamaBaseUrl;
@@ -41,8 +51,12 @@ public class AiConfig {
 
     // --- CHAT MODELS (LLMs) ---
 
+    // @Lazy nesses três: nenhum agente usa @Qualifier pra eles hoje (só openaiLunaModel/
+    // openaiTerraModel são usados de verdade). Sem @Lazy, o Spring cria (e valida a chave
+    // de) todo @Bean no boot mesmo sem uso, travando o deploy por causa de uma chave de
+    // provedor que ninguém está usando.
     @Bean("groqModel")
-    @Primary
+    @Lazy
     public ChatLanguageModel groqModel() {
         return OpenAiChatModel.builder()
                 .apiKey(groqApiKey)
@@ -53,6 +67,7 @@ public class AiConfig {
     }
 
     @Bean("cerebrasModel")
+    @Lazy
     public ChatLanguageModel cerebrasModel() {
         return OpenAiChatModel.builder()
                 .apiKey(cerebrasApiKey)
@@ -63,6 +78,7 @@ public class AiConfig {
     }
 
     @Bean("sambanovaModel")
+    @Lazy
     public ChatLanguageModel sambanovaModel() {
         return OpenAiChatModel.builder()
                 .apiKey(sambanovaApiKey)
@@ -71,15 +87,48 @@ public class AiConfig {
                 .build();
     }
 
+    private static final int MAX_TOKENS_RESPOSTA = 8192;
+
+    @Bean("openaiLunaModel")
+    @Primary
+    public ChatLanguageModel openaiLunaModel() {
+        return OpenAiChatModel.builder()
+                .apiKey(openaiApiKey)
+                .modelName("gpt-5.6-luna")
+                .maxCompletionTokens(MAX_TOKENS_RESPOSTA)
+                .defaultRequestParameters(OpenAiChatRequestParameters.builder()
+                        .reasoningEffort("none")
+                        .build())
+                .build();
+    }
+
+    @Bean("openaiTerraModel")
+    public ChatLanguageModel openaiTerraModel() {
+        return OpenAiChatModel.builder()
+                .apiKey(openaiApiKey)
+                .modelName("gpt-5.6-terra")
+                .maxCompletionTokens(MAX_TOKENS_RESPOSTA)
+                .defaultRequestParameters(OpenAiChatRequestParameters.builder()
+                        .reasoningEffort("none")
+                        .build())
+                .build();
+    }
+
+    // @Lazy: só é criado (e só exige GEMINI_API_KEY de verdade) se algum @Qualifier("geminiModel")
+    // pedir esse bean explicitamente — é o caso de quem não tem acesso à OpenAI (ver
+    // docs/devolutiva-auditoria-convites-membros.md, seção 6). Sem isso, o Spring instancia
+    // todo @Bean no boot mesmo sem uso, travando quem não tem chave do Gemini configurada.
     @Bean("geminiModel")
+    @Lazy
     public ChatLanguageModel geminiModel() {
         return GoogleAiGeminiChatModel.builder()
                 .apiKey(geminiApiKey)
-                .modelName("gemini-2.5-flash")
+                .modelName("gemini-3.7-flash")
                 .build();
     }
 
     @Bean("ollamaModel")
+    @Lazy
     public ChatLanguageModel ollamaModel() {
         return OllamaChatModel.builder()
                 .baseUrl(ollamaBaseUrl)
@@ -103,15 +152,6 @@ public class AiConfig {
                     .modelName("text-embedding-004")
                     .build();
         }
-    }
-
-    @Bean("geminiEmbeddingModel")
-    public EmbeddingModel geminiEmbeddingModel() {
-        return GoogleAiEmbeddingModel.builder()
-                .apiKey(geminiApiKey)
-                .modelName("gemini-embedding-001")
-                .outputDimensionality(768)
-                .build();
     }
 
     @Bean("ollamaEmbeddingModel")
