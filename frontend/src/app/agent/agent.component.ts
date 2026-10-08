@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { finalize, interval, Subscription, switchMap } from 'rxjs';
 import { GraficoIaComponent } from '../grafico-ia/grafico-ia';
-import { GrafoAtividadesComponent } from '../grafo-atividades/grafo-atividades.component';
+import { MapaCompartilhamentoComponent } from '../mapa-compartilhamento/mapa-compartilhamento.component';
 import { LeaderboardUgComponent } from '../leaderboard-ug/leaderboard-ug.component';
 import { AgentService, Notificacao, PainelAtrasos, RelatorioHistoricoItem, TarefasAtrasadasResumo, UsoIa } from '../services/agent.service';
 import { AdminService } from '../services/admin.service';
@@ -23,7 +23,7 @@ interface ChatSession {
 @Component({
   selector: 'app-agent',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, GraficoIaComponent, SafeUrlPipe, LeaderboardUgComponent, GrafoAtividadesComponent],
+  imports: [CommonModule, FormsModule, RouterLink, GraficoIaComponent, SafeUrlPipe, LeaderboardUgComponent, MapaCompartilhamentoComponent],
   templateUrl: './agent.html',
   styleUrls: ['./agent.css']
 })
@@ -47,7 +47,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   private static readonly VERSAO_VISTA_KEY = 'bicentral_versao_vista';
 
   isDarkMode = false;
-  painelAtivo: 'chat' | 'ranking' | 'grafo' = 'chat';
+  painelAtivo: 'chat' | 'ranking' | 'compartilhadas' = 'chat';
   avisoApiVisivel = localStorage.getItem(AgentComponent.AVISO_API_DISPENSADO_KEY) !== '1';
   avisoTesterVisivel = localStorage.getItem(AgentComponent.AVISO_TESTER_DISPENSADO_KEY) !== '1';
   versaoAgente = AgentComponent.VERSAO_AGENTE;
@@ -689,6 +689,15 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
           this.agendarScrollParaFim();
         }
       });
+  }
+
+  perguntarPeloPainel(texto: string): void {
+    this.painelAtivo = 'chat';
+    if (this.carregando) {
+      this.erro = 'Aguarde a resposta atual terminar para fazer outra pergunta.';
+      return;
+    }
+    this.enviarSugestao(texto);
   }
 
   enviarSugestao(texto: string) {

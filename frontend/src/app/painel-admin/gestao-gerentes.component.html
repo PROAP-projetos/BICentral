@@ -13,7 +13,7 @@
     </select>
 
     <div class="multi-select-wrap">
-      <button type="button" class="multi-select-toggle" (click)="dropdownAberto = !dropdownAberto">
+      <button type="button" class="multi-select-toggle" (click)="alternarDropdownGerentes()">
         <span>{{ departamentosSelecionados.length === 0 ? 'Selecione departamentos' : departamentosSelecionados.length + ' selecionado(s)' }}</span>
         <span class="chevron">▾</span>
       </button>
@@ -32,18 +32,43 @@
 
   <form class="form-compact classificar-form" (ngSubmit)="classificar()">
     <span class="classificar-label">Classificar tipo sem vincular gerente:</span>
-    <select class="select-departamento-largo" [(ngModel)]="departamentoParaClassificar" name="departamentoClassificar" required>
-      <option [ngValue]="null">Selecione um departamento</option>
-      <option *ngFor="let dep of departamentos" [ngValue]="dep">{{ dep }}</option>
-    </select>
+
+    <div class="multi-select-wrap">
+      <button type="button" class="multi-select-toggle" (click)="alternarDropdownClassificar()">
+        <span>{{ departamentosParaClassificar.length === 0 ? 'Selecione departamentos' : departamentosParaClassificar.length + ' selecionado(s)' }}</span>
+        <span class="chevron">▾</span>
+      </button>
+      <div class="multi-select-panel" *ngIf="dropdownClassificarAberto">
+        <input
+          type="search"
+          class="multi-select-busca"
+          name="buscaClassificar"
+          placeholder="Buscar departamento"
+          [(ngModel)]="buscaClassificar"
+          autocomplete="off" />
+        <div class="multi-select-acoes">
+          <button type="button" (click)="selecionarTodosVisiveis()" [disabled]="departamentosClassificaveis.length === 0">
+            Selecionar todos ({{ departamentosClassificaveis.length }})
+          </button>
+          <button type="button" (click)="limparSelecaoClassificar()" [disabled]="departamentosParaClassificar.length === 0">
+            Limpar
+          </button>
+        </div>
+        <label class="multi-select-option" *ngFor="let dep of departamentosClassificaveis">
+          <input type="checkbox" [checked]="departamentosParaClassificar.includes(dep)" (change)="toggleClassificar(dep)" />
+          <span>{{ dep }}</span>
+        </label>
+        <p class="multi-select-vazio" *ngIf="departamentosClassificaveis.length === 0">Nenhum departamento encontrado.</p>
+      </div>
+    </div>
 
     <select [(ngModel)]="tipoParaClassificar" name="tipoParaClassificar">
       <option value="UA">UA</option>
       <option value="UG">UG</option>
     </select>
 
-    <button class="btn btn-primary btn-sm" type="submit" [disabled]="!departamentoParaClassificar || classificando">
-      Classificar
+    <button class="btn btn-primary btn-sm" type="submit" [disabled]="departamentosParaClassificar.length === 0 || classificando">
+      {{ classificando ? 'Classificando...' : 'Classificar' + (departamentosParaClassificar.length ? ' (' + departamentosParaClassificar.length + ')' : '') }}
     </button>
   </form>
 

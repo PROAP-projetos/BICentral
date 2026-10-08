@@ -48,9 +48,7 @@ public class UsuarioController {
             // e-mail no cadastro (ver UsoIaService.emailTesterPendente).
             boolean pularVerificacao = usoIaService.emailTesterPendente(usuario.getEmail());
 
-            // Convidado (de fora da PROAP) também passa no cadastro restrito, mas NÃO pula a
-            // verificação de e-mail: o acesso dele é a dados institucionais, então a posse do
-            // e-mail precisa ser provada.
+            // Convidado passa no cadastro restrito, mas não pula a verificação de e-mail (acesso a dados institucionais).
             boolean convidadoPendente = convidadoService.emailPendente(usuario.getEmail());
 
             if (cadastroRestritoATesters && !pularVerificacao && !convidadoPendente) {

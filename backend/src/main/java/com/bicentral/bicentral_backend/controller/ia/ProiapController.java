@@ -184,7 +184,6 @@ public class ProiapController {
     // gerarPainelAtrasos) já existiam prontos, só faltava esse @GetMapping.
     @GetMapping("/painel-atrasos")
     public PainelAtrasosDTO painelAtrasos(@RequestParam String departamento, @AuthenticationPrincipal UserDetails userDetails) {
-        // O painel é todo organizado por responsável (pessoas) — convidado só vê dos departamentos que gerencia.
         Usuario usuario = usuarioService.buscarPorEmail(userDetails.getUsername());
         if (!convidadoService.podeVerPessoas(usuario.getId(), departamento)) {
             throw new org.springframework.web.server.ResponseStatusException(

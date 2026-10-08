@@ -86,14 +86,12 @@ public class RelatorioService {
         this.convidadoService = convidadoService;
     }
 
-    /** Convidado (de fora da PROAP) só vê responsáveis dos departamentos que gerencia — nos demais o nome vira "—". */
     private boolean podeVerResponsaveis(Long relatorioId, String departamento) {
         try {
             Long solicitante = jdbcTemplate.queryForObject(
                     "SELECT usuario_id FROM relatorios_gerados WHERE id = ?", Long.class, relatorioId);
             return convidadoService.podeVerPessoas(solicitante, departamento);
         } catch (Exception e) {
-            // Sem conseguir identificar quem pediu, não arrisca expor nome de ninguém.
             return false;
         }
     }

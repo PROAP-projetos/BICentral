@@ -157,7 +157,7 @@ public class ProiapService {
 
         } else if (analise.intencao() == IntencaoDTO.GRAFICO) {
 
-            // Mesma memória do chat: o gráfico precisa resolver referências como "delas" ou "dessas unidades".
+            // Mesma memória do chat, pra resolver referências como "delas".
             Result<String> dadosResultado = agenteConsultaSql.responderComFerramentas(
                     memoryId, perguntaUsuario, contextoRAG.textoContexto());
             String dadosConteudo = tratarRespostaTruncada(dadosResultado);
@@ -225,9 +225,7 @@ public class ProiapService {
         return false;
     }
 
-    // Só a última ferramenta do turno conta: é a que sustenta a resposta final. Sem chip quando
-    // ela falhou/voltou vazia, ou quando a própria resposta termina numa pergunta pro usuário
-    // (ex: pedido de confirmação), pra não competir com a resposta esperada.
+    // Só a última ferramenta do turno conta; sem chips se ela falhou/veio vazia ou se a resposta termina em pergunta.
     private List<String> montarSugestoes(List<ToolExecution> execucoes, String respostaFinal) {
         if (execucoes == null || execucoes.isEmpty()) {
             return List.of();

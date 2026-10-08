@@ -217,7 +217,6 @@ public class EmailService {
             """;
 
         content = content.replace("[[name]]", Objects.requireNonNull(user.getNomeExibicao(), "username"));
-        // O link abre a tela do front (/verificar-email), que chama a API e mostra o resultado.
         // Apontar direto pra API deixava a pessoa numa tela branca só com o texto "verify_success".
         String token = Objects.requireNonNull(user.getVerificationToken(), "verification token");
         String verifyURL = (frontendBaseUrl != null && !frontendBaseUrl.isBlank())
@@ -385,7 +384,6 @@ public class EmailService {
         }
     }
 
-    // nome == null: a pessoa ainda não tem conta, o link leva ao cadastro; senão leva ao agente.
     @Async
     public void sendConvidadoEmailAsync(String toAddress, String nome, String link) {
         try {

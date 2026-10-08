@@ -5,6 +5,7 @@ public record RankingDepartamentoDTO(
     String tipoUnidade,
     double mediaExecucaoPct,
     int qtdAcoes,
+    int qtdAcoesConcluidas,
     int posicaoAtual,
     Integer posicaoAnterior
 ) {}

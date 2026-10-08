@@ -212,7 +212,6 @@ export class AdminService {
       '/api/uso-ia/testers/notificar-versao', null, { params: { versao } });
   }
 
-  // Convidados (usuários de fora da PROAP) — endpoints em /api/admin/convidados
   listarConvidados(): Observable<Convidado[]> {
     return this.http.get<Convidado[]>('/api/admin/convidados');
   }

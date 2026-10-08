@@ -1,0 +1,29 @@
+<div class="mapa-container" #container [class.tela-cheia-css]="classeTelaCheiaCss">
+  <header class="mapa-header">
+    <div>
+      <h2>Ações compartilhadas entre unidades</h2>
+      <p>Cada ponto é uma unidade; cada linha liga duas que dividem ações do PAT. Arraste os pontos, use a roda do mouse para o zoom e passe o mouse para ver os detalhes.</p>
+    </div>
+    <button type="button" class="mapa-tela-cheia" (click)="alternarTelaCheia()" *ngIf="!carregando && !erro && !vazio">
+      {{ telaCheia ? 'Sair da tela cheia' : 'Tela cheia' }}
+    </button>
+  </header>
+
+  <div class="mapa-status" *ngIf="carregando">Montando o mapa...</div>
+  <div class="mapa-status mapa-status-erro" *ngIf="erro">
+    <span>{{ erro }}</span>
+    <button type="button" (click)="carregar()">Tentar novamente</button>
+  </div>
+  <div class="mapa-status" *ngIf="!carregando && !erro && vazio">Nenhuma ação compartilhada encontrada.</div>
+
+  <div class="mapa-chart-wrap" *ngIf="!carregando && !erro && !vazio">
+    <div echarts [options]="opcoes" class="mapa-chart"></div>
+  </div>
+
+  <div class="mapa-legenda" *ngIf="!carregando && !erro && !vazio">
+    <span><i class="legenda-ponto"></i> cor mais forte = execução maior</span>
+    <span><i class="legenda-ponto legenda-grande"></i> ponto maior = mais ações compartilhadas</span>
+    <span><i class="legenda-linha"></i> linha mais grossa = mais ações em comum</span>
+    <span><i class="legenda-linha legenda-destaque"></i> vermelha = 40 pontos ou mais de diferença na execução</span>
+  </div>
+</div>

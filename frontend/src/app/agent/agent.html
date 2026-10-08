@@ -326,8 +326,7 @@
       </div>
     </header>
 
-    <!-- PAINÉIS (ranking / grafo de atividades) em tela cheia dentro do agente -->
-    <div class="ranking-panel-view" *ngIf="painelAtivo === 'ranking' || painelAtivo === 'grafo'">
+    <div class="ranking-panel-view" *ngIf="painelAtivo === 'ranking' || painelAtivo === 'compartilhadas'">
       <div class="painel-topo-row">
         <button class="voltar-chat-btn" type="button" (click)="painelAtivo = 'chat'">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -339,12 +338,12 @@
 
         <div class="painel-abas">
           <button type="button" class="painel-aba-btn" [class.active]="painelAtivo === 'ranking'" (click)="painelAtivo = 'ranking'">Ranking</button>
-          <button type="button" class="painel-aba-btn" [class.active]="painelAtivo === 'grafo'" (click)="painelAtivo = 'grafo'">Grafo de Atividades</button>
+          <button type="button" class="painel-aba-btn" [class.active]="painelAtivo === 'compartilhadas'" (click)="painelAtivo = 'compartilhadas'">Ações compartilhadas</button>
         </div>
       </div>
 
-      <app-leaderboard-ug *ngIf="painelAtivo === 'ranking'"></app-leaderboard-ug>
-      <app-grafo-atividades *ngIf="painelAtivo === 'grafo'"></app-grafo-atividades>
+      <app-leaderboard-ug *ngIf="painelAtivo === 'ranking'" (selecionarUg)="perguntarPeloPainel($event)"></app-leaderboard-ug>
+      <app-mapa-compartilhamento *ngIf="painelAtivo === 'compartilhadas'"></app-mapa-compartilhamento>
     </div>
 
     <!-- AVISO: o chat só responde com uma chave de API própria, que não vai pro repositório —
