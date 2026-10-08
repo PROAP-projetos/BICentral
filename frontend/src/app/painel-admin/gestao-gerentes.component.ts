@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { catchError, forkJoin, of } from 'rxjs';
 import { AdminService, GerenteDepartamento, UsuarioResumo } from '../services/admin.service';
 import { AgentService } from '../services/agent.service';
 
@@ -29,9 +30,11 @@ export class GestaoGerentesComponent {
   departamentos: string[] = [];
   dropdownAberto = false;
 
-  departamentoParaClassificar: string | null = null;
+  departamentosParaClassificar: string[] = [];
   tipoParaClassificar: 'UA' | 'UG' = 'UA';
   classificando = false;
+  dropdownClassificarAberto = false;
+  buscaClassificar = '';
 
   readonly DEPARTAMENTOS_POR_PAGINA = 6;
   private paginaPorUsuario = new Map<number, number>();
@@ -44,6 +47,15 @@ export class GestaoGerentesComponent {
       this.gerentes.filter((g) => g.usuarioId === this.usuarioId).map((g) => g.departamento)
     );
     return this.departamentos.filter((dep) => !jaCadastrados.has(dep));
+  }
+
+  get departamentosClassificaveis(): string[] {
+    const busca = this.normalizar(this.buscaClassificar);
+    return busca ? this.departamentos.filter((dep) => this.normalizar(dep).includes(busca)) : this.departamentos;
+  }
+
+  private normalizar(texto: string): string {
+    return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
   }
 
   get gerentesAgrupados(): GerenteAgrupado[] {
@@ -132,21 +144,60 @@ export class GestaoGerentesComponent {
     }
   }
 
-  classificar(): void {
-    if (!this.departamentoParaClassificar || this.classificando) return;
+  toggleClassificar(dep: string): void {
+    this.departamentosParaClassificar = this.departamentosParaClassificar.includes(dep)
+      ? this.departamentosParaClassificar.filter((d) => d !== dep)
+      : [...this.departamentosParaClassificar, dep];
+  }
 
+  selecionarTodosVisiveis(): void {
+    this.departamentosParaClassificar = Array.from(
+      new Set([...this.departamentosParaClassificar, ...this.departamentosClassificaveis])
+    );
+  }
+
+  limparSelecaoClassificar(): void {
+    this.departamentosParaClassificar = [];
+  }
+
+  alternarDropdownClassificar(): void {
+    this.dropdownClassificarAberto = !this.dropdownClassificarAberto;
+    if (this.dropdownClassificarAberto) this.dropdownAberto = false;
+  }
+
+  alternarDropdownGerentes(): void {
+    this.dropdownAberto = !this.dropdownAberto;
+    if (this.dropdownAberto) this.dropdownClassificarAberto = false;
+  }
+
+  classificar(): void {
+    if (this.departamentosParaClassificar.length === 0 || this.classificando) return;
+
+    const tipo = this.tipoParaClassificar;
+    const alvos = [...this.departamentosParaClassificar];
     this.classificando = true;
-    this.adminService.classificarDepartamento(this.departamentoParaClassificar, this.tipoParaClassificar).subscribe({
-      next: () => {
-        this.classificando = false;
-        this.alterado.emit(`Departamento classificado como ${this.tipoParaClassificar}.`);
-        this.departamentoParaClassificar = null;
+
+    forkJoin(
+      alvos.map((departamento) =>
+        this.adminService.classificarDepartamento(departamento, tipo).pipe(
+          catchError(() => of('erro' as const))
+        )
+      )
+    ).subscribe((resultados) => {
+      const falhas = resultados.filter((r) => r === 'erro').length;
+      const ok = alvos.length - falhas;
+      this.classificando = false;
+      this.departamentosParaClassificar = alvos.filter((_, i) => resultados[i] === 'erro');
+      this.buscaClassificar = '';
+      if (falhas === 0) {
+        this.dropdownClassificarAberto = false;
         this.tipoParaClassificar = 'UA';
-      },
-      error: () => {
-        this.classificando = false;
-        this.alterado.emit('Erro ao classificar departamento.');
       }
+      this.alterado.emit(
+        falhas === 0
+          ? `${ok} departamento(s) classificado(s) como ${tipo}.`
+          : `${ok} classificado(s) como ${tipo}; ${falhas} falharam e continuam selecionados.`
+      );
     });
   }
 

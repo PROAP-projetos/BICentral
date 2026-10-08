@@ -15,11 +15,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Convidado = usuário de fora da PROAP. Vê percentual e ações de todas as UGs, mas só vê
- * responsáveis (pessoas) dos departamentos que gerencia (gerentes_departamento). Servidor da
- * PROAP e admin não passam por essa restrição.
- */
+// Convidado = usuário de fora da PROAP: só vê responsáveis dos departamentos que gerencia.
 @Service
 public class ConvidadoService {
 
@@ -46,8 +42,6 @@ public class ConvidadoService {
                 criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
             """);
-        // E-mails convidados antes de existir conta: viram convidados de verdade no cadastro
-        // (ver promoverPendentes, chamado pelo UsuarioController).
         jdbcTemplate.execute("""
             CREATE TABLE IF NOT EXISTS convidados_pendentes (
                 email TEXT PRIMARY KEY,
@@ -74,11 +68,6 @@ public class ConvidadoService {
         return total != null && total > 0;
     }
 
-    /**
-     * Regra de escopo: pode ver responsáveis e tarefas por pessoa de um departamento?
-     * Admin e quem não é convidado sempre pode. Convidado só nos departamentos que gerencia —
-     * sem nenhum departamento atribuído, nunca pode.
-     */
     public boolean podeVerPessoas(Long usuarioId, String departamento) {
         if (usuarioId == null) {
             return false;
@@ -95,10 +84,7 @@ public class ConvidadoService {
         return total != null && total > 0;
     }
 
-    /**
-     * Departamentos (em minúsculas) cujos responsáveis o usuário pode ver. null = sem restrição
-     * (admin ou não convidado). Lista vazia = convidado sem departamento atribuído.
-     */
+    // null = sem restrição (admin ou não convidado); lista vazia = convidado sem departamento atribuído.
     public List<String> departamentosComPessoasVisiveis(Long usuarioId) {
         if (usuarioId == null) {
             return List.of();
@@ -128,8 +114,6 @@ public class ConvidadoService {
                 rs.getBoolean("pendente")));
     }
 
-    // Retorna true se virou convidado confirmado na hora (já tinha conta), false se ficou
-    // pendente aguardando a pessoa se cadastrar.
     @Transactional
     public boolean adicionar(String email) {
         if (email == null || email.isBlank()) {
@@ -160,7 +144,6 @@ public class ConvidadoService {
         return true;
     }
 
-    // Chamado pelo UsuarioController assim que um cadastro é concluído.
     @Transactional
     public void promoverPendentes(Long usuarioId, String email) {
         if (usuarioId == null || email == null || email.isBlank()) {
@@ -193,7 +176,6 @@ public class ConvidadoService {
                 : "http://localhost:4200";
     }
 
-    // O e-mail na URL trava o campo no /cadastro (ver CadastroComponent.emailTravado).
     private String linkCadastro(String email) {
         return linkBase() + "/cadastro?email=" + URLEncoder.encode(email, StandardCharsets.UTF_8);
     }

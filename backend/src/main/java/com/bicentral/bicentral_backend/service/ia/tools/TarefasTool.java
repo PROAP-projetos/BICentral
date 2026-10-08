@@ -143,8 +143,6 @@ public class TarefasTool {
         System.out.println(">>> TOOL CHAMADA: buscarTarefas(departamento=" + departamento + ", codigoAcao=" + codigoAcao + ", tituloAcao=" + tituloAcao + ", responsavel=" + responsavel
             + ", palavraChave=" + palavraChave + ", status=" + status + ", ordenarPor=" + ordenarPor + ", limite=" + qtd + ")");
 
-        // Convidado (de fora da PROAP) só vê responsáveis dos departamentos que gerencia; nos
-        // demais a tarefa aparece, mas sem o nome. null = sem restrição (admin / servidor PROAP).
         String emailLogado = SecurityContextHolder.getContext().getAuthentication().getName();
         List<String> departamentosVisiveis = convidadoService.departamentosComPessoasVisiveis(
                 usuarioService.buscarPorEmail(emailLogado).getId());
@@ -152,7 +150,7 @@ public class TarefasTool {
         List<Object> params = new ArrayList<>();
         StringBuilder where = new StringBuilder(" WHERE 1=1 ");
         if (departamentosVisiveis != null && responsavel != null && !responsavel.isBlank()) {
-            // Filtrar por nome de pessoa revelaria onde ela trabalha, mesmo com a coluna mascarada.
+            // Filtrar por nome revelaria onde a pessoa trabalha, mesmo com a coluna mascarada.
             if (departamentosVisiveis.isEmpty()) {
                 return "Você não tem acesso a informações de responsáveis. Posso mostrar os percentuais e as tarefas sem o nome de quem responde por elas.";
             }

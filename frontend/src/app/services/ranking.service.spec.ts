@@ -23,6 +23,7 @@ describe('RankingService', () => {
       tipoUnidade: 'UG',
       mediaExecucaoPct: 72.5,
       qtdAcoes: 8,
+      qtdAcoesConcluidas: 3,
       posicaoAtual: 1,
       posicaoAnterior: null
     }];
@@ -32,5 +33,13 @@ describe('RankingService', () => {
     const req = httpTesting.expectOne('/api/ranking?tipoUnidade=UG');
     expect(req.request.method).toBe('GET');
     req.flush(resposta);
+  });
+
+  it('busca o resumo global sem dupla contagem', () => {
+    service.resumo().subscribe(r => expect(r).toEqual({ totalAcoes: 50, acoesConcluidas: 12 }));
+
+    const req = httpTesting.expectOne('/api/ranking/resumo');
+    expect(req.request.method).toBe('GET');
+    req.flush({ totalAcoes: 50, acoesConcluidas: 12 });
   });
 });

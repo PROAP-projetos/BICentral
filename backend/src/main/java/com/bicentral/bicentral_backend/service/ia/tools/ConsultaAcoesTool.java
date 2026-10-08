@@ -70,14 +70,14 @@ public class ConsultaAcoesTool {
         jdbcTemplate.execute("ALTER VIEW pat_execucao_departamento SET (security_invoker = true)");
     }
 
-    // Classificação automática pros casos óbvios pelo nome (Coordenação = UA, Campus = UA) que
+    // Classificação automática pros casos óbvios pelo nome (Coordenação = UA, Campus = UG) que
     // ainda não foram classificados nem por departamento_tipo nem por gerentes_departamento.
     // Roda toda inicialização, mas só insere o que ainda falta (ON CONFLICT DO NOTHING) — não
     // sobrescreve nenhuma classificação manual já feita, seja aqui ou via gerente.
     private void preencherClassificacaoPadrao() {
         int inseridos = jdbcTemplate.update("""
             INSERT INTO departamento_tipo (departamento, tipo_unidade)
-            SELECT DISTINCT p.departamento, 'UA'
+            SELECT DISTINCT p.departamento, CASE WHEN p.departamento ILIKE 'Campus%' THEN 'UG' ELSE 'UA' END
             FROM pat_dados p
             WHERE (p.departamento ILIKE 'Coord%' OR p.departamento ILIKE 'Campus%')
               AND NOT EXISTS (SELECT 1 FROM departamento_tipo dt WHERE dt.departamento = p.departamento)
@@ -88,7 +88,7 @@ public class ConsultaAcoesTool {
             ON CONFLICT (departamento) DO NOTHING
             """);
         if (inseridos > 0) {
-            System.out.println(">>> CLASSIFICAÇÃO PADRÃO: " + inseridos + " departamento(s) classificado(s) automaticamente como UA (Coordenação/Campus sem classificação prévia)");
+            System.out.println(">>> CLASSIFICAÇÃO PADRÃO: " + inseridos + " departamento(s) classificado(s) automaticamente (Coordenação = UA, Campus = UG) sem classificação prévia");
         }
     }
 

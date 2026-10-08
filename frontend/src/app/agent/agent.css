@@ -602,7 +602,7 @@
 }
 
 .ranking-panel-view app-leaderboard-ug,
-.ranking-panel-view app-grafo-atividades {
+.ranking-panel-view app-mapa-compartilhamento {
   display: flex;
   flex: 1 1 auto;
   min-height: 0;

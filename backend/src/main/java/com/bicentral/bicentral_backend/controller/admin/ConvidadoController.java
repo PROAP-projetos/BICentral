@@ -20,7 +20,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Map;
 
-// Gestão de convidados (usuários de fora da PROAP) — só admin.
 @RestController
 @RequestMapping("/api/admin/convidados")
 public class ConvidadoController {
