@@ -17,7 +17,7 @@ public class EstadoSessao {
     private String tipoGrafico = "bar";
     private Integer ano = 2024;
     private String curso = "Todos";
-    private String indicador = "Matrículas";
+    private String indicador;
 
     private String modelo;
     private Long equipeId;

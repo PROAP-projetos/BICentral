@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.bicentral.bicentral_backend.dto.tarefas.TarefaGrafoDTO;
+import com.bicentral.bicentral_backend.service.admin.ConvidadoService;
 import com.bicentral.bicentral_backend.service.auth.UsuarioService;
 import com.bicentral.bicentral_backend.dto.tarefas.TarefasAtrasadasResumoDTO;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -24,14 +25,21 @@ import org.springframework.security.core.context.SecurityContextHolder;
 public class TarefasController {
     private final JdbcTemplate jdbcTemplate;
     private final UsuarioService usuarioService;
+    private final ConvidadoService convidadoService;
 
-    public TarefasController(JdbcTemplate jdbcTemplate, UsuarioService usuarioService) {
+    public TarefasController(JdbcTemplate jdbcTemplate, UsuarioService usuarioService, ConvidadoService convidadoService) {
         this.jdbcTemplate = jdbcTemplate;
         this.usuarioService = usuarioService;
+        this.convidadoService = convidadoService;
     }
 
     @GetMapping
     public ResponseEntity<List<TarefaGrafoDTO>> listarPorDepartamento(@RequestParam String departamento) {
+        // Convidado só vê o responsável nos departamentos que gerencia.
+        String emailLogado = SecurityContextHolder.getContext().getAuthentication().getName();
+        boolean verResponsaveis = convidadoService.podeVerPessoas(
+                usuarioService.buscarPorEmail(emailLogado).getId(), departamento);
+
         List<Map<String, Object>> linhas = jdbcTemplate.queryForList(
                 """
                         SELECT
@@ -64,7 +72,7 @@ public class TarefasController {
 
             resultado.add(new TarefaGrafoDTO(
                     (String) linha.get("titulo"),
-                    (String) linha.get("responsavel"),
+                    verResponsaveis ? (String) linha.get("responsavel") : null,
                     percentual,
                     status));
         }

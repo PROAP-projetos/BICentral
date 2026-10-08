@@ -30,6 +30,7 @@ import com.bicentral.bicentral_backend.state.StatusExecucaoAgente;
 import dev.ai4j.openai4j.chat.ChatCompletionChoice;
 
 import com.bicentral.bicentral_backend.service.admin.AdminService;
+import com.bicentral.bicentral_backend.service.admin.ConvidadoService;
 import com.bicentral.bicentral_backend.service.auth.UsuarioService;
 import com.bicentral.bicentral_backend.service.ia.ChatHistoricoService;
 import com.bicentral.bicentral_backend.service.ia.ProiapService;
@@ -59,10 +60,12 @@ public class ProiapController {
     private final UsuarioService usuarioService;
     private final AdminService adminService;
     private final ChatHistoricoService chatHistoricoService;
+    private final ConvidadoService convidadoService;
 
     public ProiapController(ProiapService proiapService, EstadoSessao estadoSessao, StatusExecucaoAgente statusExecucao,
         NotificacaoService notificacaoService, UsuarioService usuarioService, AdminService adminService,
-        ChatHistoricoService chatHistoricoService) {
+        ChatHistoricoService chatHistoricoService, ConvidadoService convidadoService) {
+        this.convidadoService = convidadoService;
         this.proiapService = proiapService;
         this.estadoSessao = estadoSessao;
         this.statusExecucao = statusExecucao;
@@ -180,7 +183,13 @@ public class ProiapController {
     // mas ela nunca tinha sido exposta aqui — o DTO e o service (NotificacaoService.
     // gerarPainelAtrasos) já existiam prontos, só faltava esse @GetMapping.
     @GetMapping("/painel-atrasos")
-    public PainelAtrasosDTO painelAtrasos(@RequestParam String departamento) {
+    public PainelAtrasosDTO painelAtrasos(@RequestParam String departamento, @AuthenticationPrincipal UserDetails userDetails) {
+        // O painel é todo organizado por responsável (pessoas) — convidado só vê dos departamentos que gerencia.
+        Usuario usuario = usuarioService.buscarPorEmail(userDetails.getUsername());
+        if (!convidadoService.podeVerPessoas(usuario.getId(), departamento)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN, "Sem acesso aos responsáveis deste departamento");
+        }
         return notificacaoService.gerarPainelAtrasos(departamento);
     }
 

@@ -51,6 +51,7 @@ export interface RelatorioHistoricoItem {
   id: number;
   departamento: string;
   tipo: string;
+  formato: string;
   status: 'PROCESSANDO' | 'PRONTO' | 'ERRO';
   arquivo_url: string | null;
   pdf_url: string | null;

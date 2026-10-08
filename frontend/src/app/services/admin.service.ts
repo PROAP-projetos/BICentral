@@ -54,6 +54,19 @@ export interface TesterAdicionadoResponse {
   mensagem: string;
 }
 
+export interface Convidado {
+  usuarioId: number | null;
+  nome: string | null;
+  email: string | null;
+  criadoEm: string;
+  pendente: boolean;
+}
+
+export interface ConvidadoAdicionadoResponse {
+  pendente: boolean;
+  mensagem: string;
+}
+
 export interface ConfiguracaoUft {
   id: number;
   tipoApi: string;
@@ -181,6 +194,11 @@ export class AdminService {
     return this.http.delete<void>(`/api/uso-ia/testers/${usuarioId}`);
   }
 
+  // limite null reseta pro padrão global (US$ 1,00).
+  definirLimiteTester(usuarioId: number, limite: number | null): Observable<void> {
+    return this.http.post<void>(`/api/uso-ia/testers/${usuarioId}/limite`, { limite });
+  }
+
   removerTesterPendente(email: string): Observable<void> {
     return this.http.delete<void>('/api/uso-ia/testers/pendentes', { params: { email } });
   }
@@ -192,5 +210,22 @@ export class AdminService {
   notificarVersaoTesters(versao: string): Observable<{ enviados: number; jaEnviado: boolean }> {
     return this.http.post<{ enviados: number; jaEnviado: boolean }>(
       '/api/uso-ia/testers/notificar-versao', null, { params: { versao } });
+  }
+
+  // Convidados (usuários de fora da PROAP) — endpoints em /api/admin/convidados
+  listarConvidados(): Observable<Convidado[]> {
+    return this.http.get<Convidado[]>('/api/admin/convidados');
+  }
+
+  adicionarConvidado(email: string): Observable<ConvidadoAdicionadoResponse> {
+    return this.http.post<ConvidadoAdicionadoResponse>('/api/admin/convidados', { email });
+  }
+
+  removerConvidado(usuarioId: number): Observable<void> {
+    return this.http.delete<void>(`/api/admin/convidados/${usuarioId}`);
+  }
+
+  removerConvidadoPendente(email: string): Observable<void> {
+    return this.http.delete<void>('/api/admin/convidados/pendentes', { params: { email } });
   }
 }

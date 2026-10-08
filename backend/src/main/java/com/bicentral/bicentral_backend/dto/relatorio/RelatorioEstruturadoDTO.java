@@ -12,7 +12,22 @@ public record RelatorioEstruturadoDTO(
         DistribuicaoExecucaoDTO distribuicao,
         List<AcaoAnalisadaDTO> analiseMenorExecucao,
         List<AcaoRelatorioDTO> destaquesPositivos,
-        List<PontoAcompanhamentoDTO> pontosDeAcompanhamento) {
+        List<PontoAcompanhamentoDTO> pontosDeAcompanhamento,
+        // Persistido (não só passado na hora de gerar) pro PDF poder ser regenerado depois a
+        // partir do texto_relatorio salvo (ver RelatorioService.gerarOuBuscarPdf).
+        boolean mostrarNomeAcao,
+        // Todas as ações do departamento sem cortar — só preenchida com ordenação explícita.
+        List<AcaoRelatorioDTO> listaCompletaOrdenada,
+        // Tarefas de todas as ações (não só as piores) — opt-in, mesma lógica de listaCompletaOrdenada.
+        List<AcaoComTarefasDTO> tarefasPorAcao,
+        // Chaves de seção que o usuário pediu pra incluir (ver RelatorioContextoTool.secoes) — vazia
+        // significa "sem restrição", mostra todas as seções que tiverem dado (comportamento padrão).
+        List<String> secoesIncluidas) {
+
+    /** Vazia = sem restrição (mostra tudo). Caso contrário, só as chaves pedidas. */
+    public boolean secaoIncluida(String chave) {
+        return secoesIncluidas == null || secoesIncluidas.isEmpty() || secoesIncluidas.contains(chave);
+    }
 
     /**
      * Achata o relatório estruturado em texto corrido, usado só como contexto
@@ -67,6 +82,18 @@ public record RelatorioEstruturadoDTO(
         sb.append("\nPontos de acompanhamento:\n");
         for (PontoAcompanhamentoDTO p : pontosDeAcompanhamento) {
             sb.append("- ").append(p.tema()).append(": ").append(p.oQueVerificar()).append("\n");
+        }
+
+        if (tarefasPorAcao != null && !tarefasPorAcao.isEmpty()) {
+            sb.append("\nTarefas por ação:\n");
+            for (AcaoComTarefasDTO a : tarefasPorAcao) {
+                sb.append("- ").append(a.acao()).append(" (").append(a.percentual()).append("%):\n");
+                for (TarefaResponsavelDTO t : a.tarefas()) {
+                    String texto = t.descricao() != null && !t.descricao().isBlank() ? t.descricao() : t.titulo();
+                    sb.append("    tarefa: ").append(texto).append(" — ").append(t.responsavel())
+                      .append(" — prazo ").append(t.prazo()).append("\n");
+                }
+            }
         }
 
         return sb.toString();

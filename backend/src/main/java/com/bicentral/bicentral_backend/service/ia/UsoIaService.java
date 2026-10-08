@@ -68,6 +68,9 @@ public class UsoIaService {
                 criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
             """);
+        // NULL = usa o padrão global (LIMITE_DOLARES) — só preenchido quando um admin aumenta o
+        // limite de um tester específico (ver definirLimiteTester).
+        jdbcTemplate.execute("ALTER TABLE testers_proiap ADD COLUMN IF NOT EXISTS limite_dolares NUMERIC(10,2)");
         for (Long id : TESTERS_INICIAIS) {
             jdbcTemplate.update(
                 "INSERT INTO testers_proiap (usuario_id) VALUES (?) ON CONFLICT (usuario_id) DO NOTHING", id);
@@ -151,7 +154,30 @@ public class UsoIaService {
         if (!ehTester(usuarioId)) {
             return false;
         }
-        return custoDoUsuario(usuarioId) >= LIMITE_DOLARES;
+        return custoDoUsuario(usuarioId) >= limiteDoUsuario(usuarioId);
+    }
+
+    /** Limite individual do tester, ou o padrão global se nunca foi customizado (limite_dolares NULL). */
+    public double limiteDoUsuario(Long usuarioId) {
+        if (usuarioId == null) {
+            return LIMITE_DOLARES;
+        }
+        Double limite = jdbcTemplate.query(
+                "SELECT limite_dolares FROM testers_proiap WHERE usuario_id = ?",
+                rs -> rs.next() ? (Double) rs.getObject(1) : null, usuarioId);
+        return limite != null ? limite : LIMITE_DOLARES;
+    }
+
+    // null reseta pro padrão global; admin only (ver UsoIaController).
+    public void definirLimiteTester(Long usuarioId, Double novoLimite) {
+        if (novoLimite != null && novoLimite <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O limite precisa ser maior que zero.");
+        }
+        int linhas = jdbcTemplate.update(
+                "UPDATE testers_proiap SET limite_dolares = ? WHERE usuario_id = ?", novoLimite, usuarioId);
+        if (linhas == 0) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Tester não encontrado.");
+        }
     }
 
     public boolean ehTester(Long usuarioId) {
@@ -180,12 +206,13 @@ public class UsoIaService {
             (SELECT t.usuario_id AS usuario_id, u.username AS nome, u.email AS email, t.criado_em AS criado_em,
                     COALESCE((SELECT SUM(l.custo_estimado) FROM interacao_ia_log l
                               WHERE l.usuario_id = t.usuario_id), 0)::numeric AS gasto,
+                    COALESCE(t.limite_dolares, ?) AS limite,
                     false AS pendente
              FROM testers_proiap t
              LEFT JOIN usuario u ON u.id = t.usuario_id)
             UNION ALL
             (SELECT NULL::bigint AS usuario_id, NULL::text AS nome, p.email AS email, p.criado_em AS criado_em,
-                    0::numeric AS gasto, true AS pendente
+                    0::numeric AS gasto, ? AS limite, true AS pendente
              FROM testers_proiap_pendentes p)
             ORDER BY pendente, nome NULLS LAST, email
             """, (rs, rowNum) -> new TesterProiapDTO(
@@ -193,10 +220,10 @@ public class UsoIaService {
                 rs.getString("nome"),
                 rs.getString("email"),
                 rs.getDouble("gasto"),
-                LIMITE_DOLARES,
+                rs.getDouble("limite"),
                 rs.getObject("criado_em", OffsetDateTime.class),
                 rs.getBoolean("pendente")
-        ));
+        ), LIMITE_DOLARES, LIMITE_DOLARES);
     }
 
     // Retorna true se virou tester confirmado na hora (já tinha conta), false se ficou
