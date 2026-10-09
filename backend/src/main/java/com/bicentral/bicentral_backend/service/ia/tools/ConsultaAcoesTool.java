@@ -187,27 +187,39 @@ public class ConsultaAcoesTool {
         return sb.toString();
     }
 
-    @Tool("Ranqueia departamentos pela média de execução do PAT (ano corrente). Use para perguntas sobre quais unidades estão melhores ou piores no PAT. Pode filtrar por UG ou UA.")
+    @Tool("Ranqueia departamentos pela média de execução do PAT (ano corrente). Use para perguntas sobre quais unidades estão melhores ou piores no PAT. Pode filtrar por UG ou UA e por trecho do nome (ex.: 'Palmas', 'Mestrado', 'Pedagogia'), o que serve para ranquear um grupo de unidades, como todas as coordenações de um campus.")
     public String ranquearDepartamentosPorExecucaoPAT(
             @P("'melhores' para maior execução primeiro, 'piores' para menor execução primeiro") String ordem,
             @P(value = "'UG' para só Unidades Gestoras, 'UA' para só Unidades Acadêmicas, deixe null para todas", required = false) String tipoUnidade,
-            @P(value = "quantidade a retornar, padrão 10. Se o usuário pedir 'todos os departamentos' ou não quiser recorte nenhum, passe 500", required = false) Integer limite) {
+            @P(value = "quantidade a retornar, padrão 10. Se o usuário pedir 'todos os departamentos' ou não quiser recorte nenhum, passe 500", required = false) Integer limite,
+            @P(value = "trecho do nome do departamento para filtrar um grupo (ex.: 'Palmas' traz as coordenações e unidades de Palmas). Combine com tipoUnidade 'UA' para só coordenações. Ao consultar um grupo inteiro, passe limite 500 para não cortar a lista. Deixe null para não filtrar por nome", required = false) String nomeContem) {
         int qtd = (limite == null || limite <= 0) ? 10 : Math.min(limite, 500);
         String direcao = ordem != null && ordem.toLowerCase().contains("melhor") ? "DESC" : "ASC";
         boolean filtrarTipo = tipoUnidade != null && (tipoUnidade.equalsIgnoreCase("UA") || tipoUnidade.equalsIgnoreCase("UG"));
         statusExecucao.definir("Ranqueando departamentos pela execução do PAT...");
         System.out.println(">>> TOOL CHAMADA: ranquearDepartamentosPorExecucaoPAT(ordem=" + ordem + ", tipoUnidade=" + tipoUnidade + ", limite=" + qtd + ")");
 
+        List<Object> params = new java.util.ArrayList<>();
+        List<String> condicoes = new java.util.ArrayList<>();
+        if (filtrarTipo) {
+            condicoes.add("tipo_unidade = ?");
+            params.add(tipoUnidade.toUpperCase());
+        }
+        if (nomeContem != null && !nomeContem.isBlank()) {
+            condicoes.add("departamento ILIKE ?");
+            params.add("%" + nomeContem.trim() + "%");
+        }
+        params.add(qtd);
+        String where = condicoes.isEmpty() ? "" : "WHERE " + String.join(" AND ", condicoes) + " ";
+
         String sql = "SELECT departamento, ROUND(AVG(percentual_execucao) * 100, 2) AS media_execucao_pct, COUNT(*) AS qtd_acoes " +
                      "FROM pat_execucao_departamento " +
-                     (filtrarTipo ? "WHERE tipo_unidade = ? " : "") +
+                     where +
                      "GROUP BY departamento " +
                      "ORDER BY media_execucao_pct " + direcao + " " +
                      "LIMIT ?";
 
-        List<Map<String, Object>> resultado = filtrarTipo
-            ? jdbcTemplate.queryForList(sql, tipoUnidade.toUpperCase(), qtd)
-            : jdbcTemplate.queryForList(sql, qtd);
+        List<Map<String, Object>> resultado = jdbcTemplate.queryForList(sql, params.toArray());
 
         System.out.println(">>> TOOL RESULTADO: " + resultado.size() + " departamento(s) retornado(s)");
         if (resultado.isEmpty()) {
@@ -340,17 +352,21 @@ public class ConsultaAcoesTool {
         }
 
         String sqlPiores = """
-            SELECT codigo_acao, titulo_acao, ROUND(percentual_execucao * 100, 2) AS percentual_pat
-            FROM pat_execucao_departamento
-            WHERE departamento ILIKE ?
-            ORDER BY percentual_execucao ASC
+            SELECT p.codigo_acao, p.titulo_acao, ROUND(p.percentual_execucao * 100, 2) AS percentual_pat,
+                   (SELECT ROUND(AVG(g.percentual_execucao) * 100, 2) FROM pat_execucao_departamento g WHERE g.codigo_acao = p.codigo_acao) AS pct_geral,
+                   (SELECT COUNT(*) FROM pat_execucao_departamento g WHERE g.codigo_acao = p.codigo_acao) AS qtd_unidades
+            FROM pat_execucao_departamento p
+            WHERE p.departamento ILIKE ?
+            ORDER BY p.percentual_execucao ASC
             LIMIT 8
             """;
         String sqlMelhores = """
-            SELECT codigo_acao, titulo_acao, ROUND(percentual_execucao * 100, 2) AS percentual_pat
-            FROM pat_execucao_departamento
-            WHERE departamento ILIKE ?
-            ORDER BY percentual_execucao DESC
+            SELECT p.codigo_acao, p.titulo_acao, ROUND(p.percentual_execucao * 100, 2) AS percentual_pat,
+                   (SELECT ROUND(AVG(g.percentual_execucao) * 100, 2) FROM pat_execucao_departamento g WHERE g.codigo_acao = p.codigo_acao) AS pct_geral,
+                   (SELECT COUNT(*) FROM pat_execucao_departamento g WHERE g.codigo_acao = p.codigo_acao) AS qtd_unidades
+            FROM pat_execucao_departamento p
+            WHERE p.departamento ILIKE ?
+            ORDER BY p.percentual_execucao DESC
             LIMIT 8
             """;
 
@@ -366,17 +382,330 @@ public class ConsultaAcoesTool {
           .append(resumo.get("em_andamento")).append(" em andamento, ")
           .append(resumo.get("concluidas")).append(" concluídas (100%).\n\n");
 
+        String posicao = posicaoNoRankingDeUgs(nomeDepartamento.trim());
+        if (posicao != null) {
+            sb.append(posicao).append("\n\n");
+        }
+
         sb.append("AÇÕES COM MENOR EXECUÇÃO (até 8):\n");
         for (Map<String, Object> item : piores) {
-            sb.append("- [").append(formatarCodigo(item.get("codigo_acao"))).append("] ").append(truncarTituloSemCodigo((String) item.get("titulo_acao"))).append(" — ").append(formatarPercentualEnxuto(item.get("percentual_pat"))).append("%\n");
+            sb.append("- [").append(formatarCodigo(item.get("codigo_acao"))).append("] ").append(truncarTituloSemCodigo((String) item.get("titulo_acao"))).append(" — ").append(formatarPercentualEnxuto(item.get("percentual_pat"))).append("%").append(sufixoGeralDaAcao(item)).append("\n");
         }
 
         sb.append("\nAÇÕES COM MAIOR EXECUÇÃO (até 8):\n");
         for (Map<String, Object> item : melhores) {
-            sb.append("- [").append(formatarCodigo(item.get("codigo_acao"))).append("] ").append(truncarTituloSemCodigo((String) item.get("titulo_acao"))).append(" — ").append(formatarPercentualEnxuto(item.get("percentual_pat"))).append("%\n");
+            sb.append("- [").append(formatarCodigo(item.get("codigo_acao"))).append("] ").append(truncarTituloSemCodigo((String) item.get("titulo_acao"))).append(" — ").append(formatarPercentualEnxuto(item.get("percentual_pat"))).append("%").append(sufixoGeralDaAcao(item)).append("\n");
         }
 
         return sb.toString();
+    }
+
+    // Ação de um setor só não tem percentual geral: o dela é o da própria unidade.
+    private String sufixoGeralDaAcao(Map<String, Object> item) {
+        Object qtd = item.get("qtd_unidades");
+        if (qtd == null || ((Number) qtd).intValue() < 2) {
+            return " (ação de um setor só, sem percentual geral)";
+        }
+        return " (ação compartilhada: " + formatarPercentualEnxuto(item.get("pct_geral")) + "% geral entre " + qtd + " unidades)";
+    }
+
+    @Tool("Monta o RESUMO EXECUTIVO do PAT (ano corrente) da instituição inteira, com os mesmos números do painel de ranking: total de ações únicas e quantas estão concluídas, em andamento e paradas, média das UGs, UGs abaixo de 60%, 3 melhores e 3 piores UGs com posição, e ações compartilhadas paradas em 0% em todas as unidades. Use quando o usuário pedir 'resumo executivo', 'situação geral do PAT' ou 'visão geral das unidades'. Cite os números exatamente como vierem, sem recalcular.")
+    public String resumoExecutivoPAT() {
+        statusExecucao.definir("Montando o resumo executivo do PAT...");
+        System.out.println(">>> TOOL CHAMADA: resumoExecutivoPAT()");
+
+        // Mesma regra do KPI do painel: ação compartilhada conta uma vez e só está concluída se todas as unidades chegaram a 100%.
+        Map<String, Object> acoes = jdbcTemplate.queryForMap("""
+            SELECT COUNT(*) AS total,
+                   COUNT(*) FILTER (WHERE menor >= 1) AS concluidas,
+                   COUNT(*) FILTER (WHERE maior = 0) AS paradas
+            FROM (SELECT codigo_acao,
+                         MIN(COALESCE(percentual_execucao, 0)) AS menor,
+                         MAX(COALESCE(percentual_execucao, 0)) AS maior
+                  FROM pat_execucao_departamento
+                  WHERE codigo_acao IS NOT NULL
+                  GROUP BY codigo_acao) a
+            """);
+        int totalAcoes = ((Number) acoes.get("total")).intValue();
+        if (totalAcoes == 0) {
+            return "Nenhuma ação de PAT encontrada no ano corrente.";
+        }
+        int concluidas = ((Number) acoes.get("concluidas")).intValue();
+        int paradas = ((Number) acoes.get("paradas")).intValue();
+        int emAndamento = totalAcoes - concluidas - paradas;
+
+        List<Map<String, Object>> ugs = jdbcTemplate.queryForList("""
+            SELECT departamento, ROUND(COALESCE(AVG(percentual_execucao), 0) * 100, 2) AS media
+            FROM pat_execucao_departamento
+            WHERE tipo_unidade = 'UG'
+            GROUP BY departamento
+            ORDER BY media DESC, departamento
+            """);
+        double somaMedias = 0;
+        int abaixoDe60 = 0;
+        for (Map<String, Object> ug : ugs) {
+            double media = ((Number) ug.get("media")).doubleValue();
+            somaMedias += media;
+            if (media < 60) abaixoDe60++;
+        }
+        double mediaUgs = ugs.isEmpty() ? 0 : Math.round(somaMedias / ugs.size() * 10.0) / 10.0;
+
+        StringBuilder sb = new StringBuilder();
+        try {
+            String atualizadoEm = jdbcTemplate.queryForObject("SELECT to_char(MAX(atualizado_em), 'DD/MM/YYYY HH24:MI') FROM pat_dados", String.class);
+            if (atualizadoEm != null) sb.append("DADOS ATUALIZADOS EM: ").append(atualizadoEm).append("\n\n");
+        } catch (Exception ignorada) {
+            // sem data de atualização o resumo continua válido
+        }
+
+        sb.append("SITUAÇÃO GERAL: ").append(totalAcoes).append(" ações únicas no PAT (ação compartilhada conta uma vez). ")
+          .append(concluidas).append(" concluídas (todas as unidades responsáveis em 100%), ")
+          .append(emAndamento).append(" em andamento e ")
+          .append(paradas).append(" paradas (0% em todas as unidades responsáveis).\n");
+        sb.append("UGs: ").append(ugs.size()).append(" no ranking, média de execução de ").append(formatarPercentualEnxuto(mediaUgs))
+          .append("%, ").append(abaixoDe60).append(" abaixo de 60% (faixa de atenção do painel).\n\n");
+
+        if (!ugs.isEmpty()) {
+            sb.append("MELHORES UGs (posição de ").append(ugs.size()).append("):\n").append(linhasDoResumo(ugs, true));
+            sb.append("\nPIORES UGs (posição de ").append(ugs.size()).append("):\n").append(linhasDoResumo(ugs, false));
+        }
+
+        List<Map<String, Object>> compartilhadasParadas = jdbcTemplate.queryForList("""
+            SELECT codigo_acao, MIN(titulo_acao) AS titulo, COUNT(DISTINCT departamento) AS qtd_unidades,
+                   COUNT(*) OVER () AS total_grupos
+            FROM pat_execucao_departamento
+            WHERE codigo_acao IS NOT NULL
+            GROUP BY codigo_acao
+            HAVING COUNT(DISTINCT departamento) >= 2 AND MAX(COALESCE(percentual_execucao, 0)) = 0
+            ORDER BY qtd_unidades DESC, codigo_acao
+            LIMIT 5
+            """);
+        sb.append("\nAÇÕES COMPARTILHADAS PARADAS EM TODAS AS UNIDADES: ");
+        if (compartilhadasParadas.isEmpty()) {
+            sb.append("nenhuma.\n");
+        } else {
+            sb.append(compartilhadasParadas.get(0).get("total_grupos")).append(" no total; as 5 com mais unidades envolvidas:\n");
+            for (Map<String, Object> a : compartilhadasParadas) {
+                sb.append("- [").append(formatarCodigo(a.get("codigo_acao"))).append("] ")
+                  .append(truncarTituloSemCodigo((String) a.get("titulo")))
+                  .append(" — ").append(a.get("qtd_unidades")).append(" unidades\n");
+            }
+        }
+        return sb.toString();
+    }
+
+    // Empatadas no mesmo percentual saem como um grupo: a ordem entre elas é só alfabética e não deve virar posição individual.
+    private String linhasDoResumo(List<Map<String, Object>> ugs, boolean melhores) {
+        int total = ugs.size();
+        int passo = melhores ? 1 : -1;
+        StringBuilder sb = new StringBuilder();
+        int mostradas = 0;
+        int i = melhores ? 0 : total - 1;
+        while (mostradas < 3 && i >= 0 && i < total) {
+            Object media = ugs.get(i).get("media");
+            List<String> nomes = new java.util.ArrayList<>();
+            int j = i;
+            while (j >= 0 && j < total && ugs.get(j).get("media").equals(media)) {
+                nomes.add((String) ugs.get(j).get("departamento"));
+                j += passo;
+            }
+            int primeiraPosicao = melhores ? i + 1 : j + 2;
+            int ultimaPosicao = melhores ? j : i + 1;
+            if (nomes.size() == 1) {
+                sb.append("- ").append(primeiraPosicao).append("ª: ").append(nomes.get(0))
+                  .append(" — ").append(formatarPercentualEnxuto(media)).append("%\n");
+            } else {
+                int exibidos = Math.min(nomes.size(), 10);
+                sb.append("- ").append(nomes.size()).append(" UGs empatadas em ").append(formatarPercentualEnxuto(media))
+                  .append("% (posições ").append(primeiraPosicao).append(" a ").append(ultimaPosicao).append(" de ").append(total).append("): ")
+                  .append(String.join("; ", nomes.subList(0, exibidos)));
+                if (nomes.size() > exibidos) sb.append("; e mais ").append(nomes.size() - exibidos);
+                sb.append("\n");
+            }
+            mostradas += nomes.size();
+            i = j;
+        }
+        return sb.toString();
+    }
+
+    @Tool("Compara o PAT (ano corrente) de DUAS unidades/departamentos lado a lado: média de execução, posição no ranking de UGs, total de ações e quantas estão concluídas, em andamento e zeradas, mais as ações que as duas dividem com o percentual de cada uma. Use quando o usuário pedir para comparar, contrapor ou colocar duas unidades frente a frente. Passe o nome completo ou parte do nome de cada unidade. Cite os números exatamente como vierem.")
+    public String compararUnidadesPAT(
+            @P("nome ou parte do nome da primeira unidade") String unidadeA,
+            @P("nome ou parte do nome da segunda unidade") String unidadeB) {
+        statusExecucao.definir("Comparando as duas unidades no PAT...");
+        System.out.println(">>> TOOL CHAMADA: compararUnidadesPAT(a=" + unidadeA + ", b=" + unidadeB + ")");
+
+        List<String> candidatasA = buscarNomesDeDepartamento(unidadeA);
+        List<String> candidatasB = buscarNomesDeDepartamento(unidadeB);
+        String problema = problemaDeResolucao(unidadeA, candidatasA);
+        if (problema == null) {
+            problema = problemaDeResolucao(unidadeB, candidatasB);
+        }
+        if (problema != null) {
+            return problema;
+        }
+        String nomeA = escolherDepartamento(unidadeA, candidatasA);
+        String nomeB = escolherDepartamento(unidadeB, candidatasB);
+        if (nomeA.equals(nomeB)) {
+            return "As duas unidades são a mesma (" + nomeA + "). Peça ao usuário duas unidades diferentes.";
+        }
+
+        Map<String, Object> a = estatisticasDaUnidade(nomeA);
+        Map<String, Object> b = estatisticasDaUnidade(nomeB);
+        double mediaA = ((Number) a.get("media")).doubleValue();
+        double mediaB = ((Number) b.get("media")).doubleValue();
+
+        StringBuilder sb = new StringBuilder("COMPARAÇÃO NO PAT (ano corrente):\n\n");
+        sb.append(blocoDaUnidade(nomeA, a)).append("\n").append(blocoDaUnidade(nomeB, b));
+        sb.append("\nDIFERENÇA DE MÉDIA: ").append(formatarPercentualEnxuto(Math.abs(mediaA - mediaB))).append(" pontos percentuais a favor de ")
+          .append(mediaA >= mediaB ? nomeA : nomeB).append(".\n");
+
+        List<Map<String, Object>> comuns = jdbcTemplate.queryForList("""
+            SELECT a.codigo_acao, a.titulo_acao,
+                   ROUND(COALESCE(a.percentual_execucao, 0) * 100, 2) AS pct_a,
+                   ROUND(COALESCE(b.percentual_execucao, 0) * 100, 2) AS pct_b,
+                   COUNT(*) OVER () AS total_comuns
+            FROM pat_execucao_departamento a
+            JOIN pat_execucao_departamento b ON a.codigo_acao = b.codigo_acao
+            WHERE a.departamento = ? AND b.departamento = ? AND a.codigo_acao IS NOT NULL
+            ORDER BY ABS(COALESCE(a.percentual_execucao, 0) - COALESCE(b.percentual_execucao, 0)) DESC, a.codigo_acao
+            LIMIT 8
+            """, nomeA, nomeB);
+        sb.append("\nAÇÕES EM COMUM: ");
+        if (comuns.isEmpty()) {
+            sb.append("as duas unidades não dividem nenhuma ação.\n");
+        } else {
+            sb.append(comuns.get(0).get("total_comuns")).append(" no total; as de maior diferença entre as duas (até 8):\n");
+            for (Map<String, Object> acao : comuns) {
+                sb.append("- [").append(formatarCodigo(acao.get("codigo_acao"))).append("] ")
+                  .append(truncarTituloSemCodigo((String) acao.get("titulo_acao")))
+                  .append(" — ").append(nomeA).append(": ").append(formatarPercentualEnxuto(acao.get("pct_a"))).append("% | ")
+                  .append(nomeB).append(": ").append(formatarPercentualEnxuto(acao.get("pct_b"))).append("%\n");
+            }
+        }
+        return sb.toString();
+    }
+
+    private List<String> buscarNomesDeDepartamento(String trecho) {
+        if (trecho == null || trecho.isBlank()) {
+            return List.of();
+        }
+        return jdbcTemplate.queryForList(
+                "SELECT DISTINCT departamento FROM pat_execucao_departamento WHERE departamento ILIKE ? ORDER BY departamento",
+                String.class, "%" + trecho.trim() + "%");
+    }
+
+    private String escolherDepartamento(String trecho, List<String> candidatas) {
+        return candidatas.stream().filter(n -> n.equalsIgnoreCase(trecho.trim())).findFirst().orElse(candidatas.get(0));
+    }
+
+    private String problemaDeResolucao(String trecho, List<String> candidatas) {
+        if (candidatas.isEmpty()) {
+            return "Nenhuma unidade encontrada no PAT com o nome '" + trecho + "'. Peça ao usuário para conferir o nome.";
+        }
+        boolean exata = candidatas.stream().anyMatch(n -> n.equalsIgnoreCase(trecho.trim()));
+        if (candidatas.size() > 1 && !exata) {
+            return "O nome '" + trecho + "' corresponde a várias unidades: " + String.join("; ", candidatas.subList(0, Math.min(candidatas.size(), 8)))
+                    + ". Peça ao usuário para dizer qual delas.";
+        }
+        return null;
+    }
+
+    private Map<String, Object> estatisticasDaUnidade(String nomeExato) {
+        return jdbcTemplate.queryForMap("""
+            SELECT COUNT(*) AS total,
+                   ROUND(COALESCE(AVG(COALESCE(percentual_execucao, 0)), 0) * 100, 2) AS media,
+                   COUNT(*) FILTER (WHERE COALESCE(percentual_execucao, 0) = 0) AS zeradas,
+                   COUNT(*) FILTER (WHERE COALESCE(percentual_execucao, 0) > 0 AND percentual_execucao < 1) AS em_andamento,
+                   COUNT(*) FILTER (WHERE percentual_execucao >= 1) AS concluidas
+            FROM pat_execucao_departamento
+            WHERE departamento = ?
+            """, nomeExato);
+    }
+
+    private String blocoDaUnidade(String nome, Map<String, Object> e) {
+        String posicao = posicaoNoRankingDeUgs(nome);
+        return "- " + nome + ": média de " + formatarPercentualEnxuto(e.get("media")) + "%, "
+                + e.get("total") + " ações (" + e.get("concluidas") + " concluídas, " + e.get("em_andamento") + " em andamento, " + e.get("zeradas") + " zeradas). "
+                + (posicao != null ? posicao.replace(" Cite exatamente esta posição; não calcule outra.", "") : "Fora do ranking de UGs.") + "\n";
+    }
+
+    @Tool("Lista as UGs com mais ações SEM NENHUMA EXECUÇÃO (0%) no PAT (ano corrente), com o total de ações de cada uma, quantas estão zeradas, o percentual de zeradas e quantas dessas zeradas são ações compartilhadas com outras unidades. Use para perguntas como 'quais unidades têm mais ações paradas/zeradas/sem execução'. Cite os números exatamente como vierem.")
+    public String acoesSemExecucaoPorUG(
+            @P(value = "quantas UGs listar, padrão 10", required = false) Integer limite) {
+        int qtd = (limite == null || limite <= 0) ? 10 : Math.min(limite, 50);
+        statusExecucao.definir("Levantando as ações sem execução por UG...");
+        System.out.println(">>> TOOL CHAMADA: acoesSemExecucaoPorUG(limite=" + qtd + ")");
+
+        // Mesma regra do restante do PAT: ação zerada é percentual_execucao nulo ou 0 na atribuição daquela unidade.
+        List<Map<String, Object>> linhas = jdbcTemplate.queryForList("""
+            SELECT p.departamento,
+                   COUNT(*) AS total,
+                   COUNT(*) FILTER (WHERE COALESCE(p.percentual_execucao, 0) = 0) AS zeradas,
+                   COUNT(*) FILTER (WHERE COALESCE(p.percentual_execucao, 0) = 0 AND c.qtd_unidades > 1) AS zeradas_compartilhadas,
+                   COUNT(*) OVER () AS ugs_com_zeradas,
+                   SUM(COUNT(*) FILTER (WHERE COALESCE(p.percentual_execucao, 0) = 0)) OVER () AS zeradas_total
+            FROM pat_execucao_departamento p
+            JOIN (SELECT codigo_acao, COUNT(DISTINCT departamento) AS qtd_unidades
+                  FROM pat_execucao_departamento WHERE codigo_acao IS NOT NULL GROUP BY codigo_acao) c
+              ON c.codigo_acao = p.codigo_acao
+            WHERE p.tipo_unidade = 'UG'
+            GROUP BY p.departamento
+            HAVING COUNT(*) FILTER (WHERE COALESCE(p.percentual_execucao, 0) = 0) > 0
+            ORDER BY zeradas DESC, p.departamento
+            LIMIT %d
+            """.formatted(qtd));
+        if (linhas.isEmpty()) {
+            return "Nenhuma UG tem ação sem execução no PAT do ano corrente.";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(linhas.get(0).get("ugs_com_zeradas")).append(" UGs têm pelo menos uma ação sem execução, somando ")
+          .append(linhas.get(0).get("zeradas_total")).append(" atribuições zeradas (uma ação compartilhada conta uma vez para cada UG). As ")
+          .append(linhas.size()).append(" com mais ações zeradas:\n\n");
+        sb.append("| UG | Ações | Zeradas | % zeradas | Zeradas compartilhadas |\n");
+        sb.append("|---|---|---|---|---|\n");
+        for (Map<String, Object> l : linhas) {
+            double total = ((Number) l.get("total")).doubleValue();
+            double zeradas = ((Number) l.get("zeradas")).doubleValue();
+            sb.append("| ").append(l.get("departamento"))
+              .append(" | ").append(l.get("total"))
+              .append(" | ").append(l.get("zeradas"))
+              .append(" | ").append(formatarPercentualEnxuto(Math.round(zeradas / total * 1000.0) / 10.0)).append("%")
+              .append(" | ").append(l.get("zeradas_compartilhadas"))
+              .append(" |\n");
+        }
+        return sb.toString();
+    }
+
+    // Mesma regra do painel de ranking (só UG, desempate pelo nome): evita o agente contar coordenações e divergir da tela.
+    private String posicaoNoRankingDeUgs(String nomeDepartamento) {
+        String sql = """
+            WITH r AS (
+                SELECT departamento,
+                       ROUND(COALESCE(AVG(percentual_execucao), 0) * 100, 2) AS media,
+                       ROW_NUMBER() OVER (ORDER BY ROUND(COALESCE(AVG(percentual_execucao), 0) * 100, 2) DESC, departamento) AS pos,
+                       COUNT(*) OVER () AS total
+                FROM pat_execucao_departamento
+                WHERE tipo_unidade = 'UG'
+                GROUP BY departamento
+            )
+            SELECT pos, total, (SELECT COUNT(*) FROM r r2 WHERE r2.media = r.media) AS com_mesma_media
+            FROM r WHERE departamento ILIKE ? ORDER BY pos LIMIT 1
+            """;
+        try {
+            List<Map<String, Object>> linhas = jdbcTemplate.queryForList(sql, "%" + nomeDepartamento + "%");
+            if (linhas.isEmpty()) {
+                return null;
+            }
+            Map<String, Object> linha = linhas.get(0);
+            int empatadas = ((Number) linha.get("com_mesma_media")).intValue() - 1;
+            return "POSIÇÃO NO RANKING DE UGs (mesmo ranking do painel, sem coordenações): " + linha.get("pos") + "ª de " + linha.get("total")
+                    + (empatadas > 0 ? " (empatada em percentual com mais " + empatadas + " UG(s))" : " (sem empate)")
+                    + ". Cite exatamente esta posição; não calcule outra.";
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     // titulo_acao vem do dado bruto e traz o nome completo do departamento colado após " | " —

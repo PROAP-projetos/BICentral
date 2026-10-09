@@ -111,6 +111,20 @@
         </button>
       </div>
 
+      <div class="filtro-unidades filtro-campus" *ngIf="filtroAtivo === 'coordenacao'">
+        <button type="button" class="filtro-chip" [class.active]="campusAtivo === 'todos'" (click)="selecionarCampus('todos')">
+          Todos os campi
+        </button>
+        <button
+          type="button"
+          class="filtro-chip"
+          *ngFor="let c of campi; trackBy: trackByCampus"
+          [class.active]="campusAtivo === c.valor"
+          (click)="selecionarCampus(c.valor)">
+          {{ c.rotulo }} <span class="filtro-contagem">{{ c.total }}</span>
+        </button>
+      </div>
+
       <!-- MODO CARDS COM FLIP ANIMATION -->
       <div class="ranking-status" *ngIf="carregandoRanking">Carregando as unidades...</div>
       <div class="ranking-status ranking-status-error" *ngIf="erroRanking">

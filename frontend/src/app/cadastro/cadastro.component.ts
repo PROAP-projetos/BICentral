@@ -29,6 +29,8 @@ export class CadastroComponent implements OnInit {
   showLoginShortcut = false;
   registrationSuccess = false;
   emailTravado = false;
+  convite: string | null = null;
+  conviteInvalido = false;
   mostrarSenha = false;
   mostrarConfirmarSenha = false;
 
@@ -69,6 +71,12 @@ export class CadastroComponent implements OnInit {
     // admin) — trava o campo pra pessoa não trocar sem querer (ou de propósito) pra outro
     // e-mail que não foi convidado. O backend também recusa no fim, mas travar aqui evita
     // a pessoa preencher tudo e só descobrir o bloqueio depois de enviar.
+    this.convite = this.route.snapshot.queryParamMap.get('convite');
+    if (this.convite) {
+      this.carregarConvite(this.convite);
+      return;
+    }
+
     const emailNaUrl = this.route.snapshot.queryParamMap.get('email');
     if (emailNaUrl) {
       this.usuario.email = emailNaUrl;
@@ -76,7 +84,24 @@ export class CadastroComponent implements OnInit {
     }
   }
 
+  private carregarConvite(token: string): void {
+    this.http.get<{ email: string }>(`/api/usuarios/convite/${encodeURIComponent(token)}`).subscribe({
+      next: (convite) => {
+        this.usuario.email = convite.email;
+        this.emailTravado = true;
+      },
+      error: () => {
+        this.conviteInvalido = true;
+        this.messageType = 'error';
+        this.alertTitle = 'Convite inválido';
+        this.message = 'Este convite é inválido ou já foi utilizado. Peça um novo convite ao administrador.';
+      }
+    });
+  }
+
   cadastrar() {
+    if (this.conviteInvalido) return;
+
     this.message = null;
     this.messageType = 'info';
     this.alertTitle = 'Atenção';
@@ -98,7 +123,7 @@ export class CadastroComponent implements OnInit {
       return;
     }
 
-    this.http.post<{ mensagem?: string }>('/api/usuarios/cadastro', this.usuario)
+    this.http.post<{ mensagem?: string }>('/api/usuarios/cadastro', this.usuario, { params: this.convite ? { convite: this.convite } : {} })
       .subscribe({
         next: (response) => {
           this.registrationSuccess = true;

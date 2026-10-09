@@ -19,6 +19,7 @@ public class TarefasTool {
     // LIMIAR_MOSTRAR_TUDO evita truncar um total próximo do padrão (ex: 13 em 10) — só amostra de verdade quando o total é bem maior.
     private static final int LIMITE_PADRAO = 10;
     private static final int LIMIAR_MOSTRAR_TUDO = 15;
+    static final String PREFIXO_SEM_PERMISSAO = "SEM PERMISSÃO:";
 
     private final JdbcTemplate jdbcTemplate;
     private final UsuarioService usuarioService;
@@ -149,10 +150,14 @@ public class TarefasTool {
 
         List<Object> params = new ArrayList<>();
         StringBuilder where = new StringBuilder(" WHERE 1=1 ");
-        if (departamentosVisiveis != null && responsavel != null && !responsavel.isBlank()) {
-            // Filtrar por nome revelaria onde a pessoa trabalha, mesmo com a coluna mascarada.
-            if (departamentosVisiveis.isEmpty()) {
-                return "Você não tem acesso a informações de responsáveis. Posso mostrar os percentuais e as tarefas sem o nome de quem responde por elas.";
+        if (departamentosVisiveis != null) {
+            String pedido = departamento == null ? "" : departamento.trim().toLowerCase();
+            boolean pediuOutroSetor = !pedido.isEmpty() && departamentosVisiveis.stream().noneMatch(d -> d.contains(pedido));
+            if (departamentosVisiveis.isEmpty() || pediuOutroSetor) {
+                return PREFIXO_SEM_PERMISSAO + " o usuário não tem permissão de acesso às tarefas"
+                        + (pedido.isEmpty() ? "" : " de " + departamento.trim())
+                        + " (convidados só veem as tarefas dos departamentos que gerenciam). Diga isso diretamente na primeira frase"
+                        + " (ex: \"Você não tem permissão de acesso às tarefas dessa unidade.\") e ofereça os percentuais e as ações dela, que ele pode ver.";
             }
             where.append(" AND LOWER(b.departamento) IN (")
                  .append(String.join(",", java.util.Collections.nCopies(departamentosVisiveis.size(), "?")))
@@ -248,26 +253,29 @@ public class TarefasTool {
 
         StringBuilder sb = new StringBuilder();
         boolean truncado = total > tarefas.size();
-        sb.append(truncado ? tarefas.size() + " tarefa(s) mostrada(s) de " + total + " no total" : total + " tarefa(s) encontrada(s)")
-          .append(":\n\n");
-        sb.append("| Ação | Título da Ação | Tarefa | Departamento | Responsável | % Ação | % Tarefa | Atraso | Prazo |\n");
-        sb.append("|---|---|---|---|---|---|---|---|---|\n");
+        StringBuilder linhas = new StringBuilder();
         for (Map<String, Object> t : tarefas) {
             boolean atrasada = Boolean.TRUE.equals(t.get("atrasada"));
             String atraso = atrasada ? "⚠️ " + t.get("dias_atraso") + "d" : "—";
             Object percentualAcao = t.get("percentual_acao");
             String codigo = formatarCodigo(t.get("codigo_acao"));
-            sb.append("| ").append(codigo)
+            linhas.append("| ").append(codigo)
               .append(" | ").append(temaSemCodigo((String) t.get("titulo_acao"), (String) t.get("codigo_acao")))
               .append(" | ").append(t.get("titulo_tarefa"))
               .append(" | ").append(t.get("departamento"))
-              .append(" | ").append(responsavelVisivel(t, departamentosVisiveis))
+              .append(" | ").append(t.get("responsavel") != null ? t.get("responsavel") : "—")
               .append(" | ").append(percentualAcao == null ? "—" : formatarPercentualEnxuto(percentualAcao) + "%")
               .append(" | ").append(formatarPercentualEnxuto(t.get("percentual_tarefa"))).append("%")
               .append(" | ").append(atraso)
               .append(" | ").append(formatarData(t.get("data_final")))
               .append(" |\n");
         }
+
+        sb.append(truncado ? tarefas.size() + " tarefa(s) mostrada(s) de " + total + " no total" : total + " tarefa(s) encontrada(s)")
+          .append(":\n\n");
+        sb.append("| Ação | Título da Ação | Tarefa | Departamento | Responsável | % Ação | % Tarefa | Atraso | Prazo |\n");
+        sb.append("|---|---|---|---|---|---|---|---|---|\n");
+        sb.append(linhas);
         return sb.toString();
     }
 
@@ -384,15 +392,6 @@ public class TarefasTool {
               .append(" |\n");
         }
         return sb.toString();
-    }
-
-    private String responsavelVisivel(Map<String, Object> tarefa, List<String> departamentosVisiveis) {
-        Object responsavel = tarefa.get("responsavel");
-        if (responsavel == null) return "—";
-        if (departamentosVisiveis == null) return responsavel.toString();
-        Object departamento = tarefa.get("departamento");
-        boolean pode = departamento != null && departamentosVisiveis.contains(departamento.toString().toLowerCase());
-        return pode ? responsavel.toString() : "—";
     }
 
     /** Tira o sufixo "| Departamento (TIPO)" e o prefixo do código — duplica truncarTituloSemCodigo (privado em ConsultaAcoesTool/RelatorioService). */

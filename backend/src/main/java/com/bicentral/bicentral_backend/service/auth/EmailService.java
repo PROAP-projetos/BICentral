@@ -392,7 +392,7 @@ public class EmailService {
             String saudacao = semConta ? "Olá!" : "Olá, " + nome + "!";
             String botao = semConta ? "Criar minha conta" : "Abrir o proIAp";
             String instrucao = semConta
-                    ? "Para começar, crie sua conta no BICentral com este mesmo e-mail."
+                    ? "Para começar, crie sua conta pelo botão abaixo. Este convite é pessoal e só pode ser usado uma vez."
                     : "É só entrar no BICentral e clicar em \"Pergunte ao agente\".";
             String content = """
                     <!DOCTYPE html>
@@ -426,14 +426,14 @@ public class EmailService {
     }
 
     public void sendVersaoAnuncioEmail(String toAddress, String nome) {
-        String assunto = "proIAp — versão 1.3 já está no ar";
+        String assunto = "proIAp — versão 1.4 já está no ar";
         String content = """
                 <!DOCTYPE html>
                 <html lang="pt-BR">
                 <head>
                     <meta charset="UTF-8">
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <title>proIAp — versão 1.3</title>
+                    <title>proIAp — versão 1.4</title>
                 </head>
                 <body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#1a1a1a;">
                     <table border="0" cellpadding="0" cellspacing="0" width="100%%">
@@ -443,7 +443,7 @@ public class EmailService {
                                     <tr>
                                         <td style="padding:28px 32px;background:#004a80;color:#ffffff;">
                                             <div style="font-size:24px;font-weight:700;letter-spacing:0.2px;">BICentral</div>
-                                            <div style="margin-top:8px;font-size:14px;opacity:0.92;">proIAp — versão 1.3</div>
+                                            <div style="margin-top:8px;font-size:14px;opacity:0.92;">proIAp — versão 1.4</div>
                                         </td>
                                     </tr>
                                     <tr>
@@ -455,22 +455,30 @@ public class EmailService {
                                         <td style="padding:32px;">
                                             <h1 style="margin:0 0 12px;font-size:26px;line-height:1.2;color:#113956;">Olá, %s!</h1>
                                             <p style="margin:0 0 16px;font-size:16px;line-height:1.65;color:#3b556b;">
-                                                O proIAp acabou de ganhar uma leva grande de melhorias a partir do que vocês reportaram nos testes. Principais mudanças:
+                                                A versão 1.4 do proIAp chegou, com um painel de ranking novo, um agente que sabe em que época do ano estamos e várias correções do que vocês reportaram nos testes. Principais novidades:
+                                            </p>
+                                            <ul style="margin:0 0 20px;padding-left:20px;font-size:15px;line-height:1.8;color:#3b556b;">
+                                                <li><strong>Painel de ranking com dados reais</strong> — acompanhe a execução do PAT por unidade, com filtros por Pró-Reitorias, Câmpus, Superintendências e Coordenações (e, nas coordenações, por câmpus). Dá para ver em cartões ou em gráfico de barras, e o painel mostra a data da última atualização dos dados.</li>
+                                                <li><strong>Mapa de ações compartilhadas</strong> — uma aba nova que mostra quais unidades dividem ações e onde a execução está mais desigual entre elas.</li>
+                                                <li><strong>Do painel para o chat em um clique</strong> — clique numa unidade ou numa das análises rápidas (diagnóstico, maior x menor, ações sem execução, resumo executivo) e o proIAp abre a conversa já com a análise: posição no ranking, percentual geral das ações compartilhadas e uma recomendação no final.</li>
+                                                <li><strong>Agente com noção de época do ano</strong> — o proIAp sabe se o PAT está no começo, no meio ou na reta final e ajusta a cobrança: no primeiro semestre ele pega leve e destaca o que já está adiantado, no meio do ano espera ao menos metade e analisa o que ficou abaixo, e de outubro a dezembro o tom é de alerta.</li>
+                                                <li><strong>Perguntas por grupo e comparações</strong> — pergunte, por exemplo, "como estão as coordenações de Palmas?" ou peça para comparar duas unidades lado a lado.</li>
+                                            </ul>
+                                            <p style="margin:0 0 8px;font-size:16px;line-height:1.65;color:#3b556b;">
+                                                <strong>Correções pontuais</strong>
                                             </p>
                                             <ul style="margin:0 0 24px;padding-left:20px;font-size:15px;line-height:1.8;color:#3b556b;">
-                                                <li><strong>Relatório sob medida</strong> — peça pra ver o nome da ação em vez do código, uma lista completa ordenada por execução, ou o relatório também em Excel, além de PDF e Word.</li>
-                                                <li><strong>Relatório com as tarefas de cada ação</strong> — peça "com as tarefas" e o relatório ganha uma seção mostrando as tarefas, responsável e prazo de cada ação do departamento, não só o percentual.</li>
-                                                <li><strong>Relatório sobre uma pessoa</strong> — peça "um relatório sobre mim" ou sobre outra pessoa da sua unidade, com as tarefas dela em vez do panorama do departamento inteiro.</li>
-                                                <li><strong>Chat pergunta em vez de recusar</strong> — se você pedir um dado com outro nome, o proIAp propõe o que ele tem de mais parecido e confirma com você, em vez de simplesmente dizer que não tem.</li>
-                                                <li><strong>Título automático da conversa</strong> — cada chat novo na barra lateral já nasce com um nome que resume o assunto, sem precisar renomear.</li>
-                                                <li><strong>Relatórios mais limpos</strong> — tabelas sem corte de departamento, sem negrito em excesso, e com os textos mais longos legíveis (sem sobrepor).</li>
-                                                <li><strong>Encontre a ação pelo nome</strong> — não precisa saber o código: pergunte algo como "as tarefas da ação de monitorar os indicadores" e o proIAp acha pelo nome real, com o título completo (sem resumir). Também dá pra pedir a lista ordenada pelo número da ação.</li>
+                                                <li>O painel não trava mais ao abrir a aba de Coordenações.</li>
+                                                <li>O botão de filtro selecionado não perde mais o texto quando o mouse passa por cima.</li>
+                                                <li>A posição no ranking que o proIAp cita no chat agora bate com a do painel (só unidades gestoras).</li>
+                                                <li>Unidades com nome longo aparecem com o nome curto (CESAU, Ouvidoria, PROJUR, SITAI), e unidades empatadas aparecem juntas em vez de numa ordem que parecia ter significado.</li>
+                                                <li>Convidados só veem as tarefas dos departamentos que gerenciam, e o proIAp avisa de forma direta quando falta permissão.</li>
                                             </ul>
                                             <table border="0" cellpadding="0" cellspacing="0">
                                                 <tr>
                                                     <td>
                                                         <a href="%s" target="_blank" style="display:inline-block;padding:14px 24px;background:#004a80;color:#ffffff;text-decoration:none;font-weight:700;border-radius:10px;">
-                                                            Testar a versão 1.3
+                                                            Testar a versão 1.4
                                                         </a>
                                                     </td>
                                                 </tr>

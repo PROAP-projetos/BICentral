@@ -8,11 +8,20 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.mockito.ArgumentCaptor;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -72,5 +81,45 @@ class ConvidadoServiceTest {
         assertFalse(service.podeVerPessoas(USUARIO, null));
         assertFalse(service.podeVerPessoas(USUARIO, "  "));
         assertFalse(service.podeVerPessoas(null, "PROAD"));
+    }
+
+    @Test
+    void conviteDeQuemNaoTemContaVaiPorTokenSemExporOEmailNoLink() {
+        when(jdbcTemplate.queryForMap(anyString(), eq("fulana@empresa.com")))
+                .thenThrow(new EmptyResultDataAccessException(1));
+
+        boolean confirmado = service.adicionar("fulana@empresa.com");
+
+        assertFalse(confirmado);
+        ArgumentCaptor<String> link = ArgumentCaptor.forClass(String.class);
+        verify(emailService).sendConvidadoEmailAsync(eq("fulana@empresa.com"), isNull(), link.capture());
+        assertTrue(link.getValue().contains("/cadastro?convite="));
+        assertFalse(link.getValue().contains("fulana"));
+        assertTrue(link.getValue().length() > 60);
+    }
+
+    @Test
+    void tokenDeConviteResolveParaOEmailConvidado() {
+        when(jdbcTemplate.queryForList(contains("convidados_pendentes"), eq(String.class), eq("tok123")))
+                .thenReturn(List.of("fulana@empresa.com"));
+        when(jdbcTemplate.queryForList(contains("convidados_pendentes"), eq(String.class), eq("outro")))
+                .thenReturn(List.of());
+
+        assertTrue(service.emailDoConvite("tok123").isPresent());
+        assertFalse(service.emailDoConvite("outro").isPresent());
+        assertFalse(service.emailDoConvite(null).isPresent());
+        assertFalse(service.emailDoConvite("  ").isPresent());
+    }
+
+    @Test
+    void soViraConvidadoQuemUsaUmTokenValido() {
+        when(jdbcTemplate.update(contains("DELETE FROM convidados_pendentes WHERE token"), eq("valido"))).thenReturn(1);
+        when(jdbcTemplate.update(contains("DELETE FROM convidados_pendentes WHERE token"), eq("invalido"))).thenReturn(0);
+
+        service.consumirConvite("invalido", USUARIO);
+        verify(jdbcTemplate, never()).update(contains("INSERT INTO usuarios_convidados"), anyLong());
+
+        service.consumirConvite("valido", USUARIO);
+        verify(jdbcTemplate).update(contains("INSERT INTO usuarios_convidados"), eq(USUARIO));
     }
 }

@@ -144,7 +144,6 @@ class ConviteEquipeServiceTest {
         ConviteEquipe convite = convitePendente("token-valido", LocalDateTime.now().plusHours(24), Role.EDITOR);
 
         when(conviteEquipeRepository.findByToken("token-valido")).thenReturn(Optional.of(convite));
-        when(usuarioRepository.findByEmail("convite@bicentral.com")).thenReturn(Optional.of(convidado));
         when(membroEquipeRepository.findByUsuarioAndEquipe(convidado, equipe)).thenReturn(Optional.empty());
         when(membroEquipeRepository.save(any(MembroEquipe.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(conviteEquipeRepository.save(any(ConviteEquipe.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -167,7 +166,6 @@ class ConviteEquipeServiceTest {
         membroExistente.setRole(Role.VIEWER);
 
         when(conviteEquipeRepository.findByToken("token-update")).thenReturn(Optional.of(convite));
-        //when(usuarioRepository.findByEmail("convite@bicentral.com")).thenReturn(Optional.of(convidado));
         when(membroEquipeRepository.findByUsuarioAndEquipe(convidado, equipe)).thenReturn(Optional.of(membroExistente));
         when(membroEquipeRepository.save(any(MembroEquipe.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(conviteEquipeRepository.save(any(ConviteEquipe.class))).thenAnswer(invocation -> invocation.getArgument(0));

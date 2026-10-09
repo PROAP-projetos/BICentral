@@ -33,6 +33,7 @@ public class SecurityConfig {
             "/api/usuarios/cadastro",
             "/api/usuarios/login",
             "/api/usuarios/verify",
+            "/api/usuarios/convite/**",
             "/api/usuarios/esqueci-senha",
             "/api/usuarios/redefinir-senha",
             "/auth/**", //removi api/convites/aceitar

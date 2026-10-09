@@ -1,7 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, OnInit, Output } from '@angular/core';
+import { Component, ElementRef, EventEmitter, OnDestroy, OnInit, Output } from '@angular/core';
 import { NgxEchartsDirective, provideEchartsCore } from 'ngx-echarts';
 import { RankingDepartamento, RankingResumo, RankingService } from '../services/ranking.service';
+import { aoMudarTema, lerCoresDoTema } from '../shared/tema';
+import { promptAcoesSemExecucao, promptDiagnostico, promptMaiorXMenor, promptResumoExecutivo } from './insights';
+import { campusDaCoordenacao, extrairSigla, nomeCurtoCoordenacao } from '../shared/sigla';
 
 export interface UgRankingItem {
   id: string;
@@ -37,7 +40,7 @@ export type FiltroUnidade = 'todos' | 'pro-reitoria' | 'campus' | 'superintenden
   templateUrl: './leaderboard-ug.component.html',
   styleUrls: ['./leaderboard-ug.component.css']
 })
-export class LeaderboardUgComponent implements OnInit {
+export class LeaderboardUgComponent implements OnInit, OnDestroy {
 
   @Output() selecionarUg = new EventEmitter<string>();
 
@@ -59,6 +62,9 @@ export class LeaderboardUgComponent implements OnInit {
     { valor: 'outros', rotulo: 'Outras unidades' }
   ];
 
+  campusAtivo = 'todos';
+  campi: { valor: string; rotulo: string; total: number }[] = [];
+
   resumo: RankingResumo | null = null;
   atualizadoEm: string | null = null;
 
@@ -67,14 +73,21 @@ export class LeaderboardUgComponent implements OnInit {
   // Opções do ECharts para o modo alternativo
   echartsOptions: any;
 
-  constructor(private rankingService: RankingService) {}
+  private pararObservarTema?: () => void;
+
+  constructor(private rankingService: RankingService, private host: ElementRef<HTMLElement>) {}
 
   ngOnInit(): void {
+    this.pararObservarTema = aoMudarTema(this.host.nativeElement, () => this.atualizarEchartsOptions());
     this.carregarRanking();
   }
 
   get unidadesPrincipais(): UgRankingItem[] {
     return this.ugs.filter(u => this.categoria(u.nome) !== 'coordenacao');
+  }
+
+  ngOnDestroy(): void {
+    this.pararObservarTema?.();
   }
 
   // Getters para KPIs no topo
@@ -139,7 +152,7 @@ export class LeaderboardUgComponent implements OnInit {
 
     return {
       id: item.departamento,
-      sigla: this.extrairSigla(item.departamento),
+      sigla: extrairSigla(item.departamento),
       nome: item.departamento,
       posicao: item.posicaoAtual,
       posicaoAnterior,
@@ -156,35 +169,57 @@ export class LeaderboardUgComponent implements OnInit {
     };
   }
 
-  private extrairSigla(departamento: string): string {
-    const partes = departamento.split(' - ');
-    return partes.length > 1 ? partes[partes.length - 1].trim() : departamento;
-  }
 
   contagemFiltro(filtro: FiltroUnidade): number {
     return filtro === 'todos' ? this.unidadesPrincipais.length : this.ugs.filter(u => this.categoria(u.nome) === filtro).length;
   }
 
+  private calcularCampi(): { valor: string; rotulo: string; total: number }[] {
+    const contagem = new Map<string, number>();
+    this.ugs.filter(u => this.categoria(u.nome) === 'coordenacao').forEach(u => {
+      const campus = campusDaCoordenacao(u.nome);
+      contagem.set(campus, (contagem.get(campus) ?? 0) + 1);
+    });
+    return [...contagem.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([valor, total]) => ({ valor, rotulo: valor, total }));
+  }
+
+  trackByCampus(index: number, campus: { valor: string }): string {
+    return campus.valor;
+  }
+
+  selecionarCampus(campus: string): void {
+    this.campusAtivo = campus;
+    this.aplicarFiltro();
+  }
+
   selecionarFiltro(filtro: FiltroUnidade): void {
     this.filtroAtivo = filtro;
+    this.campusAtivo = 'todos';
     this.aplicarFiltro();
   }
 
   private aplicarFiltro(): void {
-    if (this.filtroAtivo === 'todos') {
-      this.ugsExibidas = this.unidadesPrincipais;
-    } else {
-      const grupo = this.ugs.filter(u => this.categoria(u.nome) === this.filtroAtivo);
-      const anteriorNoGrupo = new Map(
-        [...grupo].sort((a, b) => a.posicaoAnterior - b.posicaoAnterior).map((u, i) => [u.id, i + 1] as [string, number])
-      );
-      this.ugsExibidas = grupo.map((u, i) => {
-        const posicao = i + 1;
-        const posicaoAnterior = anteriorNoGrupo.get(u.id) ?? posicao;
-        const variacaoPosicao = posicaoAnterior - posicao;
-        return { ...u, posicao, posicaoAnterior, variacaoPosicao, subiu: variacaoPosicao > 0, caiu: variacaoPosicao < 0 };
-      });
+    this.campi = this.calcularCampi();
+    let grupo = this.filtroAtivo === 'todos'
+      ? this.unidadesPrincipais
+      : this.ugs.filter(u => this.categoria(u.nome) === this.filtroAtivo);
+    if (this.filtroAtivo === 'coordenacao' && this.campusAtivo !== 'todos') {
+      grupo = grupo.filter(u => campusDaCoordenacao(u.nome) === this.campusAtivo);
     }
+
+    // A posição vale dentro do que está na tela: sem isso a lista sem coordenações mostrava
+    // a posição do ranking geral (ex.: #8 para a unidade com maior execução).
+    const anteriorNoGrupo = new Map(
+      [...grupo].sort((a, b) => a.posicaoAnterior - b.posicaoAnterior).map((u, i) => [u.id, i + 1] as [string, number])
+    );
+    this.ugsExibidas = grupo.map((u, i) => {
+      const posicao = i + 1;
+      const posicaoAnterior = anteriorNoGrupo.get(u.id) ?? posicao;
+      const variacaoPosicao = posicaoAnterior - posicao;
+      return { ...u, posicao, posicaoAnterior, variacaoPosicao, subiu: variacaoPosicao > 0, caiu: variacaoPosicao < 0 };
+    });
     this.atualizarEchartsOptions();
     this.atualizarInsights();
   }
@@ -193,23 +228,26 @@ export class LeaderboardUgComponent implements OnInit {
     const lista = this.ugsExibidas;
     const insights: InsightIaItem[] = [];
 
-    if (lista.length >= 1) {
-      const menor = lista[lista.length - 1];
+    // Entre as empatadas na menor execução, a de mais ações: é a comparação mais informativa e não depende da ordem alfabética.
+    const pior = lista.length ? lista[lista.length - 1].percentual : 0;
+    const menor = lista.filter(u => u.percentual === pior).sort((a, b) => b.totalAcoes - a.totalAcoes)[0];
+
+    if (menor) {
+      const empatadas = lista.filter(u => u.percentual === menor.percentual).length - 1;
       insights.push({
         icone: '🎯',
         titulo: `Diagnóstico da ${menor.sigla}`,
-        prompt: `Faça um diagnóstico do desempenho de ${menor.nome} no PAT: pontos de atenção e ações sem execução.`,
-        badge: 'Menor execução'
+        prompt: promptDiagnostico(menor.nome),
+        badge: empatadas ? `Menor execução (empatada com ${empatadas})` : 'Menor execução'
       });
     }
 
     if (lista.length >= 2) {
       const maior = lista[0];
-      const menor = lista[lista.length - 1];
       insights.push({
         icone: '📊',
         titulo: `${maior.sigla} x ${menor.sigla}`,
-        prompt: `Compare a execução do PAT entre ${maior.nome} e ${menor.nome}.`,
+        prompt: promptMaiorXMenor(maior.nome, menor.nome),
         badge: 'Comparativo'
       });
     }
@@ -218,13 +256,13 @@ export class LeaderboardUgComponent implements OnInit {
       {
         icone: '⚠️',
         titulo: 'Ações sem execução',
-        prompt: 'Quais unidades têm mais ações sem nenhuma execução no PAT?',
+        prompt: promptAcoesSemExecucao(),
         badge: 'Risco'
       },
       {
         icone: '📄',
         titulo: 'Resumo executivo',
-        prompt: 'Gere um resumo executivo do PAT com a situação geral das unidades.',
+        prompt: promptResumoExecutivo(),
         badge: 'Resumo'
       }
     );
@@ -260,7 +298,7 @@ export class LeaderboardUgComponent implements OnInit {
   }
 
   clicarUg(ug: UgRankingItem): void {
-    this.selecionarUg.emit(`Faça uma análise detalhada do desempenho e metas da ${ug.sigla} (${ug.nome}).`);
+    this.selecionarUg.emit(promptDiagnostico(ug.nome));
   }
 
   clicarInsight(insight: InsightIaItem): void {
@@ -268,12 +306,15 @@ export class LeaderboardUgComponent implements OnInit {
   }
 
   get alturaGrafico(): number {
-    return Math.max(380, this.ugsExibidas.length * 30 + 70);
+    const porLinha = this.filtroAtivo === 'coordenacao' ? 40 : 30;
+    return Math.max(380, this.ugsExibidas.length * porLinha + 70);
   }
 
   private atualizarEchartsOptions(): void {
+    const cores = lerCoresDoTema(this.host.nativeElement);
     const sorted = [...this.ugsExibidas].reverse();
-    const categorias = sorted.map(u => u.sigla);
+    const coordenacoes = this.filtroAtivo === 'coordenacao';
+    const categorias = sorted.map(u => coordenacoes ? nomeCurtoCoordenacao(u.nome, this.campusAtivo === 'todos') : u.sigla);
     const valores = sorted.map(u => u.percentual);
 
     this.echartsOptions = {
@@ -301,14 +342,16 @@ export class LeaderboardUgComponent implements OnInit {
       xAxis: {
         type: 'value',
         max: 100,
-        axisLabel: { formatter: '{value}%', color: '#94a3b8' },
-        splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.08)' } }
+        axisLabel: { formatter: '{value}%', color: cores.textoSuave },
+        splitLine: { lineStyle: { color: cores.borda } }
       },
       yAxis: {
         type: 'category',
         data: categorias,
         inverse: true,
-        axisLabel: { color: '#f8fafc', fontWeight: 'bold', interval: 0, width: 170, overflow: 'truncate' }
+        axisLabel: coordenacoes
+          ? { color: cores.texto, fontWeight: 'bold', interval: 0, width: 300, overflow: 'break', lineHeight: 14 }
+          : { color: cores.texto, fontWeight: 'bold', interval: 0, width: 170, overflow: 'truncate' }
       },
       series: [
         {
@@ -321,7 +364,7 @@ export class LeaderboardUgComponent implements OnInit {
             position: 'right',
             valueAnimation: true,
             formatter: '{c}%',
-            color: '#38bdf8',
+            color: cores.texto,
             fontWeight: 'bold'
           },
           itemStyle: {

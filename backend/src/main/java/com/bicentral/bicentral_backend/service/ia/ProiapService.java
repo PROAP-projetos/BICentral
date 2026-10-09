@@ -41,6 +41,9 @@ public class ProiapService {
         Map.entry("ranquearDepartamentosPorExecucaoPAT", List.of(
             "Alguma dessas ações é compartilhada entre departamentos?",
             "Quero ver a distribuição de status dessas unidades num gráfico")),
+        Map.entry("compararUnidadesPAT", List.of("Quero o diagnóstico da unidade com menor execução")),
+        Map.entry("acoesSemExecucaoPorUG", List.of("Quero o diagnóstico da UG com mais ações zeradas")),
+        Map.entry("resumoExecutivoPAT", List.of("Quero o diagnóstico da UG com menor execução")),
         Map.entry("buscarExecucaoPATPorDepartamento", List.of("Quero um relatório completo dessa unidade")),
         Map.entry("buscarDetalhamentoDesempenhoDepartamento", List.of(
             "Essas ações têm outros departamentos envolvidos?",
@@ -143,7 +146,7 @@ public class ProiapService {
         if (analise.intencao() == IntencaoDTO.RESPOSTA) {
 
             // Memória do usuário (ver MemoriaTool) entra na frente do contexto de RAG.
-            String contextoComMemoria = memoriaUsuarioService.montarBlocoMemoria(usuarioId) + contextoRAG.textoContexto();
+            String contextoComMemoria = EpocaPat.blocoParaHoje() + memoriaUsuarioService.montarBlocoMemoria(usuarioId) + contextoRAG.textoContexto();
 
             Result<String> resultado = agenteConsultaSql.responderComFerramentas(memoryId, perguntaUsuario,
                     contextoComMemoria);

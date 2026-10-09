@@ -49,8 +49,8 @@ export class LoginComponent {
               token: response.token
             }));
 
-            // Tester do proIAp cai direto no agente em vez da Home (é pra isso que ela está aqui).
-            const destino = response.tester ? '/agente' : '/';
+            // Tester e convidado caem direto no agente em vez da Home.
+            const destino = (response.tester || response.convidado) ? '/agente' : '/';
             console.log(`Dados salvos no localStorage. Redirecionando para ${destino}...`);
 
             // 3. Força a navegação e verifica se ela ocorreu

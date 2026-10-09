@@ -41,30 +41,43 @@ public class UsuarioController {
         this.convidadoService = convidadoService;
     }
 
+    @GetMapping("/convite/{token}")
+    public ResponseEntity<?> consultarConvite(@PathVariable String token) {
+        return convidadoService.emailDoConvite(token)
+                .<ResponseEntity<?>>map(email -> ResponseEntity.ok(Map.of("email", email)))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("mensagem", "Convite inválido ou já utilizado. Peça um novo convite ao administrador.")));
+    }
+
     @PostMapping("/cadastro")
-    public ResponseEntity<?> cadastrarUsuario(@Valid @RequestBody Usuario usuario, HttpServletRequest request) {
+    public ResponseEntity<?> cadastrarUsuario(@Valid @RequestBody Usuario usuario,
+            @RequestParam(required = false) String convite, HttpServletRequest request) {
         try {
-            // Quem já foi convidado como tester do proIAp por e-mail pula a verificação de
-            // e-mail no cadastro (ver UsoIaService.emailTesterPendente).
-            boolean pularVerificacao = usoIaService.emailTesterPendente(usuario.getEmail());
+            String emailDoConvite = convite == null ? null : convidadoService.emailDoConvite(convite).orElse(null);
+            if (convite != null && (emailDoConvite == null || !emailDoConvite.equalsIgnoreCase(usuario.getEmail().trim()))) {
+                Map<String, String> invalido = new HashMap<>();
+                invalido.put("mensagem", "Convite inválido ou já utilizado. Peça um novo convite ao administrador.");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(invalido);
+            }
+            boolean viaConvite = emailDoConvite != null;
 
-            // Convidado passa no cadastro restrito, mas não pula a verificação de e-mail (acesso a dados institucionais).
-            boolean convidadoPendente = convidadoService.emailPendente(usuario.getEmail());
+            // Convite de convidado e de tester pulam a verificação de e-mail: o link só chegou à caixa de quem foi convidado.
+            boolean pularVerificacao = viaConvite || usoIaService.emailTesterPendente(usuario.getEmail());
 
-            if (cadastroRestritoATesters && !pularVerificacao && !convidadoPendente) {
+            if (cadastroRestritoATesters && !pularVerificacao) {
                 Map<String, String> bloqueado = new HashMap<>();
                 bloqueado.put("mensagem", "Cadastro disponível só por convite durante o período de teste do proIAp. Peça pra um admin te adicionar como tester.");
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(bloqueado);
             }
 
             Usuario cadastrado = usuarioService.cadastrar(usuario, getSiteURL(request), pularVerificacao);
-            // Se esse e-mail já tinha sido adicionado como tester do proIAp antes de existir
-            // conta, vira tester de verdade agora (ver UsoIaService.promoverPendentesParaTester).
             usoIaService.promoverPendentesParaTester(cadastrado.getId(), cadastrado.getEmail());
-            convidadoService.promoverPendentes(cadastrado.getId(), cadastrado.getEmail());
+            if (viaConvite) {
+                convidadoService.consumirConvite(convite, cadastrado.getId());
+            }
             Map<String, String> response = new HashMap<>();
             response.put("mensagem", pularVerificacao
-                    ? "Cadastro realizado! Você já pode entrar — como tester do proIAp, não precisa verificar o e-mail."
+                    ? "Cadastro realizado! Você já pode entrar."
                     : "Cadastro realizado com sucesso! Verifique seu e-mail para ativar sua conta.");
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (RecursoJaExistenteException e) {
@@ -129,8 +142,9 @@ public class UsuarioController {
             response.put("token", token);
             response.put("username", usuario.getNomeExibicao());
             response.put("id", usuario.getId().toString());
-            // Tester do proIAp cai direto no agente em vez da Home após o login (ver LoginComponent).
+            // Tester e convidado caem direto no agente em vez da Home após o login (ver LoginComponent).
             response.put("tester", usoIaService.ehTester(usuario.getId()));
+            response.put("convidado", convidadoService.ehConvidado(usuario.getId()));
             return ResponseEntity.ok(response);
 
         } catch (AutenticacaoException e) {

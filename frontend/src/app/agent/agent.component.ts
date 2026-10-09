@@ -43,7 +43,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   // Sobe esse número (e a data no comentário) a cada leva de mudança que valha avisar os
   // testers — o "gracejo" do logo e o banner de atualização aparecem sozinhos, uma vez só,
   // pra quem já tinha usado o chat antes com uma versão diferente (ver VERSAO_VISTA_KEY).
-  static readonly VERSAO_AGENTE = '1.3'; // 2026-09-22 — relatório customizável, título de sessão por IA, chat confirma em vez de recusar dado
+  static readonly VERSAO_AGENTE = '1.4'; // 2026-10-09 — painel de ranking com dado real e mapa de ações compartilhadas, análises do painel levam ao chat, agente com noção de época do ano
   private static readonly VERSAO_VISTA_KEY = 'bicentral_versao_vista';
 
   isDarkMode = false;

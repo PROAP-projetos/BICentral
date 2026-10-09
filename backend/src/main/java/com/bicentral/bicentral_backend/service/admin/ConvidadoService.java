@@ -9,17 +9,20 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.time.OffsetDateTime;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 // Convidado = usuário de fora da PROAP: só vê responsáveis dos departamentos que gerencia.
 @Service
 public class ConvidadoService {
 
     public record ConvidadoDTO(Long usuarioId, String nome, String email, OffsetDateTime criadoEm, boolean pendente) {}
+
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final JdbcTemplate jdbcTemplate;
     private final EmailService emailService;
@@ -48,6 +51,8 @@ public class ConvidadoService {
                 criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
             """);
+        jdbcTemplate.execute("ALTER TABLE convidados_pendentes ADD COLUMN IF NOT EXISTS token TEXT");
+        jdbcTemplate.execute("CREATE UNIQUE INDEX IF NOT EXISTS convidados_pendentes_token_key ON convidados_pendentes (token)");
     }
 
     public boolean ehConvidado(Long usuarioId) {
@@ -59,13 +64,15 @@ public class ConvidadoService {
         return total != null && total > 0;
     }
 
-    public boolean emailPendente(String email) {
-        if (email == null || email.isBlank()) {
-            return false;
+    // O link do convite carrega um token, não o e-mail: quem recebe não consegue trocar o e-mail
+    // na URL, e só quem abriu o e-mail convidado tem o token (por isso não precisa verificar o e-mail).
+    public Optional<String> emailDoConvite(String token) {
+        if (token == null || token.isBlank()) {
+            return Optional.empty();
         }
-        Integer total = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM convidados_pendentes WHERE LOWER(email) = LOWER(?)", Integer.class, email.trim());
-        return total != null && total > 0;
+        List<String> emails = jdbcTemplate.queryForList(
+                "SELECT email FROM convidados_pendentes WHERE token = ?", String.class, token.trim());
+        return emails.stream().findFirst();
     }
 
     public boolean podeVerPessoas(Long usuarioId, String departamento) {
@@ -129,10 +136,12 @@ public class ConvidadoService {
         }
 
         if (usuario == null) {
+            String token = gerarToken();
             jdbcTemplate.update(
-                    "INSERT INTO convidados_pendentes (email) VALUES (LOWER(?)) ON CONFLICT (email) DO NOTHING",
-                    emailNormalizado);
-            emailService.sendConvidadoEmailAsync(emailNormalizado, null, linkCadastro(emailNormalizado));
+                    "INSERT INTO convidados_pendentes (email, token) VALUES (LOWER(?), ?) "
+                            + "ON CONFLICT (email) DO UPDATE SET token = EXCLUDED.token, criado_em = NOW()",
+                    emailNormalizado, token);
+            emailService.sendConvidadoEmailAsync(emailNormalizado, null, linkCadastro(token));
             return false;
         }
 
@@ -145,12 +154,11 @@ public class ConvidadoService {
     }
 
     @Transactional
-    public void promoverPendentes(Long usuarioId, String email) {
-        if (usuarioId == null || email == null || email.isBlank()) {
+    public void consumirConvite(String token, Long usuarioId) {
+        if (token == null || usuarioId == null) {
             return;
         }
-        int removidos = jdbcTemplate.update(
-                "DELETE FROM convidados_pendentes WHERE LOWER(email) = LOWER(?)", email.trim());
+        int removidos = jdbcTemplate.update("DELETE FROM convidados_pendentes WHERE token = ?", token.trim());
         if (removidos > 0) {
             jdbcTemplate.update(
                     "INSERT INTO usuarios_convidados (usuario_id) VALUES (?) ON CONFLICT (usuario_id) DO NOTHING", usuarioId);
@@ -176,7 +184,13 @@ public class ConvidadoService {
                 : "http://localhost:4200";
     }
 
-    private String linkCadastro(String email) {
-        return linkBase() + "/cadastro?email=" + URLEncoder.encode(email, StandardCharsets.UTF_8);
+    private String linkCadastro(String token) {
+        return linkBase() + "/cadastro?convite=" + token;
+    }
+
+    private String gerarToken() {
+        byte[] bytes = new byte[32];
+        SECURE_RANDOM.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 }

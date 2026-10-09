@@ -1,8 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, HostListener, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { NgxEchartsDirective, provideEchartsCore } from 'ngx-echarts';
 import { CompartilhamentoDepartamentos, RankingDepartamento, RankingService } from '../services/ranking.service';
+import { aoMudarTema, lerCoresDoTema } from '../shared/tema';
+import { extrairSigla } from '../shared/sigla';
 
 const GAP_ATENCAO = 40;
 
@@ -14,7 +16,7 @@ const GAP_ATENCAO = 40;
   templateUrl: './mapa-compartilhamento.component.html',
   styleUrls: ['./mapa-compartilhamento.component.css']
 })
-export class MapaCompartilhamentoComponent implements OnInit {
+export class MapaCompartilhamentoComponent implements OnInit, OnDestroy {
   @ViewChild('container') container?: ElementRef<HTMLElement>;
 
   carregando = false;
@@ -26,10 +28,20 @@ export class MapaCompartilhamentoComponent implements OnInit {
   // Sem a API de tela cheia (alguns celulares), cobre a janela por CSS.
   private telaCheiaPorCss = false;
 
-  constructor(private rankingService: RankingService) {}
+  constructor(private rankingService: RankingService, private host: ElementRef<HTMLElement>) {}
+
+  private dados?: { ligacoes: CompartilhamentoDepartamentos[]; ranking: RankingDepartamento[] };
+  private pararObservarTema?: () => void;
 
   ngOnInit(): void {
     this.carregar();
+    this.pararObservarTema = aoMudarTema(this.host.nativeElement, () => {
+      if (this.dados) this.opcoes = this.montarOpcoes(this.dados.ligacoes, this.dados.ranking);
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.pararObservarTema?.();
   }
 
   carregar(): void {
@@ -42,6 +54,7 @@ export class MapaCompartilhamentoComponent implements OnInit {
     }).subscribe({
       next: ({ ligacoes, ranking }) => {
         this.vazio = ligacoes.length === 0;
+        this.dados = { ligacoes, ranking };
         this.opcoes = this.montarOpcoes(ligacoes, ranking);
         this.carregando = false;
       },
@@ -118,7 +131,7 @@ export class MapaCompartilhamentoComponent implements OnInit {
       const execucao = execucaoPorDepartamento.get(departamento);
       return {
         id: departamento,
-        name: this.extrairSigla(departamento),
+        name: extrairSigla(departamento),
         departamento,
         execucao,
         acoesCompartilhadas: total,
@@ -149,7 +162,7 @@ export class MapaCompartilhamentoComponent implements OnInit {
         confine: true,
         formatter: (p: any) => {
           if (p.dataType === 'edge') {
-            return `${this.extrairSigla(p.data.source)} ↔ ${this.extrairSigla(p.data.target)}<br>` +
+            return `${extrairSigla(p.data.source)} ↔ ${extrairSigla(p.data.target)}<br>` +
               `${p.data.qtdAcoes} ação(ões) em comum<br>` +
               `Diferença média de execução: ${p.data.diferencaMediaPct} pp`;
           }
@@ -174,9 +187,8 @@ export class MapaCompartilhamentoComponent implements OnInit {
   }
 
   private lerCores(): { texto: string; linha: string; destaque: string } {
-    const estilo = getComputedStyle(this.container?.nativeElement ?? document.body);
-    const texto = estilo.getPropertyValue('--text-primary').trim() || '#1f2937';
-    return { texto, linha: 'rgba(148, 163, 184, 0.45)', destaque: '#e5484d' };
+    const tema = lerCoresDoTema(this.host.nativeElement);
+    return { texto: tema.texto, linha: 'rgba(148, 163, 184, 0.45)', destaque: '#e5484d' };
   }
 
   private corDoNo(execucao: number | undefined): string {
@@ -185,8 +197,4 @@ export class MapaCompartilhamentoComponent implements OnInit {
     return `rgba(37, 99, 235, ${intensidade.toFixed(2)})`;
   }
 
-  private extrairSigla(departamento: string): string {
-    const partes = departamento.split(' - ');
-    return partes.length > 1 ? partes[partes.length - 1].trim() : departamento;
-  }
 }
