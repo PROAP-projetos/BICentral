@@ -75,10 +75,12 @@ public class UsuarioController {
             if (viaConvite) {
                 convidadoService.consumirConvite(convite, cadastrado.getId());
             }
-            Map<String, String> response = new HashMap<>();
+            Map<String, Object> response = new HashMap<>();
             response.put("mensagem", pularVerificacao
                     ? "Cadastro realizado! Você já pode entrar."
                     : "Cadastro realizado com sucesso! Verifique seu e-mail para ativar sua conta.");
+            // Conta já habilitada: o front faz o login em seguida e leva direto pro agente.
+            response.put("acessoDireto", pularVerificacao);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (RecursoJaExistenteException e) {
             Map<String, String> response = new HashMap<>();

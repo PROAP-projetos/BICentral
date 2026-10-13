@@ -96,6 +96,7 @@
           <div class="alert-content">
             <h4 class="alert-title">Sucesso</h4>
             <p class="alert-message">{{ message }}</p>
+            <a *ngIf="showLoginShortcut" routerLink="/login" class="alert-action-link">Entrar</a>
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
+import { salvarSessaoLogin } from '../auth-sessao';
 
 @Component({
   selector: 'app-login',
@@ -35,22 +36,7 @@ export class LoginComponent {
           console.log('Resposta do Backend recebida:', response);
 
           if (response && response.token) {
-            // Limpa apenas resíduos de autenticação anteriores
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-
-            // 1. Salva o token puro (para uso do interceptor)
-            localStorage.setItem('token', response.token);
-
-            // 2. Salva o objeto do usuário (agora incluindo o token para o HomeComponent)
-            localStorage.setItem('user', JSON.stringify({
-              id: response.id,
-              username: response.username,
-              token: response.token
-            }));
-
-            // Tester e convidado caem direto no agente em vez da Home.
-            const destino = (response.tester || response.convidado) ? '/agente' : '/';
+            const destino = salvarSessaoLogin(response);
             console.log(`Dados salvos no localStorage. Redirecionando para ${destino}...`);
 
             // 3. Força a navegação e verifica se ela ocorreu

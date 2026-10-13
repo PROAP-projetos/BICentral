@@ -2,7 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { RespostaLogin, salvarSessaoLogin } from '../auth-sessao';
 
 @Component({
   selector: 'app-cadastro',
@@ -65,7 +66,7 @@ export class CadastroComponent implements OnInit {
     return r.tamanho && r.letra && r.numero && r.especial;
   }
 
-  constructor(private http: HttpClient, private route: ActivatedRoute) { }
+  constructor(private http: HttpClient, private route: ActivatedRoute, private router: Router) { }
 
   ngOnInit(): void {
     // Vem de um link tipo /cadastro?email=fulano@uft.edu.br (convite de tester mandado pelo
@@ -127,9 +128,13 @@ export class CadastroComponent implements OnInit {
     }
 
     this.carregando = true;
-    this.http.post<{ mensagem?: string }>('/api/usuarios/cadastro', this.usuario, { params: this.convite ? { convite: this.convite } : {} })
+    this.http.post<{ mensagem?: string; acessoDireto?: boolean }>('/api/usuarios/cadastro', this.usuario, { params: this.convite ? { convite: this.convite } : {} })
       .subscribe({
         next: (response) => {
+          if (response?.acessoDireto) {
+            this.entrarDireto(response.mensagem);
+            return;
+          }
           this.carregando = false;
           this.registrationSuccess = true;
           // O backend já diferencia tester (pula verificação) de cadastro normal — usa a
@@ -150,6 +155,32 @@ export class CadastroComponent implements OnInit {
           console.error('Erro ao cadastrar usuário', error);
         }
       });
+  }
+
+  // Tester/convidado já nasce com a conta habilitada — loga com a senha que acabou de
+  // digitar e leva pro agente. Se o login falhar, a conta existe mesmo assim: cai na tela
+  // de sucesso com atalho pro login em vez de mostrar erro.
+  private entrarDireto(mensagemCadastro?: string): void {
+    this.http.post<RespostaLogin>('/api/usuarios/login', { email: this.usuario.email, password: this.usuario.password })
+      .subscribe({
+        next: (login) => {
+          if (login?.token) {
+            this.router.navigate([salvarSessaoLogin(login)]);
+            return;
+          }
+          this.mostrarSucessoComLogin(mensagemCadastro);
+        },
+        error: () => this.mostrarSucessoComLogin(mensagemCadastro)
+      });
+  }
+
+  private mostrarSucessoComLogin(mensagemCadastro?: string): void {
+    this.carregando = false;
+    this.registrationSuccess = true;
+    this.message = mensagemCadastro || 'Cadastro realizado! Você já pode entrar.';
+    this.messageType = 'success';
+    this.alertTitle = 'Sucesso';
+    this.showLoginShortcut = true;
   }
 
   private extractErrorMessage(error: any): string {
