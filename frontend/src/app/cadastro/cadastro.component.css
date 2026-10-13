@@ -172,9 +172,34 @@ input[type="email"][readonly] {
   background-color: var(--color-nav-button-bg); /* Cor de fundo do botão */
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   background-color: #009f67; /* Cor do hover */
   transform: translateY(-2px);
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+.btn-loading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+}
+
+.btn-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
+  animation: btn-spinner-girar 0.7s linear infinite;
+}
+
+@keyframes btn-spinner-girar {
+  to { transform: rotate(360deg); }
 }
 
 /* --- 6. Link de Rodapé e Texto de Sucesso --- */

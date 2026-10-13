@@ -71,7 +71,13 @@
           </button>
         </div>
       </div>
-      <button type="submit" class="btn btn-primary" [disabled]="conviteInvalido">Cadastrar</button>
+      <button type="submit" class="btn btn-primary" [disabled]="conviteInvalido || carregando">
+        <span *ngIf="!carregando">Cadastrar</span>
+        <span *ngIf="carregando" class="btn-loading">
+          <span class="btn-spinner" aria-hidden="true"></span>
+          Cadastrando...
+        </span>
+      </button>
       <div class="footer-link">
         <a routerLink="/">Voltar para a Home</a>
       </div>

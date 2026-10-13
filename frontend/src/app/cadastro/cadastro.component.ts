@@ -33,6 +33,7 @@ export class CadastroComponent implements OnInit {
   conviteInvalido = false;
   mostrarSenha = false;
   mostrarConfirmarSenha = false;
+  carregando = false;
 
   requisitosSenha = {
     tamanho: false,
@@ -100,7 +101,9 @@ export class CadastroComponent implements OnInit {
   }
 
   cadastrar() {
-    if (this.conviteInvalido) return;
+    // Com o backend acordando do sleep do Render a primeira resposta demora; sem essa trava
+    // um segundo clique reenvia o cadastro e volta "e-mail já cadastrado" por cima do sucesso.
+    if (this.conviteInvalido || this.carregando) return;
 
     this.message = null;
     this.messageType = 'info';
@@ -123,9 +126,11 @@ export class CadastroComponent implements OnInit {
       return;
     }
 
+    this.carregando = true;
     this.http.post<{ mensagem?: string }>('/api/usuarios/cadastro', this.usuario, { params: this.convite ? { convite: this.convite } : {} })
       .subscribe({
         next: (response) => {
+          this.carregando = false;
           this.registrationSuccess = true;
           // O backend já diferencia tester (pula verificação) de cadastro normal — usa a
           // mensagem dele em vez de um texto fixo que sempre manda "verifique seu e-mail".
@@ -135,6 +140,7 @@ export class CadastroComponent implements OnInit {
           this.showLoginShortcut = false;
         },
         error: (error) => {
+          this.carregando = false;
           this.registrationSuccess = false;
           this.messageType = 'error';
           this.message = this.extractErrorMessage(error);

@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
@@ -162,10 +163,12 @@ public class UsoIaService {
         if (usuarioId == null) {
             return LIMITE_DOLARES;
         }
-        Double limite = jdbcTemplate.query(
+        // NUMERIC chega do driver como BigDecimal, não Double — cast direto quebra assim que
+        // o limite deixa de ser NULL.
+        BigDecimal limite = jdbcTemplate.query(
                 "SELECT limite_dolares FROM testers_proiap WHERE usuario_id = ?",
-                rs -> rs.next() ? (Double) rs.getObject(1) : null, usuarioId);
-        return limite != null ? limite : LIMITE_DOLARES;
+                rs -> rs.next() ? rs.getBigDecimal(1) : null, usuarioId);
+        return limite != null ? limite.doubleValue() : LIMITE_DOLARES;
     }
 
     // null reseta pro padrão global; admin only (ver UsoIaController).
