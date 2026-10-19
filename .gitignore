@@ -51,6 +51,8 @@ backend/docs/regras-de-negocio.md
 docs/opiniao-proiap.md
 docs/tcc-mudancas-agente.md
 docs/tcc2-estrutura.md
+# Qualquer doc de TCC fica fora do repositório
+docs/tcc*.md
 
 # --- Sincronização manual UFT (guarda token/payload da API local, nunca subir) ---
 backend/sync-data/

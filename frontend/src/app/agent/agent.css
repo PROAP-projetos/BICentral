@@ -389,10 +389,9 @@
   color: var(--text-primary);
 }
 
+/* top/bottom/right vêm de menuPosicao (agent.component.ts) */
 .chat-history-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
+  position: fixed;
   z-index: 60;
   width: 190px;
   padding: 6px;
@@ -1835,8 +1834,9 @@
     pointer-events: auto;
   }
 
+  /* none (não translateX(0)): transform cria contexto pro position: fixed do menu das conversas. */
   .agent-shell:not(.sidebar-collapsed) .sidebar {
-    transform: translateX(0);
+    transform: none;
   }
 
   .agent-shell.sidebar-collapsed .sidebar {

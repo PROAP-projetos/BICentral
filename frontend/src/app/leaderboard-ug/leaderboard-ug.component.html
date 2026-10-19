@@ -69,7 +69,16 @@
       </div>
     </div>
 
-    <div class="kpi-card">
+    <div
+      class="kpi-card"
+      [class.kpi-card-clicavel]="totalUgsEmAtencao > 0"
+      [class.kpi-card-ativo]="painelAtencaoAberto"
+      [attr.role]="totalUgsEmAtencao > 0 ? 'button' : null"
+      [attr.tabindex]="totalUgsEmAtencao > 0 ? 0 : null"
+      [attr.aria-expanded]="totalUgsEmAtencao > 0 ? painelAtencaoAberto : null"
+      (click)="alternarPainelAtencao()"
+      (keydown.enter)="alternarPainelAtencao()"
+      (keydown.space)="$event.preventDefault(); alternarPainelAtencao()">
       <div class="kpi-icon-wrap" [ngClass]="totalUgsEmAtencao > 0 ? 'kpi-orange' : 'kpi-green'">
         {{ totalUgsEmAtencao > 0 ? '⚠️' : '🛡️' }}
       </div>
@@ -81,8 +90,30 @@
             {{ totalUgsEmAtencao > 0 ? 'Atenção' : 'Regular' }}
           </span>
         </div>
-        <span class="kpi-subtext">{{ totalUgsEmAtencao > 0 ? 'Execução abaixo de 60%' : 'Todas as unidades com boa tração' }}</span>
+        <span class="kpi-subtext" [title]="resumo?.referenciaAtencao ? 'Corte de ' + limiteAtencao + '% (' + resumo?.referenciaAtencao + ')' : ''">{{ totalUgsEmAtencao > 0 ? (painelAtencaoAberto ? 'Clique para fechar a lista' : 'Abaixo de ' + limiteAtencao + '% · ver lista') : 'Todas acima de ' + limiteAtencao + '%' }}</span>
       </div>
+    </div>
+  </section>
+
+  <section class="atencao-painel" *ngIf="painelAtencaoAberto && totalUgsEmAtencao > 0">
+    <div class="atencao-header">
+      <div>
+        <h3>Unidades em atenção</h3>
+        <span class="section-hint">Execução abaixo de {{ limiteAtencao }}%{{ resumo?.referenciaAtencao ? ' (' + resumo?.referenciaAtencao + ')' : '' }}, da menor para a maior · clique para abrir o diagnóstico no chat</span>
+      </div>
+      <button type="button" class="atencao-fechar" (click)="painelAtencaoAberto = false" aria-label="Fechar lista">✕</button>
+    </div>
+    <div class="atencao-lista">
+      <button type="button" class="atencao-item" *ngFor="let ug of ugsEmAtencao; trackBy: trackByUgId" (click)="clicarUg(ug)" [title]="ug.nome">
+        <div class="atencao-nome">
+          <strong>{{ ug.sigla }}</strong>
+          <span>{{ ug.nome }}</span>
+        </div>
+        <div class="atencao-metricas">
+          <span class="metric-pct" [ngClass]="getClasseCorPct(ug.percentual)">{{ ug.percentual }}%</span>
+          <span class="atencao-acoes">{{ ug.totalAcoes }} ações</span>
+        </div>
+      </button>
     </div>
   </section>
 

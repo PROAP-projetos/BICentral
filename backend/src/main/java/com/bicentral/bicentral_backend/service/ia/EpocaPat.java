@@ -10,7 +10,8 @@ public final class EpocaPat {
     private static final ZoneId FUSO = ZoneId.of("America/Sao_Paulo");
     private static final DateTimeFormatter DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    // Referências mínimas de execução esperadas na reta final; ajustar aqui se o time combinar outros valores.
+    // Referências mínimas de execução esperadas na reta final; ajustar aqui se o time combinar outros valores
+    // (e manter limiteAtencaoPct abaixo com os mesmos números).
     private static final String REFERENCIA_FINAL = "perto de 75% em outubro, 90% em novembro e 100% em dezembro";
 
     private EpocaPat() {
@@ -18,6 +19,34 @@ public final class EpocaPat {
 
     public static String blocoParaHoje() {
         return bloco(LocalDate.now(FUSO));
+    }
+
+    public static LocalDate hoje() {
+        return LocalDate.now(FUSO);
+    }
+
+    /**
+     * Corte da faixa "em atenção" (painel de ranking e resumo executivo): unidade abaixo disso está atrás
+     * do esperado para a época. O 1º semestre não tem mínimo no texto do agente; 25% é um piso leve só
+     * pra o painel não ficar vazio nem acusar todo mundo em janeiro.
+     */
+    public static int limiteAtencaoPct(LocalDate hoje) {
+        int mes = hoje.getMonthValue();
+        if (mes <= 6) return 25;
+        if (mes <= 9) return 50;
+        if (mes == 10) return 75;
+        if (mes == 11) return 90;
+        return 100;
+    }
+
+    /** "referência de outubro", "referência do meio do ano"... — acompanha o número em textos de interface. */
+    public static String rotuloReferencia(LocalDate hoje) {
+        int mes = hoje.getMonthValue();
+        if (mes <= 6) return "referência do 1º semestre";
+        if (mes <= 9) return "referência do meio do ano";
+        if (mes == 10) return "referência de outubro";
+        if (mes == 11) return "referência de novembro";
+        return "referência de dezembro";
     }
 
     static String bloco(LocalDate hoje) {

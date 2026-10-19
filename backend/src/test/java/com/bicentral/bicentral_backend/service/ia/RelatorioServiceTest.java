@@ -204,14 +204,58 @@ class RelatorioServiceTest {
                 new IndicadorRelatorioDTO("Em Andamento", "3 (60,00%)"),
                 new IndicadorRelatorioDTO("Atrasadas", "1 (20,00%)"));
 
+        String proap = "Pró-Reitoria de Avaliação e Planejamento - PROAP";
         List<TarefaPessoaDTO> tarefas = List.of(
-                new TarefaPessoaDTO("U 1.1.5.2 - Elaboração do Plano Anual de Trabalho - PAT", "Pró-Reitoria de Avaliação e Planejamento - PROAP", 90.0, true, 68L, "15/07/2026"),
-                new TarefaPessoaDTO("U 1.1.4.2 - Indicadores de Gestão do TCU 2025", "Pró-Reitoria de Avaliação e Planejamento - PROAP", 100.0, false, null, "20/02/2026"),
-                new TarefaPessoaDTO("U 2.1.2.40 - Organização e sistematização das informações do RG", "Pró-Reitoria de Avaliação e Planejamento - PROAP", 100.0, false, null, "28/02/2026"),
-                new TarefaPessoaDTO("U 2.1.5.1 - Indicadores Institucionais", "Pró-Reitoria de Avaliação e Planejamento - PROAP", 30.0, false, null, "30/03/2026"),
-                new TarefaPessoaDTO("U 1.1.4.1 - Acompanhamento do PAT", "Pró-Reitoria de Avaliação e Planejamento - PROAP", 20.0, false, null, "30/12/2026"));
+                new TarefaPessoaDTO("U 1.1.5.2", proap, 90.0, true, 68L, "15/07/2026", "Assegurar o planejamento e o monitoramento das atividades das unidades", "Elaboração do Plano Anual de Trabalho - PAT"),
+                new TarefaPessoaDTO("U 1.1.4.2", proap, 100.0, false, null, "20/02/2026", "Monitorar os indicadores de desempenho institucionais", "Indicadores de Gestão do TCU 2025"),
+                new TarefaPessoaDTO("U 2.1.2.40", proap, 100.0, false, null, "28/02/2026", "Promover elaboração/consolidação e publicização do Relatório de Gestão", "Organização e sistematização das informações do RG"),
+                new TarefaPessoaDTO("U 2.1.5.1", proap, 30.0, false, null, "30/03/2026", null, "Indicadores Institucionais"),
+                // Formato antigo, ainda presente em relatórios já salvos: código e tarefa juntos em "acao".
+                new TarefaPessoaDTO("U 1.1.4.1 - Acompanhamento do PAT", proap, 20.0, false, null, "30/12/2026", null, null));
 
-        return new RelatorioPessoaDTO("Idelma de Melo Rodrigues Abreu", "22/09/2026 10:00", indicadores, tarefas);
+        return new RelatorioPessoaDTO("Idelma de Melo Rodrigues Abreu", "22/09/2026 10:00", indicadores, tarefas,
+                "Idelma concentra 5 tarefas no PAT 2026, ligadas sobretudo ao monitoramento de indicadores institucionais.",
+                "Duas tarefas estão concluídas e uma está atrasada. Priorizar a U 1.1.5.2 nas próximas semanas.",
+                75, "referência de outubro");
+    }
+
+    @Test
+    void gerarExcelPessoa_SeparaCodigoDaAcaoETarefaEmColunasProprias() throws Exception {
+        byte[] xlsx = (byte[]) invoke("gerarExcelPessoa", new Class<?>[]{RelatorioPessoaDTO.class}, relatorioPessoaDeTeste());
+        try (var workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook(new ByteArrayInputStream(xlsx))) {
+            var aba = workbook.getSheet("Tarefas");
+            assertEquals("Ação", aba.getRow(0).getCell(0).getStringCellValue());
+            assertEquals("Tarefa", aba.getRow(0).getCell(2).getStringCellValue());
+
+            assertEquals("U 1.1.4.2", aba.getRow(2).getCell(0).getStringCellValue());
+            assertEquals("Monitorar os indicadores de desempenho institucionais", aba.getRow(2).getCell(1).getStringCellValue());
+            assertEquals("Indicadores de Gestão do TCU 2025", aba.getRow(2).getCell(2).getStringCellValue());
+
+            assertEquals("U 1.1.4.1", aba.getRow(5).getCell(0).getStringCellValue());
+            assertEquals("Acompanhamento do PAT", aba.getRow(5).getCell(2).getStringCellValue());
+        }
+    }
+
+    @Test
+    void gerarPdfPessoa_MostraColunaTarefa() throws Exception {
+        byte[] pdf = (byte[]) invoke("gerarPdfPessoa", new Class<?>[]{RelatorioPessoaDTO.class}, relatorioPessoaDeTeste());
+        try (PDDocument doc = PDDocument.load(pdf)) {
+            String texto = new PDFTextStripper().getText(doc);
+            assertTrue(texto.contains("Tarefa"));
+            assertTrue(texto.contains("Indicadores de Gest"));
+        }
+    }
+
+    @Test
+    void relatorioPessoaSalvoNoFormatoAntigo_AindaDesserializa() throws Exception {
+        String jsonAntigo = """
+            {"nomePessoa":"Fulana","geradoEm":"22/09/2026 10:00","indicadores":[],
+             "tarefas":[{"acao":"U 1.1.4.1 - Acompanhamento do PAT","departamento":"PROAP",
+                         "percentualTarefa":20.0,"atrasada":false,"diasAtraso":null,"prazo":"30/12/2026"}]}
+            """;
+        RelatorioPessoaDTO r = new com.fasterxml.jackson.databind.ObjectMapper().readValue(jsonAntigo, RelatorioPessoaDTO.class);
+        assertNull(r.tarefas().get(0).tarefa());
+        assertTrue(((byte[]) invoke("gerarPdfPessoa", new Class<?>[]{RelatorioPessoaDTO.class}, r)).length > 0);
     }
 
     private RelatorioEstruturadoDTO relatorioComListaCompleta() {
@@ -222,7 +266,7 @@ class RelatorioServiceTest {
         return new RelatorioEstruturadoDTO(
                 base.departamento(), base.tipo(), base.geradoEm(), base.resumoExecutivo(), base.leituraCenario(),
                 base.indicadores(), base.distribuicao(), base.analiseMenorExecucao(), base.destaquesPositivos(),
-                base.pontosDeAcompanhamento(), true, listaCompleta, List.of(), List.of());
+                base.pontosDeAcompanhamento(), true, listaCompleta, List.of(), List.of(), 23.91, 75, "referência de outubro");
     }
 
     private RelatorioEstruturadoDTO relatorioComTarefasPorAcao() {
@@ -235,7 +279,7 @@ class RelatorioServiceTest {
         return new RelatorioEstruturadoDTO(
                 base.departamento(), base.tipo(), base.geradoEm(), base.resumoExecutivo(), base.leituraCenario(),
                 base.indicadores(), base.distribuicao(), base.analiseMenorExecucao(), base.destaquesPositivos(),
-                base.pontosDeAcompanhamento(), false, List.of(), tarefasPorAcao, List.of());
+                base.pontosDeAcompanhamento(), false, List.of(), tarefasPorAcao, List.of(), 23.91, 75, "referência de outubro");
     }
 
     private RelatorioEstruturadoDTO relatorioComSecoesRestritas(List<String> secoes) {
@@ -243,7 +287,7 @@ class RelatorioServiceTest {
         return new RelatorioEstruturadoDTO(
                 base.departamento(), base.tipo(), base.geradoEm(), base.resumoExecutivo(), base.leituraCenario(),
                 base.indicadores(), base.distribuicao(), base.analiseMenorExecucao(), base.destaquesPositivos(),
-                base.pontosDeAcompanhamento(), false, List.of(), List.of(), secoes);
+                base.pontosDeAcompanhamento(), false, List.of(), List.of(), secoes, 23.91, 75, "referência de outubro");
     }
 
     private RelatorioEstruturadoDTO relatorioDeTeste() {
@@ -298,6 +342,86 @@ class RelatorioServiceTest {
                 "Departamento de Teste", "PAT", "17/09/2026 12:00",
                 "Resumo executivo de teste.", leituraCenario, indicadores, distribuicao,
                 menorExecucao, destaques, pontosDeAcompanhamento,
-                false, List.of(), List.of(), List.of());
+                false, List.of(), List.of(), List.of(), 23.91, 75, "referência de outubro");
+    }
+
+    @Test
+    void relatorioDepartamento_TrazGraficosNoDocxEPdfMasNaoNoExcel() throws Exception {
+        byte[] docx = (byte[]) invoke("gerarDocx", new Class<?>[]{RelatorioEstruturadoDTO.class}, relatorioDeTeste());
+        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(docx))) {
+            // Média x referência + barras das ações de menor execução (a distribuição já tem a barra própria).
+            assertEquals(2, doc.getAllPictures().size());
+        }
+
+        byte[] pdf = (byte[]) invoke("gerarPdf", new Class<?>[]{RelatorioEstruturadoDTO.class}, relatorioDeTeste());
+        assertEquals(2, contarImagensPdf(pdf));
+
+        byte[] xlsx = (byte[]) invoke("gerarExcel", new Class<?>[]{RelatorioEstruturadoDTO.class}, relatorioDeTeste());
+        try (var workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook(new ByteArrayInputStream(xlsx))) {
+            assertNull(workbook.getSheet("Gráficos"));
+        }
+    }
+
+    @Test
+    void relatorioDepartamentoAntigo_SemMediaSalva_OmiteSoOGraficoDeMedia() throws Exception {
+        RelatorioEstruturadoDTO base = relatorioDeTeste();
+        RelatorioEstruturadoDTO antigo = new RelatorioEstruturadoDTO(
+                base.departamento(), base.tipo(), base.geradoEm(), base.resumoExecutivo(), base.leituraCenario(),
+                base.indicadores(), base.distribuicao(), base.analiseMenorExecucao(), base.destaquesPositivos(),
+                base.pontosDeAcompanhamento(), false, List.of(), List.of(), List.of(), null, null, null);
+        byte[] pdf = (byte[]) invoke("gerarPdf", new Class<?>[]{RelatorioEstruturadoDTO.class}, antigo);
+        assertEquals(1, contarImagensPdf(pdf));
+    }
+
+    @Test
+    void relatorioPessoa_TrazIntroducaoGraficosEConclusao() throws Exception {
+        RelatorioPessoaDTO r = relatorioPessoaDeTeste();
+
+        byte[] pdf = (byte[]) invoke("gerarPdfPessoa", new Class<?>[]{RelatorioPessoaDTO.class}, r);
+        assertEquals(3, contarImagensPdf(pdf));
+        try (PDDocument doc = PDDocument.load(pdf)) {
+            String texto = new PDFTextStripper().getText(doc);
+            assertTrue(texto.contains("01 · Introdução") || texto.contains("01 - Introdu"));
+            assertTrue(texto.contains("Conclus"));
+            assertTrue(texto.contains("Idelma concentra 5 tarefas"));
+        }
+
+        byte[] docx = (byte[]) invoke("gerarDocxPessoa", new Class<?>[]{RelatorioPessoaDTO.class}, r);
+        try (XWPFDocument doc = new XWPFDocument(new ByteArrayInputStream(docx))) {
+            assertEquals(3, doc.getAllPictures().size());
+            String texto = new XWPFWordExtractor(doc).getText();
+            assertTrue(texto.contains("Introdução"));
+            assertTrue(texto.contains("Priorizar a U 1.1.5.2"));
+        }
+
+        byte[] xlsx = (byte[]) invoke("gerarExcelPessoa", new Class<?>[]{RelatorioPessoaDTO.class}, r);
+        try (var workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook(new ByteArrayInputStream(xlsx))) {
+            assertNull(workbook.getSheet("Gráficos"));
+        }
+    }
+
+    @Test
+    void relatorioPessoaSemTextoDaIA_SaiSemIntroducaoNemConclusao() throws Exception {
+        RelatorioPessoaDTO base = relatorioPessoaDeTeste();
+        RelatorioPessoaDTO semIa = new RelatorioPessoaDTO(base.nomePessoa(), base.geradoEm(), base.indicadores(), base.tarefas(), null, null, 75, "referência de outubro");
+
+        byte[] pdf = (byte[]) invoke("gerarPdfPessoa", new Class<?>[]{RelatorioPessoaDTO.class}, semIa);
+        try (PDDocument doc = PDDocument.load(pdf)) {
+            String texto = new PDFTextStripper().getText(doc);
+            assertFalse(texto.contains("Introdu"));
+            assertTrue(texto.contains("Vis"));
+        }
+    }
+
+    private int contarImagensPdf(byte[] pdf) throws Exception {
+        int total = 0;
+        try (PDDocument doc = PDDocument.load(pdf)) {
+            for (var pagina : doc.getPages()) {
+                for (var nome : pagina.getResources().getXObjectNames()) {
+                    if (pagina.getResources().isImageXObject(nome)) total++;
+                }
+            }
+        }
+        return total;
     }
 }

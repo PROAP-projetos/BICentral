@@ -36,10 +36,10 @@ describe('RankingService', () => {
   });
 
   it('busca o resumo global sem dupla contagem', () => {
-    service.resumo().subscribe(r => expect(r).toEqual({ totalAcoes: 50, acoesConcluidas: 12 }));
+    service.resumo().subscribe(r => expect(r).toEqual({ totalAcoes: 50, acoesConcluidas: 12, limiteAtencaoPct: 75, referenciaAtencao: 'referência de outubro' }));
 
     const req = httpTesting.expectOne('/api/ranking/resumo');
     expect(req.request.method).toBe('GET');
-    req.flush({ totalAcoes: 50, acoesConcluidas: 12 });
+    req.flush({ totalAcoes: 50, acoesConcluidas: 12, limiteAtencaoPct: 75, referenciaAtencao: 'referência de outubro' });
   });
 });

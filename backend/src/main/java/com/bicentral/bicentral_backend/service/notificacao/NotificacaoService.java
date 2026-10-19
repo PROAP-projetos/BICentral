@@ -154,7 +154,7 @@ public class NotificacaoService {
                 FROM pat_tarefas
                 WHERE departamento ILIKE ?
                 ORDER BY
-                    (to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') < CURRENT_DATE
+                    (to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') < (NOW() AT TIME ZONE 'America/Sao_Paulo')::date
                         AND NULLIF(regexp_replace(dados_completos->>'% Concluído', '[^0-9.,]', '', 'g'), '')::numeric < 100) DESC,
                     percentual ASC NULLS LAST
                 LIMIT ?
@@ -200,7 +200,7 @@ public class NotificacaoService {
                     to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') AS data_final
                 FROM pat_tarefas
                 WHERE departamento ILIKE ?
-                    AND to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') < CURRENT_DATE
+                    AND to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') < (NOW() AT TIME ZONE 'America/Sao_Paulo')::date
                     AND NULLIF(regexp_replace(dados_completos->>'% Concluído', '[^0-9.,]', '', 'g'), '')::numeric < 100
                 ORDER BY data_final ASC NULLS LAST
                 LIMIT 100
@@ -225,7 +225,7 @@ public class NotificacaoService {
                 SELECT dados_completos->>'Responsável' AS responsavel, COUNT(*) AS total
                 FROM pat_tarefas
                 WHERE departamento ILIKE ?
-                    AND to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') < CURRENT_DATE
+                    AND to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') < (NOW() AT TIME ZONE 'America/Sao_Paulo')::date
                     AND NULLIF(regexp_replace(dados_completos->>'% Concluído', '[^0-9.,]', '', 'g'), '')::numeric < 100
                 GROUP BY responsavel
                 ORDER BY total DESC

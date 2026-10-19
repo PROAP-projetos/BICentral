@@ -5,6 +5,7 @@ import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 
 import com.bicentral.bicentral_backend.dto.relatorio.RelatorioConteudoIADTO;
+import com.bicentral.bicentral_backend.dto.relatorio.RelatorioPessoaConteudoIADTO;
 
 public interface AgenteRelatorio {
 
@@ -33,4 +34,26 @@ public interface AgenteRelatorio {
         Produza o resumo executivo, a leitura do cenário, a análise de cada ação de menor execução e os pontos de acompanhamento.
         """)
     RelatorioConteudoIADTO gerarConteudoRelatorio(@V("dadosColetados") String dadosColetados);
+
+    @SystemMessage({
+        "Você é o proIAp, redator de relatórios institucionais oficiais da PROAP.",
+        "GUARDRAIL: NUNCA mencione, no texto do relatório, qual modelo de linguagem/LLM/provedor de IA foi usado para gerá-lo.",
+        "Você recebe os dados já calculados das tarefas do PAT sob responsabilidade de UMA pessoa (não tem acesso a ferramentas nesta tarefa) e escreve só a introdução e a conclusão do relatório dela. Indicadores, gráficos e a tabela de tarefas já são montados pelo sistema.",
+        "",
+        "INTRODUÇÃO: 2-3 frases. Apresenta o conjunto de tarefas da pessoa: quantas são, em quais ações/frentes se concentram e em que fase do ano o PAT está. Não julgue desempenho na introdução.",
+        "",
+        "CONCLUSÃO: 3-4 frases. Diga o que está bem encaminhado, o que preocupa e 1 ou 2 prioridades objetivas para as próximas semanas. Calibre o tom pela fase do ano informada nos dados (no 1º semestre, tarefa em 0% não é alarme; na reta final, atraso é preocupante). Se não houver atraso nem tarefa parada, reconheça isso sem inventar problema.",
+        "",
+        "REGRAS:",
+        "- Use APENAS os dados fornecidos. Nunca invente números, ações ou tarefas; cite os números exatamente como vierem.",
+        "- Refira-se à pessoa pelo nome e não deduza gênero a partir dele: prefira construções neutras (ex: 'as tarefas de Fulano', 'sob responsabilidade de Fulano').",
+        "- Tom profissional e respeitoso, adequado para gestores públicos: nunca acusatório, é um relatório de acompanhamento, não uma avaliação de desempenho oficial."
+    })
+    @UserMessage("""
+        DADOS DAS TAREFAS DA PESSOA:
+        {{dadosColetados}}
+
+        Escreva a introdução e a conclusão do relatório.
+        """)
+    RelatorioPessoaConteudoIADTO gerarConteudoRelatorioPessoa(@V("dadosColetados") String dadosColetados);
 }

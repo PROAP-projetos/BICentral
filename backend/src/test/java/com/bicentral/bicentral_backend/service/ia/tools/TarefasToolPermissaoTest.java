@@ -12,9 +12,12 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -23,6 +26,7 @@ class TarefasToolPermissaoTest {
     private static final long CONVIDADO = 7L;
 
     private final ConvidadoService convidadoService = mock(ConvidadoService.class);
+    private final JdbcTemplate jdbc = mock(JdbcTemplate.class);
     private TarefasTool tool;
 
     @BeforeEach
@@ -34,7 +38,8 @@ class TarefasToolPermissaoTest {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken("convidado@fora.com", null));
 
-        tool = new TarefasTool(mock(JdbcTemplate.class), usuarioService, mock(StatusExecucaoAgente.class), convidadoService);
+        when(jdbc.queryForMap(anyString(), any(Object[].class))).thenReturn(Map.of("total", 0L));
+        tool = new TarefasTool(jdbc, usuarioService, mock(StatusExecucaoAgente.class), convidadoService);
     }
 
     @AfterEach
@@ -77,5 +82,18 @@ class TarefasToolPermissaoTest {
         when(convidadoService.departamentosComPessoasVisiveis(CONVIDADO)).thenReturn(null);
 
         assertFalse(buscar("PROAP").startsWith("SEM PERMISSÃO:"));
+    }
+
+    @Test
+    void resumoDeStatusCobreTodasAsTarefasNaoSoAAmostra() {
+        when(convidadoService.departamentosComPessoasVisiveis(CONVIDADO)).thenReturn(null);
+        when(jdbc.queryForMap(anyString(), any(Object[].class))).thenReturn(Map.of(
+                "total", 69L, "concluidas", 40L, "em_andamento", 25L, "atrasadas", 4L, "zeradas", 12L, "media", new java.math.BigDecimal("72.50")));
+
+        String resposta = tool.buscarTarefas(null, null, null, "Idelma", null, null, null, null);
+
+        assertTrue(resposta.contains("RESUMO DE TODAS AS 69 TAREFAS"));
+        assertTrue(resposta.contains("40 concluídas (100%), 25 em andamento no prazo, 4 atrasadas; 12 ainda em 0%"));
+        assertTrue(resposta.contains("média de conclusão 72,50%") || resposta.contains("média de conclusão 72.50%"));
     }
 }

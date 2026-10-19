@@ -40,10 +40,10 @@ public class TarefasController {
         List<Map<String, Object>> atrasadas = jdbcTemplate.queryForList("""
                 SELECT
                     dados_completos->>'TÍTULO DA TAREFA' AS titulo_tarefa,
-                    (CURRENT_DATE - to_date(dados_completos->>'Data Final', 'DD/MM/YYYY')) AS dias_atraso
+                    ((NOW() AT TIME ZONE 'America/Sao_Paulo')::date - to_date(dados_completos->>'Data Final', 'DD/MM/YYYY')) AS dias_atraso
                 FROM pat_tarefas
                 WHERE dados_completos->>'Responsável' ILIKE ?
-                    AND to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') < CURRENT_DATE
+                    AND to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') < (NOW() AT TIME ZONE 'America/Sao_Paulo')::date
                     AND NULLIF(regexp_replace(dados_completos->>'% Concluído', '[^0-9.,]', '', 'g'), '')::numeric < 100
                     ORDER BY dias_atraso DESC
                     """, "%" + nomeResponsavel.trim() + "%");

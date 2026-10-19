@@ -5,8 +5,10 @@ import dev.langchain4j.agent.tool.P;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
+import com.bicentral.bicentral_backend.service.ia.EpocaPat;
 import com.bicentral.bicentral_backend.state.StatusExecucaoAgente;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -409,10 +411,15 @@ public class ConsultaAcoesTool {
         return " (ação compartilhada: " + formatarPercentualEnxuto(item.get("pct_geral")) + "% geral entre " + qtd + " unidades)";
     }
 
-    @Tool("Monta o RESUMO EXECUTIVO do PAT (ano corrente) da instituição inteira, com os mesmos números do painel de ranking: total de ações únicas e quantas estão concluídas, em andamento e paradas, média das UGs, UGs abaixo de 60%, 3 melhores e 3 piores UGs com posição, e ações compartilhadas paradas em 0% em todas as unidades. Use quando o usuário pedir 'resumo executivo', 'situação geral do PAT' ou 'visão geral das unidades'. Cite os números exatamente como vierem, sem recalcular.")
+    @Tool("Monta o RESUMO EXECUTIVO do PAT (ano corrente) da instituição inteira, com os mesmos números do painel de ranking: total de ações únicas e quantas estão concluídas, em andamento e paradas, média das UGs, UGs abaixo da faixa de atenção da época do ano, 3 melhores e 3 piores UGs com posição, e ações compartilhadas paradas em 0% em todas as unidades. Use quando o usuário pedir 'resumo executivo', 'situação geral do PAT' ou 'visão geral das unidades'. Cite os números exatamente como vierem, sem recalcular.")
     public String resumoExecutivoPAT() {
         statusExecucao.definir("Montando o resumo executivo do PAT...");
         System.out.println(">>> TOOL CHAMADA: resumoExecutivoPAT()");
+        return montarResumoExecutivo(EpocaPat.hoje());
+    }
+
+    String montarResumoExecutivo(LocalDate hoje) {
+        int limiteAtencao = EpocaPat.limiteAtencaoPct(hoje);
 
         // Mesma regra do KPI do painel: ação compartilhada conta uma vez e só está concluída se todas as unidades chegaram a 100%.
         Map<String, Object> acoes = jdbcTemplate.queryForMap("""
@@ -442,17 +449,20 @@ public class ConsultaAcoesTool {
             ORDER BY media DESC, departamento
             """);
         double somaMedias = 0;
-        int abaixoDe60 = 0;
+        int abaixoDoLimite = 0;
         for (Map<String, Object> ug : ugs) {
             double media = ((Number) ug.get("media")).doubleValue();
             somaMedias += media;
-            if (media < 60) abaixoDe60++;
+            if (media < limiteAtencao) abaixoDoLimite++;
         }
         double mediaUgs = ugs.isEmpty() ? 0 : Math.round(somaMedias / ugs.size() * 10.0) / 10.0;
 
         StringBuilder sb = new StringBuilder();
         try {
-            String atualizadoEm = jdbcTemplate.queryForObject("SELECT to_char(MAX(atualizado_em), 'DD/MM/YYYY HH24:MI') FROM pat_dados", String.class);
+            // Mesma conversão UTC -> Brasília do RankingController.atualizacao, pra data bater com a do painel.
+            String atualizadoEm = jdbcTemplate.queryForObject(
+                    "SELECT to_char(MAX(atualizado_em) AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY HH24:MI') FROM pat_dados",
+                    String.class);
             if (atualizadoEm != null) sb.append("DADOS ATUALIZADOS EM: ").append(atualizadoEm).append("\n\n");
         } catch (Exception ignorada) {
             // sem data de atualização o resumo continua válido
@@ -463,7 +473,8 @@ public class ConsultaAcoesTool {
           .append(emAndamento).append(" em andamento e ")
           .append(paradas).append(" paradas (0% em todas as unidades responsáveis).\n");
         sb.append("UGs: ").append(ugs.size()).append(" no ranking, média de execução de ").append(formatarPercentualEnxuto(mediaUgs))
-          .append("%, ").append(abaixoDe60).append(" abaixo de 60% (faixa de atenção do painel).\n\n");
+          .append("%, ").append(abaixoDoLimite).append(" abaixo de ").append(limiteAtencao)
+          .append("% (faixa de atenção do painel, ").append(EpocaPat.rotuloReferencia(hoje)).append(").\n\n");
 
         if (!ugs.isEmpty()) {
             sb.append("MELHORES UGs (posição de ").append(ugs.size()).append("):\n").append(linhasDoResumo(ugs, true));

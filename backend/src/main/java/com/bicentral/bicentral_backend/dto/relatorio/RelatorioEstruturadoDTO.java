@@ -22,7 +22,12 @@ public record RelatorioEstruturadoDTO(
         List<AcaoComTarefasDTO> tarefasPorAcao,
         // Chaves de seção que o usuário pediu pra incluir (ver RelatorioContextoTool.secoes) — vazia
         // significa "sem restrição", mostra todas as seções que tiverem dado (comportamento padrão).
-        List<String> secoesIncluidas) {
+        List<String> secoesIncluidas,
+        // Média numérica e referência da época na data de geração — alimentam o gráfico de média x
+        // referência. Nulos em relatórios salvos antes disso (o gráfico simplesmente não aparece).
+        Double mediaExecucao,
+        Integer referenciaEpocaPct,
+        String rotuloReferencia) {
 
     /** Vazia = sem restrição (mostra tudo). Caso contrário, só as chaves pedidas. */
     public boolean secaoIncluida(String chave) {

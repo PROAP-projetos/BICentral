@@ -12,9 +12,9 @@ export function promptResumoExecutivo(): string {
   return 'Gere o resumo executivo do PAT da instituição, com os números exatamente como vierem da consulta do resumo executivo. '
     + 'Responda nesta ordem: 1) uma frase com a situação geral (total de ações únicas, quantas concluídas, em andamento e paradas), a média de execução das UGs comparada com a referência esperada para a época do ano (diga a distância entre as duas) e a data de atualização dos dados; '
     + '2) tabela pequena das melhores e das piores UGs com percentual e posição no formato "Xª de N"; UGs empatadas ficam juntas numa linha só, como vieram, sem inventar posição individual para cada uma; '
-    + '3) riscos: quantas UGs estão abaixo de 60% e as ações compartilhadas paradas em 0% em todas as unidades, com o código; '
+    + '3) riscos: quantas UGs estão abaixo da faixa de atenção (o corte da época do ano vem na consulta) e as ações compartilhadas paradas em 0% em todas as unidades, com o código; '
     + '4) uma recomendação objetiva com 2 ou 3 prioridades, apontando quem está em 0% e as ações compartilhadas paradas; '
-    + 'evite recomendações genéricas como "acompanhar todas as UGs abaixo de 60%" e, se a maioria das UGs estiver nessa faixa, diga isso como contexto e aponte o que puxa a média para baixo.';
+    + 'evite recomendações genéricas como "acompanhar todas as UGs abaixo da faixa de atenção" e, se a maioria das UGs estiver nessa faixa, diga isso como contexto e aponte o que puxa a média para baixo.';
 }
 
 export function promptMaiorXMenor(maior: string, menor: string): string {

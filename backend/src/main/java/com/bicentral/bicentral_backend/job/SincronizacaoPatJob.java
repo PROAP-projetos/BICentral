@@ -271,14 +271,16 @@ public class SincronizacaoPatJob {
     private int processarPat(String jsonBody, int ano) throws Exception {
         List<Map<String, Object>> itens = MAPPER.readValue(jsonBody, new TypeReference<List<Map<String, Object>>>() {});
 
+        // atualizado_em é TIMESTAMP sem fuso: grava sempre em UTC explícito, porque NOW() sozinho sai no
+        // fuso da sessão, que muda conforme a conexão (pooler do Supabase fica em UTC). A leitura converte.
         String sql = """
             INSERT INTO pat_dados (id, departamento, ano, dados_completos, atualizado_em)
-            VALUES (?, ?, ?, ?::jsonb, NOW())
+            VALUES (?, ?, ?, ?::jsonb, NOW() AT TIME ZONE 'UTC')
             ON CONFLICT (id) DO UPDATE SET
                 departamento = EXCLUDED.departamento,
                 ano = EXCLUDED.ano,
                 dados_completos = EXCLUDED.dados_completos,
-                atualizado_em = NOW()
+                atualizado_em = NOW() AT TIME ZONE 'UTC'
             """;
 
         List<Object[]> lote = new java.util.ArrayList<>(TAMANHO_LOTE);

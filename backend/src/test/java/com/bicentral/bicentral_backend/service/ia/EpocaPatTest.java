@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class EpocaPatTest {
@@ -38,5 +39,17 @@ class EpocaPatTest {
         assertTrue(EpocaPat.bloco(LocalDate.of(2026, 7, 1)).contains("MEIO DO ANO"));
         assertTrue(EpocaPat.bloco(LocalDate.of(2026, 9, 30)).contains("MEIO DO ANO"));
         assertTrue(EpocaPat.bloco(LocalDate.of(2026, 10, 1)).contains("RETA FINAL"));
+    }
+
+    @Test
+    void limiteDeAtencaoAcompanhaAEpocaDoAno() {
+        assertEquals(25, EpocaPat.limiteAtencaoPct(LocalDate.of(2027, 1, 15)));
+        assertEquals(25, EpocaPat.limiteAtencaoPct(LocalDate.of(2027, 6, 30)));
+        assertEquals(50, EpocaPat.limiteAtencaoPct(LocalDate.of(2027, 7, 1)));
+        assertEquals(50, EpocaPat.limiteAtencaoPct(LocalDate.of(2027, 9, 30)));
+        assertEquals(75, EpocaPat.limiteAtencaoPct(LocalDate.of(2026, 10, 14)));
+        assertEquals(90, EpocaPat.limiteAtencaoPct(LocalDate.of(2026, 11, 1)));
+        assertEquals(100, EpocaPat.limiteAtencaoPct(LocalDate.of(2026, 12, 31)));
+        assertEquals("referência de outubro", EpocaPat.rotuloReferencia(LocalDate.of(2026, 10, 14)));
     }
 }

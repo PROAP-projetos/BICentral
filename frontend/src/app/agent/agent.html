@@ -44,7 +44,7 @@
       Novo Chat
     </button>
 
-    <div class="chat-history">
+    <div class="chat-history" (scroll)="menuAbertoId = null">
       <ng-container *ngIf="sessoesFixadas.length > 0">
         <p class="section-title">Fixada</p>
         <ul>
@@ -99,7 +99,7 @@
           </svg>
         </button>
 
-        <div class="chat-history-menu" *ngIf="menuAbertoId === sessao.id" (click)="$event.stopPropagation()">
+        <div class="chat-history-menu" *ngIf="menuAbertoId === sessao.id" [ngStyle]="menuPosicao" (click)="$event.stopPropagation()">
           <button type="button" (click)="compartilharChat(sessao, $event)" [disabled]="compartilhandoId === sessao.id">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"></path>
@@ -495,7 +495,7 @@
         </div>
 
         <!-- Indicador "pensando" — só a estrela da logo animada + texto, sem moldura de balão -->
-        <div class="msg-pensando" *ngIf="carregando">
+        <div class="msg-pensando" *ngIf="gerandoNestaConversa">
           <svg class="pensando-estrela" width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path
               d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z">
@@ -531,20 +531,20 @@
             placeholder="Pergunte ao proIAp sobre os dados da PROAP..."
             (input)="ajustarAlturaPrompt($event)"
             (keydown)="aoPressionarPrompt($event)"
-            [disabled]="carregando"
+            [disabled]="gerandoNestaConversa"
             rows="1"
             autofocus></textarea>
           <button
             class="send"
-            [class.stop]="carregando"
-            [disabled]="!carregando && input.length === 0"
-            (click)="carregando ? pararGeracao() : send()"
-            [attr.aria-label]="carregando ? 'Parar geração' : 'Enviar'"
-            [attr.title]="carregando ? 'Parar geração' : 'Enviar'">
-            <svg *ngIf="!carregando" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            [class.stop]="gerandoNestaConversa"
+            [disabled]="!gerandoNestaConversa && (carregando || input.length === 0)"
+            (click)="gerandoNestaConversa ? pararGeracao() : send()"
+            [attr.aria-label]="gerandoNestaConversa ? 'Parar geração' : gerandoEmOutraConversa ? 'Aguarde a resposta da outra conversa' : 'Enviar'"
+            [attr.title]="gerandoNestaConversa ? 'Parar geração' : gerandoEmOutraConversa ? 'Aguarde a resposta da outra conversa' : 'Enviar'">
+            <svg *ngIf="!gerandoNestaConversa" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 4l-8 8h6v8h4v-8h6z" />
             </svg>
-            <svg *ngIf="carregando" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+            <svg *ngIf="gerandoNestaConversa" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
               <rect x="4" y="4" width="16" height="16" rx="2" />
             </svg>
           </button>

@@ -56,9 +56,15 @@ public class TarefasTool {
                    "Um administrador precisa cadastrar esse vínculo no painel admin para essa consulta funcionar.";
         }
 
-        Integer totalTarefas = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM pat_tarefas WHERE dados_completos->>'Responsável' ILIKE ?",
-            Integer.class, "%" + nomeResponsavel.trim() + "%");
+        Map<String, Object> agregado = jdbcTemplate.queryForMap("""
+            WITH base AS (
+                SELECT NULLIF(regexp_replace(dados_completos->>'% Concluído', '[^0-9.,]', '', 'g'), '')::numeric AS percentual_tarefa,
+                       to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') AS data_final
+                FROM pat_tarefas
+                WHERE dados_completos->>'Responsável' ILIKE ?
+            )
+            """ + SQL_AGREGADO_STATUS, "%" + nomeResponsavel.trim() + "%");
+        Integer totalTarefas = ((Number) agregado.get("total")).intValue();
 
         if (!limiteExplicito && totalTarefas != null && totalTarefas <= LIMIAR_MOSTRAR_TUDO) {
             qtd = totalTarefas;
@@ -72,9 +78,9 @@ public class TarefasTool {
                 NULLIF(regexp_replace(dados_completos->>'% Concluído', '[^0-9.,]', '', 'g'), '')::numeric AS percentual,
                 dados_completos->>'Data Inicial' AS data_inicial,
                 to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') AS data_final,
-                (to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') < CURRENT_DATE
+                (to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') < (NOW() AT TIME ZONE 'America/Sao_Paulo')::date
                     AND NULLIF(regexp_replace(dados_completos->>'% Concluído', '[^0-9.,]', '', 'g'), '')::numeric < 100) AS atrasada,
-                (CURRENT_DATE - to_date(dados_completos->>'Data Final', 'DD/MM/YYYY')) AS dias_atraso
+                ((NOW() AT TIME ZONE 'America/Sao_Paulo')::date - to_date(dados_completos->>'Data Final', 'DD/MM/YYYY')) AS dias_atraso
             FROM pat_tarefas
             WHERE dados_completos->>'Responsável' ILIKE ?
             ORDER BY atrasada DESC, to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') ASC NULLS LAST
@@ -104,6 +110,7 @@ public class TarefasTool {
 
         StringBuilder sb = new StringBuilder();
         boolean truncado = totalTarefas != null && totalTarefas > tarefas.size();
+        sb.append(linhaResumoStatus(agregado));
         sb.append("Tarefas de ").append(nomeResponsavel).append(" (")
           .append(truncado ? tarefas.size() + " mais urgentes de " + totalTarefas + " no total" : tarefas.size() + " no total")
           .append("):\n\n");
@@ -187,11 +194,11 @@ public class TarefasTool {
             params.add("%" + palavraChave.trim() + "%");
         }
         if ("atrasada".equalsIgnoreCase(status)) {
-            where.append(" AND b.data_final < CURRENT_DATE AND COALESCE(b.percentual_tarefa, 0) < 100 ");
+            where.append(" AND b.data_final < (NOW() AT TIME ZONE 'America/Sao_Paulo')::date AND COALESCE(b.percentual_tarefa, 0) < 100 ");
         } else if ("concluida".equalsIgnoreCase(status) || "concluída".equalsIgnoreCase(status)) {
             where.append(" AND COALESCE(b.percentual_tarefa, 0) >= 100 ");
         } else if ("em_andamento".equalsIgnoreCase(status)) {
-            where.append(" AND COALESCE(b.percentual_tarefa, 0) < 100 AND (b.data_final IS NULL OR b.data_final >= CURRENT_DATE) ");
+            where.append(" AND COALESCE(b.percentual_tarefa, 0) < 100 AND (b.data_final IS NULL OR b.data_final >= (NOW() AT TIME ZONE 'America/Sao_Paulo')::date) ");
         }
 
         // JOIN com pat_execucao_departamento dentro do CTE, não só na query final — assim o filtro por tituloAcao também vale na query de COUNT.
@@ -213,10 +220,10 @@ public class TarefasTool {
             )
             """;
 
-        Integer total = jdbcTemplate.queryForObject(
-            baseSql + "SELECT COUNT(*) FROM base b" + where, Integer.class, params.toArray());
+        Map<String, Object> agregado = jdbcTemplate.queryForMap(baseSql + SQL_AGREGADO_STATUS + where, params.toArray());
+        int total = ((Number) agregado.get("total")).intValue();
 
-        if (total == null || total == 0) {
+        if (total == 0) {
             return "Nenhuma tarefa encontrada com esses filtros.";
         }
 
@@ -232,7 +239,7 @@ public class TarefasTool {
         } else if (ordenarPorPercentual) {
             ordem = "b.percentual_tarefa ASC NULLS LAST";
         } else {
-            ordem = "(b.data_final < CURRENT_DATE AND COALESCE(b.percentual_tarefa, 0) < 100) DESC, b.data_final ASC NULLS LAST";
+            ordem = "(b.data_final < (NOW() AT TIME ZONE 'America/Sao_Paulo')::date AND COALESCE(b.percentual_tarefa, 0) < 100) DESC, b.data_final ASC NULLS LAST";
         }
 
         String listaSql = baseSql + """
@@ -240,8 +247,8 @@ public class TarefasTool {
                 b.codigo_acao, b.titulo_acao, b.titulo_tarefa, b.departamento, b.responsavel,
                 ROUND(b.percentual_execucao * 100, 2) AS percentual_acao,
                 b.percentual_tarefa, b.data_final,
-                (b.data_final < CURRENT_DATE AND COALESCE(b.percentual_tarefa, 0) < 100) AS atrasada,
-                (CURRENT_DATE - b.data_final) AS dias_atraso
+                (b.data_final < (NOW() AT TIME ZONE 'America/Sao_Paulo')::date AND COALESCE(b.percentual_tarefa, 0) < 100) AS atrasada,
+                ((NOW() AT TIME ZONE 'America/Sao_Paulo')::date - b.data_final) AS dias_atraso
             FROM base b
             """ + where + " ORDER BY " + ordem + " LIMIT ?";
 
@@ -271,6 +278,7 @@ public class TarefasTool {
               .append(" |\n");
         }
 
+        sb.append(linhaResumoStatus(agregado));
         sb.append(truncado ? tarefas.size() + " tarefa(s) mostrada(s) de " + total + " no total" : total + " tarefa(s) encontrada(s)")
           .append(":\n\n");
         sb.append("| Ação | Título da Ação | Tarefa | Departamento | Responsável | % Ação | % Tarefa | Atraso | Prazo |\n");
@@ -392,6 +400,29 @@ public class TarefasTool {
               .append(" |\n");
         }
         return sb.toString();
+    }
+
+    // Contagem por status sobre TODAS as tarefas filtradas (CTE "base" com percentual_tarefa e data_final),
+    // não só a amostra listada — sem isso pedidos agregados ("indicador da fulana", "quantas zeradas ela
+    // tem") só tinham as linhas da amostra, e o gerador de painel (proibido de inventar número) devolvia
+    // painel vazio. As três primeiras faixas são exclusivas; "zeradas" é um recorte dentro delas.
+    private static final String SQL_AGREGADO_STATUS = """
+        SELECT COUNT(*) AS total,
+               COUNT(*) FILTER (WHERE COALESCE(b.percentual_tarefa, 0) >= 100) AS concluidas,
+               COUNT(*) FILTER (WHERE COALESCE(b.percentual_tarefa, 0) < 100 AND b.data_final < (NOW() AT TIME ZONE 'America/Sao_Paulo')::date) AS atrasadas,
+               COUNT(*) FILTER (WHERE COALESCE(b.percentual_tarefa, 0) < 100 AND (b.data_final IS NULL OR b.data_final >= (NOW() AT TIME ZONE 'America/Sao_Paulo')::date)) AS em_andamento,
+               COUNT(*) FILTER (WHERE COALESCE(b.percentual_tarefa, 0) = 0) AS zeradas,
+               ROUND(AVG(COALESCE(b.percentual_tarefa, 0)), 2) AS media
+        FROM base b
+        """;
+
+    private String linhaResumoStatus(Map<String, Object> agregado) {
+        return "RESUMO DE TODAS AS " + agregado.get("total") + " TAREFAS (não só as listadas abaixo): "
+                + agregado.get("concluidas") + " concluídas (100%), "
+                + agregado.get("em_andamento") + " em andamento no prazo, "
+                + agregado.get("atrasadas") + " atrasadas; "
+                + agregado.get("zeradas") + " ainda em 0%; "
+                + "média de conclusão " + formatarPercentualEnxuto(agregado.get("media")) + "%.\n\n";
     }
 
     /** Tira o sufixo "| Departamento (TIPO)" e o prefixo do código — duplica truncarTituloSemCodigo (privado em ConsultaAcoesTool/RelatorioService). */

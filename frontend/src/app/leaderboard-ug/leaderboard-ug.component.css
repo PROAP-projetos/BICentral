@@ -194,6 +194,121 @@
   text-overflow: ellipsis;
 }
 
+.kpi-card-clicavel {
+  cursor: pointer;
+}
+
+.kpi-card-clicavel:focus-visible {
+  outline: 2px solid #f97316;
+  outline-offset: 2px;
+}
+
+.kpi-card-ativo {
+  border-color: rgba(249, 115, 22, 0.55);
+}
+
+/* ==========================================
+   LISTA DE UNIDADES EM ATENÇÃO (abre pelo KPI)
+   ========================================== */
+
+.atencao-painel {
+  padding: 1rem 1.15rem;
+  background: var(--bg-main, #ffffff);
+  border: 1px solid rgba(249, 115, 22, 0.35);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  animation: atencao-abrir 0.2s ease-out;
+}
+
+@keyframes atencao-abrir {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.atencao-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.atencao-header h3 {
+  margin: 0 0 0.15rem;
+  font-size: 0.95rem;
+}
+
+.atencao-fechar {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 0.25rem 0.4rem;
+  border-radius: 6px;
+}
+
+.atencao-fechar:hover {
+  background: var(--border-color);
+}
+
+.atencao-lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.6rem;
+}
+
+.atencao-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  background: transparent;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.atencao-item:hover {
+  border-color: rgba(249, 115, 22, 0.55);
+  background: rgba(249, 115, 22, 0.05);
+}
+
+.atencao-nome {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.atencao-nome strong {
+  font-size: 0.85rem;
+}
+
+.atencao-nome span {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.atencao-metricas {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.atencao-acoes {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
 /* ==========================================
    COCKPIT LAYOUT EM 2 COLUNAS (60% / 40%)
    ========================================== */

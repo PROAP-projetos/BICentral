@@ -107,7 +107,26 @@ export class LeaderboardUgComponent implements OnInit, OnDestroy {
   }
 
   get totalUgsEmAtencao(): number {
-    return this.unidadesPrincipais.filter(u => u.percentual < 60).length;
+    return this.ugsEmAtencao.length;
+  }
+
+  // O corte vem do backend e acompanha a época do ano; 60 só cobre o resumo ainda não carregado ou com falha.
+  get limiteAtencao(): number {
+    return this.resumo?.limiteAtencaoPct ?? 60;
+  }
+
+  // Mesma base do KPI (sem coordenações), independente do filtro do ranking, pra lista bater com o número do card.
+  get ugsEmAtencao(): UgRankingItem[] {
+    return this.unidadesPrincipais
+      .filter(u => u.percentual < this.limiteAtencao)
+      .sort((a, b) => a.percentual - b.percentual || b.totalAcoes - a.totalAcoes);
+  }
+
+  painelAtencaoAberto = false;
+
+  alternarPainelAtencao(): void {
+    if (!this.totalUgsEmAtencao) return;
+    this.painelAtencaoAberto = !this.painelAtencaoAberto;
   }
 
   get percentualAcoesConcluidas(): number {

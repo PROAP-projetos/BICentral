@@ -1,5 +1,6 @@
 package com.bicentral.bicentral_backend.controller.painel;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -16,6 +17,7 @@ import com.bicentral.bicentral_backend.dto.painel.CompartilhamentoDepartamentosD
 import com.bicentral.bicentral_backend.dto.painel.RankingAtualizacaoDTO;
 import com.bicentral.bicentral_backend.dto.painel.RankingDepartamentoDTO;
 import com.bicentral.bicentral_backend.dto.painel.RankingResumoDTO;
+import com.bicentral.bicentral_backend.service.ia.EpocaPat;
 
 @RestController
 @RequestMapping("/api/ranking")
@@ -75,15 +77,20 @@ public class RankingController {
                 ? jdbcTemplate.queryForMap(sql, tipoUnidade)
                 : jdbcTemplate.queryForMap(sql);
 
+        LocalDate hoje = EpocaPat.hoje();
         return ResponseEntity.ok(new RankingResumoDTO(
                 ((Number) linha.get("total")).intValue(),
-                ((Number) linha.get("concluidas")).intValue()));
+                ((Number) linha.get("concluidas")).intValue(),
+                EpocaPat.limiteAtencaoPct(hoje),
+                EpocaPat.rotuloReferencia(hoje)));
     }
 
     @GetMapping("/atualizacao")
     public ResponseEntity<RankingAtualizacaoDTO> atualizacao() {
+        // pat_dados.atualizado_em é gravado em UTC (ver SincronizacaoPatJob); converte pra Brasília antes de formatar.
         String atualizadoEm = jdbcTemplate.queryForObject(
-                "SELECT to_char(MAX(atualizado_em), 'DD/MM/YYYY HH24:MI') FROM pat_dados", String.class);
+                "SELECT to_char(MAX(atualizado_em) AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY HH24:MI') FROM pat_dados",
+                String.class);
         return ResponseEntity.ok(new RankingAtualizacaoDTO(atualizadoEm));
     }
 
@@ -121,7 +128,7 @@ public class RankingController {
 
     private Map<String, Integer> buscarPosicoesAnteriores(String tipoUnidade) {
         java.sql.Date dataAnterior = jdbcTemplate.queryForObject(
-                "SELECT MAX(data_snapshot) FROM ranking_pat_snapshots WHERE data_snapshot < CURRENT_DATE",
+                "SELECT MAX(data_snapshot) FROM ranking_pat_snapshots WHERE data_snapshot < (NOW() AT TIME ZONE 'America/Sao_Paulo')::date",
                 java.sql.Date.class);
 
         if (dataAnterior == null) {

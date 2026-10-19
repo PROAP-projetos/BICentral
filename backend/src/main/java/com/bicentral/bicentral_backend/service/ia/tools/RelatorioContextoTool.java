@@ -42,7 +42,7 @@ public class RelatorioContextoTool {
             @P(value = "sempre 'PAT' por enquanto — é o único tipo disponível (execução do ano corrente). Relatório de PDI/acumulado ainda não está disponível, mesma limitação das ferramentas de consulta.", required = false) String tipo,
             @P(value = "true se o usuário pedir explicitamente pra ver o NOME (ou 'descrição') da ação em vez do código (ex: 'mostra o nome da ação', 'não quero só o código', 'quero a descrição') na tabela de Pontos de Atenção do relatório. false/omitido mantém o padrão (código).", required = false) Boolean mostrarNomeAcao,
             @P(value = "'crescente' ou 'decrescente' SOMENTE se o usuário pedir explicitamente uma lista/tabela de TODAS as ações ordenada por percentual de execução (ex: 'ordem crescente', 'do menor pro maior', 'lista completa ordenada'). Omitido/null quando o usuário só pede o relatório normal, sem essa lista completa — nesse caso o relatório NÃO ganha a seção extra.", required = false) String ordenacao,
-            @P(value = "'DOCX', 'PDF' ou 'XLSX'/'EXCEL' — formato pedido pelo usuário (ex: 'em excel', 'quero em planilha', 'gera o pdf'). Omitido/null mantém o padrão DOCX.", required = false) String formato,
+            @P(value = "'DOCX', 'PDF' ou 'XLSX'/'EXCEL' — formato SOMENTE se o usuário pedir um (ex: 'em excel', 'quero em planilha', 'gera o pdf'). Se ele não falou de formato, deixe null e NÃO cite formato na resposta.", required = false) String formato,
             @P(value = "true SOMENTE se o usuário pedir explicitamente pra ver as tarefas de cada ação dentro do relatório (ex: 'quero as ações e as tarefas', 'mostra as tarefas de cada ação', 'com as tarefas'). Adiciona uma seção nova com todas as ações do departamento e suas tarefas — deixa o relatório bem maior, por isso só ativa quando pedido claramente, não por padrão.", required = false) Boolean incluirTarefas,
             @P(value = "lista separada por vírgula das seções que o usuário quer no relatório, SOMENTE se ele pedir explicitamente pra restringir/escolher seções (ex: 'só quero pontos de atenção e a lista completa', 'sem a metodologia'). Chaves válidas: 'visao_executiva' (números e distribuição gerais), 'pontos_atencao', 'destaques', 'leitura_cenario' (resumo/análise em texto), 'acompanhamento', 'detalhamento' (tarefas das ações mais críticas), 'lista_completa' (exige também pedir ordenação, ou a lista some — se o usuário só falou 'lista completa' sem mais nada, ainda assim inclua 'lista_completa' aqui que o sistema resolve a ordenação sozinho), 'tarefas_por_acao', 'metodologia'. Omitido/null = relatório completo padrão, com todas as seções (comportamento de sempre) — NUNCA restrinja seção por conta própria sem o usuário ter pedido.", required = false) String secoes,
             @P(value = "palavra-chave de marcador/tag pra filtrar quais ações entram no relatório (ex: 'risco', 'CPA', 'AUDIN', 'Plano de Governo') — SOMENTE se o usuário pedir explicitamente um recorte por marcador (ex: 'só as ações de risco', 'filtrando por CPA'). Omitido/null = todas as ações do departamento, sem filtro (padrão).", required = false) String marcador) {
@@ -71,13 +71,13 @@ public class RelatorioContextoTool {
         }
         estadoSessao.setRelatorioGerado(true);
 
-        return "Relatório solicitado! Já abri o painel de relatórios pra você acompanhar — deve ficar pronto em cerca de 20-30 segundos.";
+        return confirmacaoSolicitacao(formato);
     }
 
     @Tool("Solicita a geração de um relatório de desempenho sobre uma PESSOA específica (suas tarefas do PAT), não sobre um departamento — em DOCX, PDF ou Excel. Use quando o usuário pedir 'um relatório sobre mim', 'sobre [nome de alguém]', 'das minhas tarefas' em formato de relatório (não uma simples consulta no chat). Sujeito a permissão: só é liberado pra pessoa sobre si mesma, um admin, ou quem gerencia o departamento da pessoa-alvo — se negado, explique o motivo devolvido sem tentar contornar.")
     public String solicitarRelatorioPessoa(
             @P(value = "nome da pessoa (pode ser parcial) — ex: 'Idelma'. Se o usuário disser 'sobre mim', 'meu relatório' ou 'minhas tarefas', deixe este campo VAZIO/null — o sistema já sabe quem está logado, NÃO peça pra ela confirmar o próprio nome.", required = false) String nomePessoa,
-            @P(value = "'DOCX', 'PDF' ou 'XLSX'/'EXCEL' — formato pedido pelo usuário. Omitido/null mantém o padrão DOCX.", required = false) String formato) {
+            @P(value = "'DOCX', 'PDF' ou 'XLSX'/'EXCEL' — formato SOMENTE se o usuário pedir um. Se ele não falou de formato, deixe null e NÃO cite formato na resposta.", required = false) String formato) {
 
         statusExecucao.definir("Solicitando o relatório" + (nomePessoa == null || nomePessoa.isBlank() ? "..." : " de " + nomePessoa + "..."));
         System.out.println(">>> TOOL CHAMADA: solicitarRelatorioPessoa(nomePessoa=" + nomePessoa + ", formato=" + formato + ")");
@@ -92,7 +92,7 @@ public class RelatorioContextoTool {
         }
         estadoSessao.setRelatorioGerado(true);
 
-        return "Relatório solicitado! Já abri o painel de relatórios pra você acompanhar — deve ficar pronto em cerca de 20-30 segundos.";
+        return confirmacaoSolicitacao(formato);
     }
 
     @Tool("Busca o texto completo do último relatório de desempenho que o usuário atual gerou. Use quando o usuário perguntar algo sobre 'o relatório que gerei', 'aquele relatório', ou pedir para comentar/explicar/aprofundar algo do relatório recém-criado.")
@@ -139,5 +139,15 @@ public class RelatorioContextoTool {
         } catch (Exception e) {
             return "O último relatório existe mas houve falha ao ler seu conteúdo.";
         }
+    }
+
+    // Sem formato pedido, o modelo tendia a anunciar o padrão interno ("em formato DOCX") como se o
+    // usuário tivesse escolhido; o histórico já oferece visualização em PDF de qualquer relatório.
+    static String confirmacaoSolicitacao(String formato) {
+        String base = "Relatório solicitado! Já abri o painel de relatórios pra você acompanhar — deve ficar pronto em cerca de 20-30 segundos.";
+        if (formato == null || formato.isBlank()) {
+            return base + " O usuário não pediu formato: não mencione formato nenhum na resposta (no histórico ele pode abrir em PDF ou baixar o arquivo).";
+        }
+        return base + " Formato pedido pelo usuário: " + formato.trim().toUpperCase() + ".";
     }
 }

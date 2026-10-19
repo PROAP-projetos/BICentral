@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -56,13 +57,13 @@ class ConsultaAcoesToolRankingTest {
                         Map.of("departamento", "Unidade D - DDD", "media", 0.0)),
                 List.of());
 
-        String resumo = tool.resumoExecutivoPAT();
+        String resumo = tool.montarResumoExecutivo(LocalDate.of(2026, 10, 14));
 
         assertTrue(resumo.contains("536 ações únicas"));
         assertTrue(resumo.contains("24 concluídas"));
         assertTrue(resumo.contains("412 em andamento"));
         assertTrue(resumo.contains("100 paradas"));
-        assertTrue(resumo.contains("3 abaixo de 60%"));
+        assertTrue(resumo.contains("3 abaixo de 75% (faixa de atenção do painel, referência de outubro)"));
         assertTrue(resumo.contains("1ª: Unidade A - AAA — 90%"));
         assertTrue(resumo.contains("2 UGs empatadas em 0% (posições 3 a 4 de 4): Unidade D - DDD; Unidade C - CCC"));
         assertTrue(resumo.contains("- 2ª: Unidade B - BBB — 50%"));

@@ -237,9 +237,23 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     }
   }
 
+  // Menu em position: fixed porque a lista de conversas tem overflow-y: auto e cortaria um menu
+  // absoluto. Abre acima dos 3 pontos; só desce quando não cabe em cima (itens colados no topo).
+  menuPosicao: { [prop: string]: string } = {};
+  private static readonly ALTURA_MENU_SESSAO = 230;
+
   toggleMenuSessao(sessao: ChatSession, event: MouseEvent): void {
     event.stopPropagation();
-    this.menuAbertoId = this.menuAbertoId === sessao.id ? null : sessao.id;
+    if (this.menuAbertoId === sessao.id) {
+      this.menuAbertoId = null;
+      return;
+    }
+    const botao = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const direita = `${window.innerWidth - botao.right}px`;
+    this.menuPosicao = botao.top >= AgentComponent.ALTURA_MENU_SESSAO
+      ? { bottom: `${window.innerHeight - botao.top + 4}px`, right: direita }
+      : { top: `${botao.bottom + 4}px`, right: direita };
+    this.menuAbertoId = sessao.id;
   }
 
   // Só anima (efeito letreiro) quando o título realmente não cabe — mede na hora do hover.
@@ -486,6 +500,15 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   }
 
   iniciarNovoChat() {
+    // Já existe uma conversa local em branco: reaproveita em vez de empilhar várias "Nova Conversa" na sidebar.
+    const vazia = this.sessoes.find(s => !s.persistida && s.messages.length === 0);
+    if (vazia) {
+      this.sessaoAtual = vazia;
+      this.erro = '';
+      sessionStorage.setItem(AgentComponent.SESSAO_ABA_KEY, vazia.id);
+      return;
+    }
+
     const novaSessao: ChatSession = {
       id: String(Date.now()),
       titulo: 'Nova Conversa',
@@ -583,9 +606,23 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   // tester de cara, tenta de novo uma vez, silenciosamente, antes de desistir.
   private static readonly STATUS_PROVAVEL_SERVIDOR_DORMINDO = [0, 500, 502, 503, 504];
 
+  // Indicador "pensando" e botão de parar ficam só na conversa que está gerando; nas outras dá pra
+  // digitar, mas o envio espera — o agente atende uma pergunta por vez (consultaSub e polling são únicos).
+  get gerandoNestaConversa(): boolean {
+    return this.carregando && this.sessaoGerandoId === String(this.sessaoAtual.id);
+  }
+
+  get gerandoEmOutraConversa(): boolean {
+    return this.carregando && !this.gerandoNestaConversa;
+  }
+
   send() {
     const text = (this.input || '').trim();
-    if (!text || this.carregando) return;
+    if (!text) return;
+    if (this.carregando) {
+      if (this.gerandoEmOutraConversa) this.erro = 'Aguarde a resposta da outra conversa terminar para enviar.';
+      return;
+    }
 
     const sessaoEhNova = this.sessaoAtual.titulo === 'Nova Conversa';
     if (sessaoEhNova) {
@@ -602,9 +639,8 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.iniciarPollingStatus();
     this.agendarScrollParaFim();
 
-    const idDaSessao = String(this.sessaoAtual.id);
-    this.sessaoGerandoId = idDaSessao;
-    this.enviarConsulta(text, idDaSessao, false, sessaoEhNova);
+    this.sessaoGerandoId = String(this.sessaoAtual.id);
+    this.enviarConsulta(text, this.sessaoAtual, false, sessaoEhNova);
   }
 
   // Limpeza só client-side, sem avisar o backend — reaproveitada por confirmarExclusao(), que espera cancelarGeracao() antes de excluir.
@@ -627,7 +663,10 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     this.agentService.cancelarGeracao().subscribe({ error: () => {} });
   }
 
-  private enviarConsulta(text: string, idDaSessao: string, isRetry: boolean, sessaoEhNova = false) {
+  // A resposta vai pra sessão onde a pergunta foi feita, não pra sessaoAtual: o usuário pode
+  // trocar de conversa (ou abrir uma nova) enquanto espera.
+  private enviarConsulta(text: string, sessao: ChatSession, isRetry: boolean, sessaoEhNova = false) {
+    const idDaSessao = String(sessao.id);
     this.consultaSub = this.agentService.consultar(text, this.equipeId ?? null, this.modeloAtivo, idDaSessao)
       .pipe(finalize(() => {
         if (!this.acordandoServidor) {
@@ -646,7 +685,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
           }
 
           if (resposta.skill === 'painel') {
-            this.sessaoAtual.messages.push({
+            sessao.messages.push({
               from: 'bot',
               text: resposta.mensagemContexto || 'Aqui está a visualização dos dados:',
               spec: resposta,
@@ -654,7 +693,7 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
               interacaoId: resposta.interacaoId
             });
           } else if (resposta.texto) {
-            this.sessaoAtual.messages.push({
+            sessao.messages.push({
               from: 'bot',
               text: resposta.texto,
               fontes: resposta.fontes,
@@ -667,26 +706,28 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
               this.abrirPainelRelatorios();
             }
           } else {
-            this.sessaoAtual.messages.push({ from: 'bot', text: resposta });
+            sessao.messages.push({ from: 'bot', text: resposta });
           }
 
-          this.agendarScrollParaFim();
+          if (this.sessaoAtual === sessao) this.agendarScrollParaFim();
         },
         error: (err) => {
           const provavelServidorDormindo = AgentComponent.STATUS_PROVAVEL_SERVIDOR_DORMINDO.includes(err?.status);
 
           if (!isRetry && provavelServidorDormindo) {
             this.acordandoServidor = true;
-            this.acordarServidorTimer = window.setTimeout(() => this.enviarConsulta(text, idDaSessao, true, sessaoEhNova), 3000);
+            this.acordarServidorTimer = window.setTimeout(() => this.enviarConsulta(text, sessao, true, sessaoEhNova), 3000);
             return;
           }
 
           this.acordandoServidor = false;
           this.carregando = false;
           const mensagem = err?.error?.mensagem || 'Não foi possível consultar o agente agora.';
-          this.erro = mensagem;
-          this.sessaoAtual.messages.push({ from: 'bot', text: mensagem });
-          this.agendarScrollParaFim();
+          sessao.messages.push({ from: 'bot', text: mensagem });
+          if (this.sessaoAtual === sessao) {
+            this.erro = mensagem;
+            this.agendarScrollParaFim();
+          }
         }
       });
   }
@@ -1126,10 +1167,16 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
       .map((celula) => `<th>${this.formatarInline(celula)}</th>`)
       .join('');
     const trs = corpo
-      .map((linha) => `<tr>${linha.map((celula) => `<td>${this.formatarInline(celula)}</td>`).join('')}</tr>`)
+      .map((linha) => `<tr>${linha.map((celula) => `<td>${this.manterCodigoAcaoJunto(this.formatarInline(celula))}</td>`).join('')}</tr>`)
       .join('');
 
     return `<div class="message-table-wrap"><table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table></div>`;
+  }
+
+  // O espaço em "U 2.1.11.2" é um ponto de quebra válido, então numa coluna estreita o prefixo
+  // ia pra uma linha e o número pra outra, dependendo da largura da tabela.
+  private manterCodigoAcaoJunto(html: string): string {
+    return html.replace(/\b([A-Z]) (\d+(?:\.\d+)+)\b/g, '$1&nbsp;$2');
   }
 
   private quebrarLinhaTabela(linha: string): string[] {

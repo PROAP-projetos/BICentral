@@ -26,6 +26,9 @@ export interface RankingAtualizacao {
 export interface RankingResumo {
   totalAcoes: number;
   acoesConcluidas: number;
+  // Corte da faixa "em atenção" conforme a época do ano (EpocaPat no backend).
+  limiteAtencaoPct: number;
+  referenciaAtencao: string;
 }
 
 @Injectable({ providedIn: 'root' })

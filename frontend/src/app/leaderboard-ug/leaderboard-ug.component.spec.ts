@@ -256,4 +256,49 @@ describe('LeaderboardUgComponent', () => {
     component.selecionarFiltro('todos');
     expect(component.echartsOptions.yAxis.axisLabel.color).toBe('#f0f0f0');
   });
+
+  it('abre a lista de unidades em atenção pelo card, da menor execução para a maior, sem coordenações', () => {
+    listarRanking.and.returnValue(of([
+      { departamento: 'Pró-Reitoria A', tipoUnidade: 'UG', mediaExecucaoPct: 75, qtdAcoes: 10, qtdAcoesConcluidas: 2, posicaoAtual: 1, posicaoAnterior: 1 },
+      { departamento: 'Pró-Reitoria B', tipoUnidade: 'UG', mediaExecucaoPct: 40, qtdAcoes: 10, qtdAcoesConcluidas: 2, posicaoAtual: 2, posicaoAnterior: 2 },
+      { departamento: 'Coordenação do Curso X - Palmas', tipoUnidade: 'UA', mediaExecucaoPct: 10, qtdAcoes: 10, qtdAcoesConcluidas: 0, posicaoAtual: 3, posicaoAnterior: 3 },
+      { departamento: 'Prefeitura Universitária', tipoUnidade: 'UG', mediaExecucaoPct: 0, qtdAcoes: 69, qtdAcoesConcluidas: 0, posicaoAtual: 4, posicaoAnterior: 4 }
+    ] as RankingDepartamento[]));
+    fixture.detectChanges();
+
+    expect(component.totalUgsEmAtencao).toBe(2);
+    expect(component.ugsEmAtencao.map(u => u.nome)).toEqual(['Prefeitura Universitária', 'Pró-Reitoria B']);
+
+    const card: HTMLElement = fixture.nativeElement.querySelector('.kpi-card-clicavel');
+    card.click();
+    fixture.detectChanges();
+    const itens = fixture.nativeElement.querySelectorAll('.atencao-item');
+    expect(itens.length).toBe(2);
+
+    spyOn(component.selecionarUg, 'emit');
+    (itens[0] as HTMLElement).click();
+    expect(component.selecionarUg.emit).toHaveBeenCalledWith(jasmine.stringContaining('Prefeitura Universitária'));
+
+    card.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.atencao-painel')).toBeNull();
+  });
+
+  it('não abre a lista quando nenhuma unidade está em atenção', () => {
+    fixture.detectChanges();
+
+    component.alternarPainelAtencao();
+
+    expect(component.painelAtencaoAberto).toBeFalse();
+  });
+
+  it('usa o corte de atenção da época do ano vindo do backend, não um valor fixo', () => {
+    resumo.and.returnValue(of({ totalAcoes: 50, acoesConcluidas: 12, limiteAtencaoPct: 75, referenciaAtencao: 'referência de outubro' }));
+    fixture.detectChanges();
+
+    // rankingCompleto vai de 80% a 73%: com corte de 75%, as duas últimas ficam em atenção.
+    expect(component.limiteAtencao).toBe(75);
+    expect(component.ugsEmAtencao.map(u => u.percentual)).toEqual([73, 74]);
+    expect(fixture.nativeElement.querySelector('.kpi-card-clicavel .kpi-subtext').textContent).toContain('Abaixo de 75%');
+  });
 });

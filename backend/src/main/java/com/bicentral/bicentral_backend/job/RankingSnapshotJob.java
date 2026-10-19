@@ -54,7 +54,7 @@ public class RankingSnapshotJob {
             jdbcTemplate.update(
                     """
                             INSERT INTO ranking_pat_snapshots (data_snapshot, departamento, tipo_unidade, media_execucao_pct, qtd_acoes)
-                            VALUES (CURRENT_DATE, ?, ?, ?, ?)
+                            VALUES ((NOW() AT TIME ZONE 'America/Sao_Paulo')::date, ?, ?, ?, ?)
                             ON CONFLICT (data_snapshot, departamento) DO UPDATE SET
                                 tipo_unidade = EXCLUDED.tipo_unidade,
                                 media_execucao_pct = EXCLUDED.media_execucao_pct,

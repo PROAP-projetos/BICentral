@@ -32,6 +32,7 @@ import com.bicentral.bicentral_backend.dto.relatorio.JustificativaAcaoDTO;
 import com.bicentral.bicentral_backend.dto.relatorio.PontoAcompanhamentoDTO;
 import com.bicentral.bicentral_backend.dto.relatorio.RelatorioConteudoIADTO;
 import com.bicentral.bicentral_backend.dto.relatorio.RelatorioEstruturadoDTO;
+import com.bicentral.bicentral_backend.dto.relatorio.RelatorioPessoaConteudoIADTO;
 import com.bicentral.bicentral_backend.dto.relatorio.RelatorioPessoaDTO;
 import com.bicentral.bicentral_backend.dto.relatorio.TarefaPessoaDTO;
 import com.bicentral.bicentral_backend.dto.relatorio.TarefaResponsavelDTO;
@@ -307,7 +308,10 @@ public class RelatorioService {
                     mostrarNomeAcao,
                     dados.listaCompletaOrdenada(),
                     incluirTarefasEfetivo && "PAT".equalsIgnoreCase(tipo) ? buscarTarefasPorTodasAsAcoes(departamento, marcador, verTarefas) : List.of(),
-                    secoesFinal);
+                    secoesFinal,
+                    dados.media(),
+                    EpocaPat.limiteAtencaoPct(EpocaPat.hoje()),
+                    EpocaPat.rotuloReferencia(EpocaPat.hoje()));
 
             byte[] arquivoBytes;
             String extensao;
@@ -441,28 +445,40 @@ public class RelatorioService {
             System.out.println(">>> RELATORIO PESSOA processando id=" + id);
 
             List<Map<String, Object>> linhas = jdbcTemplate.queryForList("""
-                SELECT
-                    substring(dados_completos->>'ITEM DO PAT' from '[A-Z]+ [0-9]+(?:\\.[0-9]+)*') AS codigo_acao,
-                    dados_completos->>'TÍTULO DA TAREFA' AS titulo_tarefa,
-                    departamento,
-                    NULLIF(regexp_replace(dados_completos->>'% Concluído', '[^0-9.,]', '', 'g'), '')::numeric AS percentual,
-                    to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') AS data_final,
-                    (to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') < CURRENT_DATE
-                        AND NULLIF(regexp_replace(dados_completos->>'% Concluído', '[^0-9.,]', '', 'g'), '')::numeric < 100) AS atrasada,
-                    (CURRENT_DATE - to_date(dados_completos->>'Data Final', 'DD/MM/YYYY')) AS dias_atraso
-                FROM pat_tarefas
-                WHERE dados_completos->>'Responsável' = ?
-                ORDER BY atrasada DESC, to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') ASC NULLS LAST
+                WITH t AS (
+                    SELECT
+                        substring(dados_completos->>'ITEM DO PAT' from '[A-Z]+ [0-9]+(?:\\.[0-9]+)*') AS codigo_acao,
+                        dados_completos->>'TÍTULO DA TAREFA' AS titulo_tarefa,
+                        dados_completos->>'DESCRIÇÃO DA TAREFA' AS descricao_tarefa,
+                        departamento,
+                        NULLIF(regexp_replace(dados_completos->>'% Concluído', '[^0-9.,]', '', 'g'), '')::numeric AS percentual,
+                        to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') AS data_final
+                    FROM pat_tarefas
+                    WHERE dados_completos->>'Responsável' = ?
+                )
+                SELECT t.*,
+                    (SELECT MIN(e.titulo_acao) FROM pat_execucao_departamento e WHERE e.codigo_acao = t.codigo_acao) AS titulo_acao,
+                    (t.data_final < (NOW() AT TIME ZONE 'America/Sao_Paulo')::date AND t.percentual < 100) AS atrasada,
+                    ((NOW() AT TIME ZONE 'America/Sao_Paulo')::date - t.data_final) AS dias_atraso
+                FROM t
+                ORDER BY atrasada DESC, t.data_final ASC NULLS LAST
                 """, nomePessoa);
 
-            List<TarefaPessoaDTO> tarefas = linhas.stream().map(l -> new TarefaPessoaDTO(
-                    formatarTituloTarefaPessoa((String) l.get("codigo_acao"), (String) l.get("titulo_tarefa")),
-                    (String) l.get("departamento"),
-                    toDouble(l.get("percentual")),
-                    Boolean.TRUE.equals(l.get("atrasada")),
-                    l.get("dias_atraso") == null ? null : ((Number) l.get("dias_atraso")).longValue(),
-                    formatarPrazo((java.sql.Date) l.get("data_final")))
-            ).toList();
+            List<TarefaPessoaDTO> tarefas = linhas.stream().map(l -> {
+                String descricao = (String) l.get("descricao_tarefa");
+                String codigo = (String) l.get("codigo_acao");
+                // titulo_acao vem como "CÓDIGO - Título | Departamento (UG)".
+                String tituloAcao = l.get("titulo_acao") == null ? null : temaSemCodigo(truncarTitulo((String) l.get("titulo_acao")), codigo);
+                return new TarefaPessoaDTO(
+                        codigo,
+                        (String) l.get("departamento"),
+                        toDouble(l.get("percentual")),
+                        Boolean.TRUE.equals(l.get("atrasada")),
+                        l.get("dias_atraso") == null ? null : ((Number) l.get("dias_atraso")).longValue(),
+                        formatarPrazo((java.sql.Date) l.get("data_final")),
+                        tituloAcao,
+                        descricao != null && !descricao.isBlank() ? descricao : (String) l.get("titulo_tarefa"));
+            }).toList();
 
             int total = tarefas.size();
             long concluidas = tarefas.stream().filter(t -> t.percentualTarefa() != null && t.percentualTarefa() >= 100).count();
@@ -475,11 +491,23 @@ public class RelatorioService {
                     new IndicadorRelatorioDTO("Em Andamento", formatarContagem((int) emAndamento, total)),
                     new IndicadorRelatorioDTO("Atrasadas", formatarContagem((int) atrasadas, total)));
 
+            // Sem a IA o relatório continua útil (indicadores, gráficos e tabela) — só perde introdução e conclusão.
+            RelatorioPessoaConteudoIADTO conteudo = null;
+            try {
+                conteudo = agenteRelatorio.gerarConteudoRelatorioPessoa(montarPromptPessoa(nomePessoa, tarefas, indicadores));
+            } catch (Exception e) {
+                System.err.println(">>> AVISO: relatório de pessoa id=" + id + " sem introdução/conclusão — falha na IA: " + e.getMessage());
+            }
+
             RelatorioPessoaDTO relatorio = new RelatorioPessoaDTO(
                     nomePessoa,
                     LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")),
                     indicadores,
-                    tarefas);
+                    tarefas,
+                    conteudo != null ? conteudo.introducao() : null,
+                    conteudo != null ? conteudo.conclusao() : null,
+                    EpocaPat.limiteAtencaoPct(EpocaPat.hoje()),
+                    EpocaPat.rotuloReferencia(EpocaPat.hoje()));
 
             byte[] arquivoBytes;
             String extensao;
@@ -520,10 +548,65 @@ public class RelatorioService {
         }
     }
 
-    /** "CÓDIGO - Título da tarefa" — mesmo formato "código - texto" usado em AcaoComCodigo/AcaoAnalisadaDTO, pra reaproveitar os mesmos helpers de tabela (codigoDaAcao/temaSemCodigo) nos geradores de documento. */
-    private String formatarTituloTarefaPessoa(String codigo, String titulo) {
-        String tit = titulo == null ? "" : titulo;
-        return (codigo == null || codigo.isBlank()) ? tit : codigo + " - " + tit;
+    /** Dados já calculados pra IA escrever introdução e conclusão — números prontos, a IA só redige. */
+    private String montarPromptPessoa(String nomePessoa, List<TarefaPessoaDTO> tarefas, List<IndicadorRelatorioDTO> indicadores) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(EpocaPat.bloco(EpocaPat.hoje()));
+        sb.append("PESSOA: ").append(nomePessoa).append("\n\nINDICADORES:\n");
+        for (IndicadorRelatorioDTO i : indicadores) {
+            sb.append("- ").append(i.rotulo()).append(": ").append(i.valor()).append("\n");
+        }
+        sb.append("- Média de conclusão das tarefas: ").append(formatarPercentual(mediaConclusao(tarefas))).append("\n");
+
+        sb.append("\nTAREFAS POR AÇÃO (código — título da ação: quantidade, média de conclusão):\n");
+        for (ResumoAcaoPessoa a : resumirPorAcao(tarefas)) {
+            sb.append("- ").append(a.codigo()).append(a.titulo() != null ? " — " + a.titulo() : "")
+              .append(": ").append(a.quantidade()).append(" tarefa(s), ").append(formatarPercentual(a.media())).append("\n");
+        }
+
+        List<TarefaPessoaDTO> atrasadas = tarefas.stream().filter(TarefaPessoaDTO::atrasada).toList();
+        sb.append("\nTAREFAS ATRASADAS (").append(atrasadas.size()).append("):\n");
+        atrasadas.stream().limit(15).forEach(t -> sb.append("- ").append(codigoTarefaPessoa(t)).append(" — ").append(textoTarefaPessoa(t))
+                .append(": ").append(formatarPercentual(t.percentualTarefa() == null ? 0 : t.percentualTarefa()))
+                .append(", ").append(t.diasAtraso()).append(" dias de atraso\n"));
+
+        List<TarefaPessoaDTO> paradas = tarefas.stream()
+                .filter(t -> !t.atrasada() && (t.percentualTarefa() == null || t.percentualTarefa() == 0)).toList();
+        sb.append("\nTAREFAS EM 0% AINDA NO PRAZO (").append(paradas.size()).append("):\n");
+        paradas.stream().limit(15).forEach(t -> sb.append("- ").append(codigoTarefaPessoa(t)).append(" — ").append(textoTarefaPessoa(t))
+                .append(", prazo ").append(t.prazo()).append("\n"));
+        return sb.toString();
+    }
+
+    private record ResumoAcaoPessoa(String codigo, String titulo, int quantidade, double media) {
+    }
+
+    /** Agrupa as tarefas por código da ação, da menor média de conclusão pra maior. */
+    private List<ResumoAcaoPessoa> resumirPorAcao(List<TarefaPessoaDTO> tarefas) {
+        Map<String, List<TarefaPessoaDTO>> porCodigo = new java.util.LinkedHashMap<>();
+        for (TarefaPessoaDTO t : tarefas) {
+            String codigo = codigoTarefaPessoa(t);
+            porCodigo.computeIfAbsent(codigo.isBlank() ? "Sem código" : codigo, k -> new ArrayList<>()).add(t);
+        }
+        return porCodigo.entrySet().stream()
+                .map(e -> new ResumoAcaoPessoa(e.getKey(), e.getValue().get(0).tituloAcao(), e.getValue().size(), mediaConclusao(e.getValue())))
+                .sorted(java.util.Comparator.comparingDouble(ResumoAcaoPessoa::media))
+                .toList();
+    }
+
+    private double mediaConclusao(List<TarefaPessoaDTO> tarefas) {
+        return tarefas.stream().mapToDouble(t -> t.percentualTarefa() == null ? 0 : t.percentualTarefa()).average().orElse(0);
+    }
+
+    // Relatório salvo no formato antigo (tarefa == null) guardava "CÓDIGO - título da tarefa" em acao.
+    private String codigoTarefaPessoa(TarefaPessoaDTO t) {
+        String codigo = t.tarefa() == null ? codigoDaAcao(t.acao()) : t.acao();
+        return codigo == null ? "" : codigo;
+    }
+
+    private String textoTarefaPessoa(TarefaPessoaDTO t) {
+        if (t.tarefa() != null) return t.tarefa();
+        return temaSemCodigo(t.acao(), codigoDaAcao(t.acao()));
     }
 
     /**
@@ -736,6 +819,7 @@ public class RelatorioService {
 
     private record DadosQuantitativosRelatorio(
             List<IndicadorRelatorioDTO> indicadores,
+            double media,
             DistribuicaoExecucaoDTO distribuicao,
             List<AcaoComCodigo> piores,
             List<AcaoRelatorioDTO> melhores,
@@ -802,7 +886,7 @@ public class RelatorioService {
                     (int) ordenadas.stream().filter(a -> a.percentual() > 0 && a.percentual() < 100).count(),
                     (int) ordenadas.stream().filter(a -> a.percentual() >= 100).count());
             // PDI ainda não tem uso real (fase adiada) — não vale a pena montar a lista completa aqui.
-            return new DadosQuantitativosRelatorio(indicadores, distribuicaoPdi, piores, melhores, List.of());
+            return new DadosQuantitativosRelatorio(indicadores, media, distribuicaoPdi, piores, melhores, List.of());
         }
 
         // PAT (e COMPARATIVO, que por enquanto usa a mesma visão de execução do ano corrente)
@@ -869,6 +953,7 @@ public class RelatorioService {
 
         return new DadosQuantitativosRelatorio(
                 indicadores,
+                mediaGeral,
                 distribuicao,
                 piores.stream().map(row -> new AcaoComCodigo(
                         (String) row.get("codigo_acao"),
@@ -970,10 +1055,12 @@ public class RelatorioService {
                 docxSecao(document, "01 · Visão Executiva");
                 docxNumerosGrandes(document, r);
                 docxDistribuicao(document, r.distribuicao());
+                docxGrafico(document, graficoMediaDepartamento(r), GRAFICO_LARGURA, GRAFICO_ALTURA_MEDIA);
             }
 
             if (r.secaoIncluida("pontos_atencao")) {
                 docxSecao(document, "02 · Pontos de Atenção");
+                docxGrafico(document, graficoAcoesMenorExecucao(r), GRAFICO_LARGURA, alturaGraficoBarras(Math.min(r.analiseMenorExecucao().size(), LIMITE_BARRAS)));
                 docxTabelaAcoes(document, r.analiseMenorExecucao().stream()
                         .map(a -> new LinhaTabelaAcao(rotuloAcaoTabela(a.acao(), r.mostrarNomeAcao()), a.tema(), a.percentual()))
                         .toList(), COR_ATENCAO);
@@ -1050,16 +1137,30 @@ public class RelatorioService {
     private record LinhaTabelaAcao(String codigo, String tema, Double percentual) {
     }
 
-    /** Relatório sobre uma pessoa — mais simples que gerarDocx: sem seções narrativas nem comparação entre departamentos, só capa, indicadores e a lista completa de tarefas dela. */
+    /** Relatório sobre uma pessoa — sem comparação entre departamentos: introdução, indicadores com gráficos, tabela de tarefas e conclusão. */
     private byte[] gerarDocxPessoa(RelatorioPessoaDTO r) throws Exception {
         try (XWPFDocument document = new XWPFDocument()) {
             docxCapaPessoa(document, r);
+            int secao = 1;
 
-            docxSecao(document, "01 · Indicadores");
+            if (r.introducao() != null) {
+                docxSecao(document, numeroSecao(secao++, "Introdução"));
+                docxParagrafo(document, r.introducao());
+            }
+
+            docxSecao(document, numeroSecao(secao++, "Visão Geral"));
             docxIndicadoresPessoa(document, r.indicadores());
+            docxGrafico(document, graficoStatusTarefasPessoa(r.tarefas()), GRAFICO_LARGURA, GRAFICO_ALTURA_ROSCA);
+            docxGrafico(document, graficoMediaPessoa(r), GRAFICO_LARGURA, GRAFICO_ALTURA_MEDIA);
+            docxGrafico(document, graficoTarefasPorAcao(r.tarefas()), GRAFICO_LARGURA, alturaGraficoBarras(Math.min(resumirPorAcao(r.tarefas()).size(), LIMITE_BARRAS)));
 
-            docxSecao(document, "02 · Tarefas");
+            docxSecao(document, numeroSecao(secao++, "Tarefas"));
             docxTabelaTarefasPessoa(document, r.tarefas());
+
+            if (r.conclusao() != null) {
+                docxSecao(document, numeroSecao(secao, "Conclusão"));
+                docxParagrafo(document, r.conclusao());
+            }
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             document.write(out);
@@ -1133,27 +1234,28 @@ public class RelatorioService {
         docxEspacoEntreCards(document);
     }
 
-    /** Tabela larga (Ação, Departamento, Execução, Atraso, Prazo) — 5 colunas, não reaproveita docxTabelaAcoes (3 colunas, pensada pra ação/departamento, não tarefa/pessoa). */
+    /** Tabela larga (Ação, Tarefa, Departamento, Execução, Atraso, Prazo) — 6 colunas, não reaproveita docxTabelaAcoes (3 colunas, pensada pra ação/departamento, não tarefa/pessoa). */
     private void docxTabelaTarefasPessoa(XWPFDocument document, List<TarefaPessoaDTO> tarefas) {
         if (tarefas.isEmpty()) {
             docxParagrafo(document, "Nenhuma tarefa encontrada.");
             return;
         }
-        XWPFTable tabela = document.createTable(tarefas.size() + 1, 5);
+        XWPFTable tabela = document.createTable(tarefas.size() + 1, 6);
         tabela.setWidth("100%");
-        int[] larguras = {40, 30, 12, 8, 10};
-        docxCabecalhoTabela(tabela, List.of("Ação", "Departamento", "Execução", "Atraso", "Prazo"), COR_DESTAQUE, larguras);
+        int[] larguras = {12, 36, 24, 10, 8, 10};
+        docxCabecalhoTabela(tabela, List.of("Ação", "Tarefa", "Departamento", "Execução", "Atraso", "Prazo"), COR_DESTAQUE, larguras);
         for (int i = 0; i < tarefas.size(); i++) {
             TarefaPessoaDTO t = tarefas.get(i);
             XWPFTableRow linha = tabela.getRow(i + 1);
             for (int c = 0; c < larguras.length; c++) {
                 docxDefinirLargura(linha.getCell(c), larguras[c]);
             }
-            docxCelulaTexto(linha.getCell(0), t.acao(), false);
-            docxCelulaTexto(linha.getCell(1), t.departamento(), false);
-            docxCelulaTexto(linha.getCell(2), t.percentualTarefa() == null ? "—" : formatarPercentual(t.percentualTarefa()), false);
-            docxCelulaTexto(linha.getCell(3), t.atrasada() ? (t.diasAtraso() + "d") : "—", false);
-            docxCelulaTexto(linha.getCell(4), t.prazo(), false);
+            docxCelulaTexto(linha.getCell(0), codigoTarefaPessoa(t), false);
+            docxCelulaTexto(linha.getCell(1), textoTarefaPessoa(t), false);
+            docxCelulaTexto(linha.getCell(2), t.departamento(), false);
+            docxCelulaTexto(linha.getCell(3), t.percentualTarefa() == null ? "—" : formatarPercentual(t.percentualTarefa()), false);
+            docxCelulaTexto(linha.getCell(4), t.atrasada() ? (t.diasAtraso() + "d") : "—", false);
+            docxCelulaTexto(linha.getCell(5), t.prazo(), false);
         }
         docxEspacoEntreCards(document);
     }
@@ -1291,6 +1393,83 @@ public class RelatorioService {
         runRotulo.setText(rotulo);
         runRotulo.setFontSize(9);
         runRotulo.setColor(COR_METADADO);
+    }
+
+    private void docxGrafico(XWPFDocument document, byte[] png, int largura, int altura) throws Exception {
+        if (png == null) return;
+        XWPFParagraph p = document.createParagraph();
+        p.setAlignment(ParagraphAlignment.CENTER);
+        p.setSpacingAfter(160);
+        p.createRun().addPicture(new java.io.ByteArrayInputStream(png), Document.PICTURE_TYPE_PNG, "grafico.png",
+                org.apache.poi.util.Units.toEMU(largura), org.apache.poi.util.Units.toEMU(altura));
+    }
+
+    private String numeroSecao(int numero, String titulo) {
+        return String.format("%02d · %s", numero, titulo);
+    }
+
+    // ---------- Gráficos (PNG pra DOCX/PDF; dimensões em pontos) ----------
+
+    private static final int GRAFICO_LARGURA = 460;
+    private static final int GRAFICO_ALTURA_ROSCA = 250;
+    private static final int GRAFICO_ALTURA_MEDIA = 110;
+    private static final int LIMITE_BARRAS = 10;
+
+    private int alturaGraficoBarras(int quantidade) {
+        return 70 + Math.max(1, quantidade) * 26;
+    }
+
+    private byte[] graficoMediaDepartamento(RelatorioEstruturadoDTO r) {
+        if (r.mediaExecucao() == null) return null;
+        return GraficosRelatorio.barrasHorizontais("Média de execução x esperado para a época",
+                List.of(new GraficosRelatorio.Barra("Média da unidade", r.mediaExecucao())),
+                r.referenciaEpocaPct(), primeiraMaiuscula(r.rotuloReferencia()), GRAFICO_LARGURA, GRAFICO_ALTURA_MEDIA);
+    }
+
+    private byte[] graficoAcoesMenorExecucao(RelatorioEstruturadoDTO r) {
+        if (r.analiseMenorExecucao() == null || r.analiseMenorExecucao().isEmpty()) return null;
+        List<GraficosRelatorio.Barra> barras = r.analiseMenorExecucao().stream()
+                .limit(LIMITE_BARRAS)
+                .map(a -> {
+                    String codigo = codigoDaAcao(a.acao());
+                    return new GraficosRelatorio.Barra(codigo.isBlank() ? a.tema() : codigo, a.percentual() == null ? 0 : a.percentual());
+                })
+                .toList();
+        return GraficosRelatorio.barrasHorizontais("Ações de menor execução", barras,
+                r.referenciaEpocaPct(), primeiraMaiuscula(r.rotuloReferencia()), GRAFICO_LARGURA, alturaGraficoBarras(barras.size()));
+    }
+
+    private byte[] graficoStatusTarefasPessoa(List<TarefaPessoaDTO> tarefas) {
+        if (tarefas.isEmpty()) return null;
+        int concluidas = (int) tarefas.stream().filter(t -> t.percentualTarefa() != null && t.percentualTarefa() >= 100).count();
+        int atrasadas = (int) tarefas.stream().filter(TarefaPessoaDTO::atrasada).count();
+        return GraficosRelatorio.rosca("Tarefas por status", List.of(
+                new GraficosRelatorio.Fatia("Concluídas", concluidas, GraficosRelatorio.VERDE),
+                new GraficosRelatorio.Fatia("Em andamento no prazo", tarefas.size() - concluidas - atrasadas, GraficosRelatorio.AZUL),
+                new GraficosRelatorio.Fatia("Atrasadas", atrasadas, GraficosRelatorio.VERMELHO)),
+                GRAFICO_LARGURA, GRAFICO_ALTURA_ROSCA);
+    }
+
+    private byte[] graficoMediaPessoa(RelatorioPessoaDTO r) {
+        if (r.tarefas().isEmpty()) return null;
+        return GraficosRelatorio.barrasHorizontais("Conclusão média x esperado para a época",
+                List.of(new GraficosRelatorio.Barra("Média das tarefas", mediaConclusao(r.tarefas()))),
+                r.referenciaEpocaPct(), primeiraMaiuscula(r.rotuloReferencia()), GRAFICO_LARGURA, GRAFICO_ALTURA_MEDIA);
+    }
+
+    private byte[] graficoTarefasPorAcao(List<TarefaPessoaDTO> tarefas) {
+        if (tarefas.isEmpty()) return null;
+        List<GraficosRelatorio.Barra> barras = resumirPorAcao(tarefas).stream()
+                .limit(LIMITE_BARRAS)
+                .map(a -> new GraficosRelatorio.Barra(a.codigo(), a.media()))
+                .toList();
+        // Sem linha de referência: cada ação junta tarefas de prazos diferentes, a linha da época enganaria aqui.
+        return GraficosRelatorio.barrasHorizontais("Conclusão média por ação (menores primeiro)", barras,
+                null, null, GRAFICO_LARGURA, alturaGraficoBarras(barras.size()));
+    }
+
+    private String primeiraMaiuscula(String texto) {
+        return texto == null || texto.isEmpty() ? texto : Character.toUpperCase(texto.charAt(0)) + texto.substring(1);
     }
 
     /** Distribuição em linhas (não barra proporcional — o Word não é o ambiente certo pra medir largura de célula em pixels com precisão; ver EscritorPdf.barraDistribuicao no PDF pra a versão visual). */
@@ -1565,10 +1744,15 @@ public class RelatorioService {
                 escritor.secao("01 · Visão Executiva");
                 escritor.numerosGrandes(r);
                 escritor.barraDistribuicao(r.distribuicao());
+                escritor.grafico(graficoMediaDepartamento(r), GRAFICO_LARGURA, GRAFICO_ALTURA_MEDIA);
             }
 
             if (r.secaoIncluida("pontos_atencao")) {
+                int alturaPiores = alturaGraficoBarras(Math.min(r.analiseMenorExecucao().size(), LIMITE_BARRAS));
+                // Reserva o espaço do gráfico junto com o título, senão o título fica sozinho no pé da página.
+                escritor.garantirEspaco(alturaPiores + 50);
                 escritor.secao("02 · Pontos de Atenção");
+                escritor.grafico(graficoAcoesMenorExecucao(r), GRAFICO_LARGURA, alturaPiores);
                 escritor.tabelaAcoes(r.analiseMenorExecucao().stream()
                         .map(a -> new LinhaTabelaAcao(rotuloAcaoTabela(a.acao(), r.mostrarNomeAcao()), a.tema(), a.percentual()))
                         .toList(), Color.decode("#" + COR_ATENCAO), r.mostrarNomeAcao());
@@ -1639,12 +1823,26 @@ public class RelatorioService {
             EscritorPdf escritor = new EscritorPdf(document);
 
             escritor.capaPessoa(r);
+            int secao = 1;
 
-            escritor.secao("01 · Indicadores");
+            if (r.introducao() != null) {
+                escritor.secao(numeroSecao(secao++, "Introdução"));
+                escritor.paragrafo(normalizarTextoPdf(r.introducao()));
+            }
+
+            escritor.secao(numeroSecao(secao++, "Visão Geral"));
             escritor.indicadoresPessoa(r.indicadores());
+            escritor.grafico(graficoStatusTarefasPessoa(r.tarefas()), GRAFICO_LARGURA, GRAFICO_ALTURA_ROSCA);
+            escritor.grafico(graficoMediaPessoa(r), GRAFICO_LARGURA, GRAFICO_ALTURA_MEDIA);
+            escritor.grafico(graficoTarefasPorAcao(r.tarefas()), GRAFICO_LARGURA, alturaGraficoBarras(Math.min(resumirPorAcao(r.tarefas()).size(), LIMITE_BARRAS)));
 
-            escritor.secao("02 · Tarefas");
+            escritor.secao(numeroSecao(secao++, "Tarefas"));
             escritor.tabelaTarefasPessoa(r.tarefas());
+
+            if (r.conclusao() != null) {
+                escritor.secao(numeroSecao(secao, "Conclusão"));
+                escritor.paragrafo(normalizarTextoPdf(r.conclusao()));
+            }
 
             return escritor.finalizar();
         }
@@ -1711,19 +1909,32 @@ public class RelatorioService {
                 excelLinha(resumo, linhaResumo++, null, i.rotulo(), i.valor());
             }
             excelAutoAjustarColunas(resumo, 2);
+            // Depois do autoSize: texto longo na coluna B não deve alargar a coluna dos indicadores.
+            if (r.introducao() != null) {
+                linhaResumo++;
+                excelLinha(resumo, linhaResumo++, estiloCabecalho, "Introdução");
+                excelLinha(resumo, linhaResumo++, null, r.introducao());
+            }
+            if (r.conclusao() != null) {
+                linhaResumo++;
+                excelLinha(resumo, linhaResumo++, estiloCabecalho, "Conclusão");
+                excelLinha(resumo, linhaResumo, null, r.conclusao());
+            }
 
             Sheet tarefas = workbook.createSheet("Tarefas");
-            excelLinha(tarefas, 0, estiloCabecalho, "Ação", "Departamento", "Execução (%)", "Atraso (dias)", "Prazo");
+            excelLinha(tarefas, 0, estiloCabecalho, "Ação", "Título da Ação", "Tarefa", "Departamento", "Execução (%)", "Atraso (dias)", "Prazo");
             int linhaTarefa = 1;
             for (TarefaPessoaDTO t : r.tarefas()) {
                 Row row = tarefas.createRow(linhaTarefa++);
-                row.createCell(0).setCellValue(t.acao());
-                row.createCell(1).setCellValue(t.departamento());
-                row.createCell(2).setCellValue(t.percentualTarefa() == null ? 0 : t.percentualTarefa());
-                row.createCell(3).setCellValue(t.atrasada() && t.diasAtraso() != null ? t.diasAtraso() : 0);
-                row.createCell(4).setCellValue(t.prazo() == null ? "" : t.prazo());
+                row.createCell(0).setCellValue(codigoTarefaPessoa(t));
+                row.createCell(1).setCellValue(t.tituloAcao() == null ? "" : t.tituloAcao());
+                row.createCell(2).setCellValue(textoTarefaPessoa(t));
+                row.createCell(3).setCellValue(t.departamento());
+                row.createCell(4).setCellValue(t.percentualTarefa() == null ? 0 : t.percentualTarefa());
+                row.createCell(5).setCellValue(t.atrasada() && t.diasAtraso() != null ? t.diasAtraso() : 0);
+                row.createCell(6).setCellValue(t.prazo() == null ? "" : t.prazo());
             }
-            excelAutoAjustarColunas(tarefas, 5);
+            excelAutoAjustarColunas(tarefas, 7);
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             workbook.write(out);
@@ -1877,6 +2088,16 @@ public class RelatorioService {
             content.setNonStrokingColor(0, 0, 0);
             content.setStrokingColor(0, 0, 0);
             y -= 18;
+        }
+
+        /** Imagem centralizada; quebra de página antes se não couber inteira. */
+        void grafico(byte[] png, float largura, float altura) throws Exception {
+            if (png == null) return;
+            garantirEspaco(altura + 10);
+            org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject imagem =
+                    org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject.createFromByteArray(document, png, "grafico");
+            content.drawImage(imagem, margem + (larguraUtil - largura) / 2, y - altura, largura, altura);
+            y -= altura + 12;
         }
 
         void paragrafo(String texto) throws Exception {
@@ -2087,14 +2308,15 @@ public class RelatorioService {
             y -= 8;
         }
 
-        /** Tabela larga (Ação, Departamento, Execução, Atraso, Prazo) — não reaproveita tabelaAcoes, formato diferente. */
+        /** Tabela larga (Ação, Tarefa, Departamento, Execução, Atraso, Prazo) — não reaproveita tabelaAcoes, formato diferente. */
         void tabelaTarefasPessoa(List<TarefaPessoaDTO> tarefas) throws Exception {
             if (tarefas.isEmpty()) {
                 paragrafo("Nenhuma tarefa encontrada.");
                 return;
             }
             float xAcao = margem + 4;
-            float xDepto = margem + 195;
+            float xTarefa = margem + 62;
+            float xDepto = margem + 215;
             float xPctFim = margem + 350;
             float xAtrasoFim = margem + 410;
             float xPrazoFim = margem + larguraUtil - 4;
@@ -2106,6 +2328,7 @@ public class RelatorioService {
             content.fill();
             content.setNonStrokingColor(0, 0, 0);
             escreverXY("Ação", PDType1Font.HELVETICA_BOLD, 8, xAcao, topoCab - 14, Color.WHITE);
+            escreverXY("Tarefa", PDType1Font.HELVETICA_BOLD, 8, xTarefa, topoCab - 14, Color.WHITE);
             escreverXY("Departamento", PDType1Font.HELVETICA_BOLD, 8, xDepto, topoCab - 14, Color.WHITE);
             escreverXY("%", PDType1Font.HELVETICA_BOLD, 8, xPctFim - 10, topoCab - 14, Color.WHITE);
             escreverXY("Atraso", PDType1Font.HELVETICA_BOLD, 8, xAtrasoFim - 30, topoCab - 14, Color.WHITE);
@@ -2116,10 +2339,12 @@ public class RelatorioService {
             Color corAtencao = Color.decode("#" + COR_ATENCAO);
             boolean linhaClara = true;
             for (TarefaPessoaDTO t : tarefas) {
-                List<String> linhasAcao = quebrarTextoPdf(normalizarTextoPdf(t.acao()), 42);
+                List<String> linhasAcao = quebrarTextoPdf(normalizarTextoPdf(codigoTarefaPessoa(t)), 11);
+                List<String> linhasTarefa = quebrarTextoPdf(normalizarTextoPdf(textoTarefaPessoa(t)), 30);
                 // Departamento quebra em várias linhas em vez de truncar com reticências.
-                List<String> linhasDepto = quebrarTextoPdf(normalizarTextoPdf(t.departamento()), 28);
-                float alturaLinha = Math.max(1, Math.max(linhasAcao.size(), linhasDepto.size())) * 11 + 6;
+                List<String> linhasDepto = quebrarTextoPdf(normalizarTextoPdf(t.departamento()), 22);
+                int maxLinhas = Math.max(linhasAcao.size(), Math.max(linhasTarefa.size(), linhasDepto.size()));
+                float alturaLinha = Math.max(1, maxLinhas) * 11 + 6;
                 garantirEspaco(alturaLinha);
                 float topo = y;
                 if (linhaClara) {
@@ -2132,6 +2357,11 @@ public class RelatorioService {
                 for (String trecho : linhasAcao) {
                     escreverXY(trecho, PDType1Font.HELVETICA, 8, xAcao, yAcao, corTexto);
                     yAcao -= 11;
+                }
+                float yTarefa = topo - 11;
+                for (String trecho : linhasTarefa) {
+                    escreverXY(trecho, PDType1Font.HELVETICA, 8, xTarefa, yTarefa, corTexto);
+                    yTarefa -= 11;
                 }
                 float yDepto = topo - 11;
                 for (String trecho : linhasDepto) {
