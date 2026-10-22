@@ -44,6 +44,19 @@ class ProiapServiceSugestoesTest {
     }
 
     @Test
+    void chipsDaComparacaoComDiretrizes() throws Exception {
+        List<String> chips = sugestoes(List.of(
+                tool("compararTarefasComDiretrizes", "COMPARAÇÃO COM DIRETRIZES (base INEP/IESGo V24)")), "Análise pronta.");
+        assertTrue(chips.contains("Quais dessas tarefas estão atrasadas?"));
+    }
+
+    @Test
+    void semChipsQuandoNaoTemPermissao() throws Exception {
+        assertTrue(sugestoes(List.of(
+                tool("compararTarefasComDiretrizes", "SEM PERMISSÃO: o usuário não tem permissão")), "Você não tem permissão.").isEmpty());
+    }
+
+    @Test
     void semChipsQuandoOResultadoVeioVazio() throws Exception {
         assertTrue(sugestoes(List.of(tool("buscarTarefas", "Nenhuma tarefa encontrada com esses filtros.")), "Não achei.").isEmpty());
         assertTrue(sugestoes(List.of(tool("buscarTarefas", "Não encontrei esse departamento.")), "Não achei.").isEmpty());

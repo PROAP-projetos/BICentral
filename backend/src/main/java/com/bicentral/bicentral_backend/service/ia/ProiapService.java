@@ -50,15 +50,21 @@ public class ProiapService {
             "Quero ver a execução média num indicador visual")),
         Map.entry("rastrearGargaloEmAcaoCompartilhada", List.of("Quero um relatório da unidade mais atrasada")),
         Map.entry("contarAcoesPorDepartamentoPAT", List.of("Qual o desempenho dessas unidades no PAT?")),
-        Map.entry("buscarMinhasTarefas", List.of("Quais dessas estão atrasadas?", "Mostra todas as minhas tarefas")),
+        Map.entry("buscarMinhasTarefas", List.of(
+            "Quais dessas estão atrasadas?",
+            "Mostra todas as minhas tarefas",
+            "Minhas tarefas estão de acordo com o INEP e o IESGo?")),
         Map.entry("buscarTarefas", List.of(
             "Quero um relatório completo dessa unidade",
-            "E as que estão atrasadas?",
-            "Mostra todas")),
+            "Essas tarefas estão alinhadas com o INEP e o IESGo?",
+            "E as que estão atrasadas?")),
         Map.entry("contarAcoesUnicasPAT", List.of("Qual departamento tem mais ações no PAT?")),
         Map.entry("buscarAcoesPorMarcador", List.of("Quero um relatório completo desse departamento")),
         Map.entry("contarTarefasPorDepartamento", List.of("Qual departamento tem mais tarefas atrasadas?")),
         Map.entry("contarTarefasPorAcao", List.of("Quero ver as tarefas dessa ação")),
+        Map.entry("compararTarefasComDiretrizes", List.of(
+            "Quais dessas tarefas estão atrasadas?",
+            "Como deixar mais clara a descrição das tarefas sem evidência?")),
         Map.entry("salvarPreferenciaUsuario", List.of("O que você lembra sobre mim?")),
         Map.entry("listarMinhasMemorias", List.of("Quero atualizar uma dessas preferências")),
         Map.entry("solicitarGeracaoRelatorio", List.of(
@@ -248,6 +254,7 @@ public class ProiapService {
         if (resultado == null || resultado.isBlank()) return true;
         return resultado.startsWith(PREFIXO_FALHA_RELATORIO)
                 || resultado.startsWith("Nenhum")
-                || resultado.startsWith("Não encontr");
+                || resultado.startsWith("Não encontr")
+                || resultado.startsWith("SEM PERMISSÃO");
     }
 }

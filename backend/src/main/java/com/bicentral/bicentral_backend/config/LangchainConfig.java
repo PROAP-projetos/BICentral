@@ -11,6 +11,7 @@ import com.bicentral.bicentral_backend.service.ia.tools.ConsultaAcoesTool;
 import com.bicentral.bicentral_backend.service.ia.tools.MemoriaTool;
 import com.bicentral.bicentral_backend.service.ia.tools.RelatorioContextoTool;
 import com.bicentral.bicentral_backend.service.ia.tools.TarefasTool;
+import com.bicentral.bicentral_backend.service.ia.tools.DiretrizesTool;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -38,7 +39,7 @@ public class LangchainConfig {
     }
 
     @Bean
-    public AgenteConsultaSql agenteConsultaSql(@Qualifier("openaiTerraModel") ChatLanguageModel chatLanguageModel, ConsultaAcoesTool consultaAcoesTool, RelatorioContextoTool relatorioContextoTool, TarefasTool tarefasTool, MemoriaTool memoriaTool) {
+    public AgenteConsultaSql agenteConsultaSql(@Qualifier("openaiTerraModel") ChatLanguageModel chatLanguageModel, ConsultaAcoesTool consultaAcoesTool, RelatorioContextoTool relatorioContextoTool, TarefasTool tarefasTool, MemoriaTool memoriaTool, DiretrizesTool diretrizesTool) {
         // 24 em vez de 8: um turno com 2+ chamadas de ferramenta (ex: comparar dois departamentos)
         // já gera mensagem de usuário + assistente(tool_calls) + resultado da tool, x2, + resposta
         // final = 6+ mensagens SÓ desse turno. Com janela pequena, a MessageWindowChatMemory evicta
@@ -51,7 +52,7 @@ public class LangchainConfig {
         return AiServices.builder(AgenteConsultaSql.class)
                 .chatLanguageModel(chatLanguageModel)
                 .chatMemoryProvider(chatMemoryProvider)
-                .tools(montarFerramentas(consultaAcoesTool, relatorioContextoTool, tarefasTool, memoriaTool))
+                .tools(montarFerramentas(consultaAcoesTool, relatorioContextoTool, tarefasTool, memoriaTool, diretrizesTool))
                 .build();
     }
 
