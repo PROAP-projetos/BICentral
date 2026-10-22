@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 
 import { AceitarConviteComponent } from './aceitar-convite/aceitar-convite.component';
 import { AddPainelComponent } from './add-painel/add-painel.component';
+import { AvaliacaoTccComponent } from './avaliacao-tcc/avaliacao-tcc.component';
 import { AgentComponent } from './agent/agent.component';
 import { CadastroComponent } from './cadastro/cadastro.component';
 import { ChatCompartilhadoComponent } from './chat-compartilhado/chat-compartilhado.component';
@@ -51,6 +52,7 @@ export const routes: Routes = [
   { path: 'admin/testers', component: GestaoTestersComponent, canActivate: [authGuard, adminGuard] },
   { path: 'admin/convidados', component: GestaoConvidadosComponent, canActivate: [authGuard, adminGuard] },
   { path: 'dashboard', component: DashboardComponent, canActivate: [authGuard] },
+  { path: 'avaliacao', component: AvaliacaoTccComponent, canActivate: [authGuard] },
 
   // Fallback
   { path: '**', redirectTo: '' }

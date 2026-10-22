@@ -471,8 +471,10 @@
 }
 .settings-gear-btn:hover { background: var(--bg-sidebar-hover); color: var(--text-primary); }
 
+/* min-width: 0: sem ele o item do grid cresce até o min-content do conteúdo (tabela com
+   min-width 760px) e o chat passa da tela, cortado pelo overflow: hidden do shell. */
 .chat-area {
-  display: flex; flex-direction: column; background: var(--bg-main); height: 100vh;
+  display: flex; flex-direction: column; background: var(--bg-main); height: 100vh; min-width: 0;
 }
 
 .chat-header {
@@ -709,6 +711,7 @@
   padding: 0.65rem 0.9rem; border-radius: 12px; font-size: var(--font-size-base); line-height: 1.38;
   font-family: var(--font-family-chat);
   color: var(--text-primary); max-width: 100%; position: relative;
+  min-width: 0;
 }
 
 .msg.bot .bubble {
@@ -1813,6 +1816,15 @@
     grid-template-columns: 1fr;
   }
 
+  /* No celular 100vh inclui a área atrás da barra de endereço, e o composer fica escondido
+     embaixo dela; dvh acompanha a área visível. 100vh fica como fallback. */
+  .agent-shell,
+  .chat-area,
+  .sidebar {
+    height: 100vh;
+    height: 100dvh;
+  }
+
   /* Com a sidebar em position:fixed (fora do fluxo do grid), ela deixa de "contar" como item
      do grid — sem isso o chat-area sozinho cai na 1ª faixa de coluna do grid antigo (0px) em
      vez de ocupar a tela inteira. */
@@ -1865,21 +1877,38 @@
     line-height: 1.4;
   }
 
+  /* No celular o input fica no rodapé desde a tela vazia, como nos apps de mensagem, em vez
+     do bloco centralizado do desktop. As margens automáticas deixam a saudação no meio do
+     espaço livre acima dele. */
+  .chat-body.is-empty .empty-title {
+    margin-block: auto;
+  }
+
   .messages {
     padding: 1rem;
+  }
+
+  .ranking-panel-view {
+    padding: 0 0.75rem 1rem;
   }
 
   .composer {
     padding: 0.75rem;
   }
 
-  /* Com --font-size-base (1rem) o placeholder "Pergunte ao proIAp sobre os dados da
-     PROAP..." quebra em 2 linhas dentro da caixa de 1 linha (rows="1") e fica cortado/
-     rolável até a pessoa digitar algo (só aí o ajustarAlturaPrompt() cresce a caixa).
-     Menor ainda quebra em 2 linhas, então dá min-height pras 2 linhas caberem sem cortar. */
+  /* 16px: abaixo disso o Safari do iPhone dá zoom na página ao tocar no campo, e o chat
+     fica ampliado e cortado mesmo depois de enviar. Nesse tamanho o placeholder quebra em
+     2 linhas dentro da caixa de 1 linha (rows="1"); o min-height (2 × 16px × 1.45 + 12px de
+     padding) faz as 2 caberem sem cortar até o ajustarAlturaPrompt() crescer a caixa.
+     Barra de rolagem escondida: no toque se rola com o dedo e ela só ocupa espaço. */
   .agent-input-container textarea {
-    font-size: 0.9rem;
-    min-height: 54px;
+    font-size: 16px;
+    min-height: 60px;
+    scrollbar-width: none;
+  }
+
+  .agent-input-container textarea::-webkit-scrollbar {
+    display: none;
   }
 
   .notif-panel,

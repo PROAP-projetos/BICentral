@@ -97,6 +97,7 @@
 }
 
 .kpi-card {
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -320,7 +321,10 @@
   align-items: start;
 }
 
+/* min-width: 0: item de grid sem isso cresce até o min-content dos cards e o painel passa
+   da largura da tela no celular. */
 .cockpit-column {
+  min-width: 0;
   background: var(--bg-main, #ffffff);
   border: 1px solid var(--border-color, #e5e7eb);
   border-radius: 14px;
@@ -640,6 +644,29 @@
 
   .insights-grid {
     grid-template-columns: 1fr;
+  }
+
+  .cockpit-column {
+    padding: 0.85rem;
+  }
+
+  /* Título e dica lado a lado espremem os dois em colunas estreitas. */
+  .section-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.3rem;
+  }
+
+  /* As larguras mínimas de tendência e métricas alinham colunas no desktop, mas no celular
+     tiram espaço do nome da unidade. */
+  .ug-card {
+    gap: 0.5rem;
+    padding: 0.6rem 0.7rem;
+  }
+
+  .ug-trend-indicator,
+  .ug-metrics {
+    min-width: 0;
   }
 }
 

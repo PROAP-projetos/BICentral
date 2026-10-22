@@ -46,7 +46,7 @@ public class SincronizacaoTarefasJob {
         // outros "garantir" desta classe, não pode travar o processo se o banco não estiver
         // acessível agora (ex: fase "fetch" do modo manual de sincronização).
         try {
-            jdbcTemplate.execute("ALTER TABLE pat_tarefas ALTER COLUMN departamento TYPE TEXT");
+            jdbcTemplate.execute("ALTER TABLE pat_tarefas_todas ALTER COLUMN departamento TYPE TEXT");
         } catch (Exception e) {
             System.err.println(">>> JOB TAREFAS: não foi possível ajustar a coluna 'departamento' agora: " + e.getMessage());
         }
@@ -90,9 +90,7 @@ public class SincronizacaoTarefasJob {
                 return;
             }
 
-            int tarefasProcessadas = processarTarefas(response.body(), anoParaSalvar);
-
-            registrarResultado("SUCESSO", tarefasProcessadas + " tarefas salvas.");
+            registrarResultado("SUCESSO", processarTarefas(response.body(), anoParaSalvar));
             System.out.println(">>> JOB TAREFAS: Concluído com sucesso.");
 
         } catch (Exception e) {
@@ -189,9 +187,9 @@ public class SincronizacaoTarefasJob {
         }
 
         String payload = Files.readString(arquivoPayload, StandardCharsets.UTF_8);
-        int processadas = processarTarefas(payload, ano);
-        registrarResultado("SUCESSO", processadas + " tarefas salvas.");
-        System.out.println(">>> SYNC-UFT TAREFAS (load): " + processadas + " tarefa(s) carregada(s) no banco.");
+        String mensagem = processarTarefas(payload, ano);
+        registrarResultado("SUCESSO", mensagem);
+        System.out.println(">>> SYNC-UFT TAREFAS (load): " + mensagem);
     }
 
     private void salvarResultadoLocal(String status, String mensagem, int ano) throws IOException {
@@ -241,21 +239,33 @@ public class SincronizacaoTarefasJob {
     // INSERT por linha).
     private static final int TAMANHO_LOTE = 500;
 
-    private int processarTarefas(String jsonBody, int ano) throws Exception {
+    // Limite de remoção numa única carga: acima disso é mais provável payload incompleto
+    // da UFT do que tarefas realmente apagadas.
+    private static final double MAX_FRACAO_REMOVIDA = 0.10;
+
+    /**
+     * Grava em pat_tarefas_todas, a tabela real. pat_tarefas é uma view só com as ativas
+     * (removido_em IS NULL), e é dela que o resto do backend lê; só este job escreve na
+     * tabela. Devolve a mensagem do resultado para integracao_uft.
+     */
+    private String processarTarefas(String jsonBody, int ano) throws Exception {
         List<Map<String, Object>> tarefas = MAPPER.readValue(jsonBody, new TypeReference<List<Map<String, Object>>>() {});
 
         String sql = """
-            INSERT INTO pat_tarefas (id, departamento, ano, dados_completos, atualizado_em)
+            INSERT INTO pat_tarefas_todas (id, departamento, ano, dados_completos, atualizado_em)
             VALUES (?, ?, ?, ?::jsonb, NOW())
             ON CONFLICT (id) DO UPDATE SET
                 departamento = EXCLUDED.departamento,
                 ano = EXCLUDED.ano,
                 dados_completos = EXCLUDED.dados_completos,
-                atualizado_em = NOW()
+                atualizado_em = NOW(),
+                removido_em = NULL
             """;
 
         List<Object[]> lote = new java.util.ArrayList<>(TAMANHO_LOTE);
+        List<Long> idsRecebidos = new java.util.ArrayList<>(tarefas.size());
         int processadas = 0;
+        int falhas = 0;
 
         for (Map<String, Object> tarefa : tarefas) {
             try {
@@ -263,21 +273,74 @@ public class SincronizacaoTarefasJob {
                 String departamento = String.valueOf(tarefa.getOrDefault("Departamento", "")).trim();
                 String jsonDaTarefa = MAPPER.writeValueAsString(tarefa);
                 lote.add(new Object[]{id, departamento, ano, jsonDaTarefa});
+                idsRecebidos.add(id);
             } catch (Exception e) {
                 System.err.println(">>> JOB TAREFAS: falha ao preparar uma tarefa, pulando: " + e.getMessage());
+                falhas++;
                 continue;
             }
 
             if (lote.size() >= TAMANHO_LOTE) {
-                processadas += executarLote(sql, lote);
+                int gravadas = executarLote(sql, lote);
+                processadas += gravadas;
+                falhas += lote.size() - gravadas;
                 lote.clear();
             }
         }
         if (!lote.isEmpty()) {
-            processadas += executarLote(sql, lote);
+            int gravadas = executarLote(sql, lote);
+            processadas += gravadas;
+            falhas += lote.size() - gravadas;
         }
 
-        return processadas;
+        String mensagem = processadas + " tarefas salvas.";
+        if (falhas > 0) {
+            mensagem += " " + falhas + " falharam.";
+        }
+        return mensagem + " " + marcarRemovidas(idsRecebidos, ano, falhas);
+    }
+
+    /**
+     * Marca removido_em nas tarefas ativas do ano que não vieram no payload. Só roda com
+     * carga completa: com tarefa ou lote falho, um id ausente pode ser falha nossa e não
+     * remoção na UFT.
+     */
+    private String marcarRemovidas(List<Long> idsRecebidos, int ano, int falhas) {
+        if (idsRecebidos.isEmpty()) {
+            return "Remoções não verificadas: payload sem tarefas.";
+        }
+        if (falhas > 0) {
+            return "Remoções não verificadas: carga incompleta.";
+        }
+
+        Long[] ids = idsRecebidos.toArray(new Long[0]);
+        String ausentesDoPayload = " WHERE ano = ? AND removido_em IS NULL AND NOT (id = ANY(?))";
+
+        Integer ausentes = jdbcTemplate.query(con -> {
+            var ps = con.prepareStatement("SELECT COUNT(*) FROM pat_tarefas_todas" + ausentesDoPayload);
+            ps.setInt(1, ano);
+            ps.setArray(2, con.createArrayOf("bigint", ids));
+            return ps;
+        }, rs -> rs.next() ? rs.getInt(1) : 0);
+
+        if (ausentes == null || ausentes == 0) {
+            return "Nenhuma tarefa removida.";
+        }
+        int ativas = idsRecebidos.size() + ausentes;
+        if (ausentes > ativas * MAX_FRACAO_REMOVIDA) {
+            String motivo = "Remoções não aplicadas: " + ausentes + " de " + ativas
+                    + " tarefas ativas sumiram do payload, acima do limite de segurança.";
+            System.err.println(">>> JOB TAREFAS: " + motivo);
+            return motivo;
+        }
+
+        int marcadas = jdbcTemplate.update(con -> {
+            var ps = con.prepareStatement("UPDATE pat_tarefas_todas SET removido_em = NOW()" + ausentesDoPayload);
+            ps.setInt(1, ano);
+            ps.setArray(2, con.createArrayOf("bigint", ids));
+            return ps;
+        });
+        return marcadas + " tarefa(s) marcada(s) como removida(s).";
     }
 
     private int executarLote(String sql, List<Object[]> lote) {

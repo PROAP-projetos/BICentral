@@ -7,6 +7,8 @@ import { aoMudarTema, lerCoresDoTema } from '../shared/tema';
 import { extrairSigla } from '../shared/sigla';
 
 const GAP_ATENCAO = 40;
+// Mesmo corte do @media do CSS: abaixo disso o layout do grafo encolhe para caber na tela.
+const LARGURA_ESTREITA = 700;
 
 @Component({
   selector: 'app-mapa-compartilhamento',
@@ -27,6 +29,11 @@ export class MapaCompartilhamentoComponent implements OnInit, OnDestroy {
 
   // Sem a API de tela cheia (alguns celulares), cobre a janela por CSS.
   private telaCheiaPorCss = false;
+
+  // Layout montado para tela estreita ou larga; só remonta quando cruza o corte.
+  private montadoEstreito = this.telaEstreita();
+
+  readonly toque = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
 
   constructor(private rankingService: RankingService, private host: ElementRef<HTMLElement>) {}
 
@@ -102,6 +109,13 @@ export class MapaCompartilhamentoComponent implements OnInit, OnDestroy {
     this.redimensionarGrafico();
   }
 
+  @HostListener('window:resize')
+  aoRedimensionar(): void {
+    const estreito = this.telaEstreita();
+    if (estreito === this.montadoEstreito || !this.dados) return;
+    this.opcoes = this.montarOpcoes(this.dados.ligacoes, this.dados.ranking);
+  }
+
   @HostListener('document:keydown.escape')
   aoApertarEsc(): void {
     if (this.telaCheiaPorCss) {
@@ -117,7 +131,16 @@ export class MapaCompartilhamentoComponent implements OnInit, OnDestroy {
     setTimeout(() => window.dispatchEvent(new Event('resize')), 60);
   }
 
+  private telaEstreita(): boolean {
+    return typeof window !== 'undefined' && window.innerWidth < LARGURA_ESTREITA;
+  }
+
   private montarOpcoes(ligacoes: CompartilhamentoDepartamentos[], ranking: RankingDepartamento[]): any {
+    // O layout de força não se ajusta à caixa: com as distâncias do desktop o grafo passa
+    // da largura do celular. Forças e pontos menores fazem ele caber.
+    const estreito = this.telaEstreita();
+    this.montadoEstreito = estreito;
+    const escalaPonto = estreito ? 0.65 : 1;
     const execucaoPorDepartamento = new Map(ranking.map(r => [r.departamento, r.mediaExecucaoPct]));
     const cores = this.lerCores();
 
@@ -135,7 +158,7 @@ export class MapaCompartilhamentoComponent implements OnInit, OnDestroy {
         departamento,
         execucao,
         acoesCompartilhadas: total,
-        symbolSize: Math.min(60, 14 + Math.sqrt(total) * 6),
+        symbolSize: Math.min(60, 14 + Math.sqrt(total) * 6) * escalaPonto,
         itemStyle: { color: this.corDoNo(execucao), borderWidth: 0 }
       };
     });
@@ -178,8 +201,10 @@ export class MapaCompartilhamentoComponent implements OnInit, OnDestroy {
         data: nos,
         links: arestas,
         // layoutAnimation: false calcula o layout de uma vez, sem os pontos balançando.
-        force: { repulsion: 420, edgeLength: [60, 190], gravity: 0.08, friction: 0.85, layoutAnimation: false },
-        label: { show: true, position: 'bottom', color: cores.texto, fontSize: 11, fontWeight: 500 },
+        force: estreito
+          ? { repulsion: 110, edgeLength: [25, 80], gravity: 0.25, friction: 0.85, layoutAnimation: false }
+          : { repulsion: 420, edgeLength: [60, 190], gravity: 0.08, friction: 0.85, layoutAnimation: false },
+        label: { show: true, position: 'bottom', color: cores.texto, fontSize: estreito ? 9 : 11, fontWeight: 500 },
         emphasis: { focus: 'adjacency', lineStyle: { opacity: 1, width: 3 } },
         blur: { itemStyle: { opacity: 0.25 }, lineStyle: { opacity: 0.1 }, label: { opacity: 0.3 } }
       }]

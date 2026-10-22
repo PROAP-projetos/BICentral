@@ -115,8 +115,7 @@ public class AiConfig {
     }
 
     // @Lazy: só é criado (e só exige GEMINI_API_KEY de verdade) se algum @Qualifier("geminiModel")
-    // pedir esse bean explicitamente — é o caso de quem não tem acesso à OpenAI (ver
-    // docs/devolutiva-auditoria-convites-membros.md, seção 6). Sem isso, o Spring instancia
+    // pedir esse bean explicitamente — é o caso de quem não tem acesso à OpenAI. Sem isso, o Spring instancia
     // todo @Bean no boot mesmo sem uso, travando quem não tem chave do Gemini configurada.
     @Bean("geminiModel")
     @Lazy
