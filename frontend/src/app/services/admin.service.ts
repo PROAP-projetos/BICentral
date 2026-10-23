@@ -20,7 +20,16 @@ export interface GerenteDepartamento {
   usuarioNome: string | null;
   usuarioEmail: string | null;
   departamento: string;
-  tipoUnidade: 'UA' | 'UG';
+  tipoUnidade: 'UA' | 'UG' | null;
+  createdAt: string;
+}
+
+export interface UsuarioResponsavel {
+  id: number;
+  usuarioId: number;
+  usuarioNome: string | null;
+  usuarioEmail: string | null;
+  nomeResponsavel: string;
   createdAt: string;
 }
 
@@ -37,6 +46,34 @@ export interface ConfiguracaoNotificacao {
   id: number;
   limiteBaixoPct: number;
   limiteBomPct: number;
+}
+
+export interface TesterProiap {
+  usuarioId: number | null;
+  nome: string | null;
+  email: string | null;
+  gastoIndividual: number;
+  limite: number;
+  criadoEm: string;
+  pendente: boolean;
+}
+
+export interface TesterAdicionadoResponse {
+  pendente: boolean;
+  mensagem: string;
+}
+
+export interface Convidado {
+  usuarioId: number | null;
+  nome: string | null;
+  email: string | null;
+  criadoEm: string;
+  pendente: boolean;
+}
+
+export interface ConvidadoAdicionadoResponse {
+  pendente: boolean;
+  mensagem: string;
 }
 
 export interface ConfiguracaoUft {
@@ -93,11 +130,10 @@ export class AdminService {
     return this.http.get<GerenteDepartamento[]>(`${this.apiURL}/gerentes`);
   }
 
-  adicionarGerente(usuarioId: number, departamento: string, tipoUnidade: 'UA' | 'UG'): Observable<GerenteDepartamento> {
+  adicionarGerente(usuarioId: number, departamento: string): Observable<GerenteDepartamento> {
     return this.http.post<GerenteDepartamento>(`${this.apiURL}/gerentes`, {
       usuarioId,
-      departamento,
-      tipoUnidade
+      departamento
     });
   }
 
@@ -105,6 +141,16 @@ export class AdminService {
     return this.http.delete<void>(`${this.apiURL}/gerentes/${id}`);
   }
 
+<<<<<<< HEAD
+=======
+  classificarDepartamento(departamento: string, tipoUnidade: 'UA' | 'UG'): Observable<void> {
+    return this.http.post<void>(`${this.apiURL}/departamentos/classificar`, {
+      departamento,
+      tipoUnidade
+    });
+  }
+
+>>>>>>> d7f41a2f7ee04ff86c43972e609226b3fc0f6bb5
   listarResponsaveis(): Observable<UsuarioResponsavel[]> {
     return this.http.get<UsuarioResponsavel[]>(`${this.apiURL}/responsaveis`);
   }
@@ -145,5 +191,52 @@ export class AdminService {
 
   testarConexaoUft(tipoApi: string, request: ConfiguracaoUftRequest): Observable<ResultadoTesteUft> {
     return this.http.post<ResultadoTesteUft>(`${this.apiURL}/integracao-uft/${tipoApi}/testar`, request);
+  }
+
+  // Testers do proIAp — endpoints em /api/uso-ia, não em /api/admin
+  listarTesters(): Observable<TesterProiap[]> {
+    return this.http.get<TesterProiap[]>('/api/uso-ia/testers');
+  }
+
+  adicionarTester(email: string): Observable<TesterAdicionadoResponse> {
+    return this.http.post<TesterAdicionadoResponse>('/api/uso-ia/testers', { email });
+  }
+
+  removerTester(usuarioId: number): Observable<void> {
+    return this.http.delete<void>(`/api/uso-ia/testers/${usuarioId}`);
+  }
+
+  // limite null reseta pro padrão global (US$ 1,00).
+  definirLimiteTester(usuarioId: number, limite: number | null): Observable<void> {
+    return this.http.post<void>(`/api/uso-ia/testers/${usuarioId}/limite`, { limite });
+  }
+
+  removerTesterPendente(email: string): Observable<void> {
+    return this.http.delete<void>('/api/uso-ia/testers/pendentes', { params: { email } });
+  }
+
+  statusNotificacaoVersao(versao: string): Observable<{ enviado: boolean }> {
+    return this.http.get<{ enviado: boolean }>('/api/uso-ia/testers/notificar-versao', { params: { versao } });
+  }
+
+  notificarVersaoTesters(versao: string): Observable<{ enviados: number; jaEnviado: boolean }> {
+    return this.http.post<{ enviados: number; jaEnviado: boolean }>(
+      '/api/uso-ia/testers/notificar-versao', null, { params: { versao } });
+  }
+
+  listarConvidados(): Observable<Convidado[]> {
+    return this.http.get<Convidado[]>('/api/admin/convidados');
+  }
+
+  adicionarConvidado(email: string): Observable<ConvidadoAdicionadoResponse> {
+    return this.http.post<ConvidadoAdicionadoResponse>('/api/admin/convidados', { email });
+  }
+
+  removerConvidado(usuarioId: number): Observable<void> {
+    return this.http.delete<void>(`/api/admin/convidados/${usuarioId}`);
+  }
+
+  removerConvidadoPendente(email: string): Observable<void> {
+    return this.http.delete<void>('/api/admin/convidados/pendentes', { params: { email } });
   }
 }

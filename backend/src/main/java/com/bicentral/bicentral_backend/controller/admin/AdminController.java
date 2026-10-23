@@ -3,6 +3,7 @@ package com.bicentral.bicentral_backend.controller.admin;
 import com.bicentral.bicentral_backend.model.Usuario;
 import com.bicentral.bicentral_backend.service.admin.AdminService;
 import com.bicentral.bicentral_backend.dto.admin.AdminSistemaDTO;
+import com.bicentral.bicentral_backend.dto.admin.ClassificacaoDepartamentoRequestDTO;
 import com.bicentral.bicentral_backend.dto.admin.ConfiguracaoNotificacaoDTO;
 import com.bicentral.bicentral_backend.dto.admin.AdminUsuarioRequestDTO;
 import com.bicentral.bicentral_backend.dto.admin.ConfiguracaoNotificacaoRequestDTO;
@@ -85,6 +86,15 @@ public class AdminController {
             @AuthenticationPrincipal UserDetails userDetails) {
         Usuario usuario = usuarioLogado(userDetails);
         return ResponseEntity.ok(adminService.adicionarGerente(usuario.getId(), request));
+    }
+
+    @PostMapping("/departamentos/classificar")
+    public ResponseEntity<Void> classificarDepartamento(
+            @RequestBody ClassificacaoDepartamentoRequestDTO request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Usuario usuario = usuarioLogado(userDetails);
+        adminService.classificarDepartamento(usuario.getId(), request);
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/gerentes/{id}")

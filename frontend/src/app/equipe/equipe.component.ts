@@ -36,7 +36,7 @@ export class EquipeComponent implements OnInit {
   equipeAtiva: Equipe | null = null;
   conviteEmail = '';
   conviteRole: UserRole = 'VIEWER';
-  
+
   mensagemFeedback = '';
   tipoFeedback: 'sucesso' | 'erro' = 'sucesso';
   carregandoMembros = false;
@@ -76,8 +76,22 @@ export class EquipeComponent implements OnInit {
     this.limparFeedback();
   }
 
+  private getEquipeStorageKey(): string | null {
+    const raw = localStorage.getItem('user');
+    if (!raw) return null;
+    try {
+      const user = JSON.parse(raw) as { id?: string | number };
+      if (!user?.id) return null;
+      return `${EquipeComponent.SELECTED_EQUIPE_KEY}:${user.id}`;
+    } catch {
+      return null;
+    }
+  }
+
   private restaurarEquipeSelecionada(): void {
-    const raw = localStorage.getItem(EquipeComponent.SELECTED_EQUIPE_KEY);
+    const key = this.getEquipeStorageKey();
+    if (!key) return;
+    const raw = localStorage.getItem(key);
     if (!raw) return;
 
     try {
@@ -91,15 +105,17 @@ export class EquipeComponent implements OnInit {
         this.carregarMembros(match.id);
       }
     } catch {
-      localStorage.removeItem(EquipeComponent.SELECTED_EQUIPE_KEY);
+      localStorage.removeItem(key);
     }
   }
 
   private salvarEquipeSelecionada(equipe: Equipe): void {
     if (!equipe.id) return;
+    const key = this.getEquipeStorageKey();
+    if (!key) return;
 
     localStorage.setItem(
-      EquipeComponent.SELECTED_EQUIPE_KEY,
+      key,
       JSON.stringify({
         id: equipe.id,
         nome: equipe.nome,

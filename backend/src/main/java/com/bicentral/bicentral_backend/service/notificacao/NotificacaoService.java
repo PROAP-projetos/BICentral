@@ -71,6 +71,7 @@ public class NotificacaoService {
                 JOIN pat_execucao_departamento p ON p.departamento = gd.departamento
                 WHERE gd.usuario_id = ?
                 GROUP BY gd.departamento
+                ORDER BY media_atual ASC NULLS LAST
                 """;
             resultados = jdbcTemplate.queryForList(sql, snapshots.get(0), snapshots.get(1), usuarioId);
         } else {
@@ -80,6 +81,7 @@ public class NotificacaoService {
                 JOIN pat_execucao_departamento p ON p.departamento = gd.departamento
                 WHERE gd.usuario_id = ?
                 GROUP BY gd.departamento
+                ORDER BY media_atual ASC NULLS LAST
                 """;
             try {
                 resultados = jdbcTemplate.queryForList(sql, usuarioId);
@@ -152,7 +154,7 @@ public class NotificacaoService {
                 FROM pat_tarefas
                 WHERE departamento ILIKE ?
                 ORDER BY
-                    (to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') < CURRENT_DATE
+                    (to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') < (NOW() AT TIME ZONE 'America/Sao_Paulo')::date
                         AND NULLIF(regexp_replace(dados_completos->>'% Concluído', '[^0-9.,]', '', 'g'), '')::numeric < 100) DESC,
                     percentual ASC NULLS LAST
                 LIMIT ?
@@ -198,7 +200,7 @@ public class NotificacaoService {
                     to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') AS data_final
                 FROM pat_tarefas
                 WHERE departamento ILIKE ?
-                    AND to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') < CURRENT_DATE
+                    AND to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') < (NOW() AT TIME ZONE 'America/Sao_Paulo')::date
                     AND NULLIF(regexp_replace(dados_completos->>'% Concluído', '[^0-9.,]', '', 'g'), '')::numeric < 100
                 ORDER BY data_final ASC NULLS LAST
                 LIMIT 100
@@ -223,7 +225,7 @@ public class NotificacaoService {
                 SELECT dados_completos->>'Responsável' AS responsavel, COUNT(*) AS total
                 FROM pat_tarefas
                 WHERE departamento ILIKE ?
-                    AND to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') < CURRENT_DATE
+                    AND to_date(dados_completos->>'Data Final', 'DD/MM/YYYY') < (NOW() AT TIME ZONE 'America/Sao_Paulo')::date
                     AND NULLIF(regexp_replace(dados_completos->>'% Concluído', '[^0-9.,]', '', 'g'), '')::numeric < 100
                 GROUP BY responsavel
                 ORDER BY total DESC
@@ -239,8 +241,13 @@ public class NotificacaoService {
         }
 
         GraficoSpecDTO grafico = new GraficoSpecDTO(
+<<<<<<< HEAD
                 "", "grafico", "Tarefas atrasadas por responsável — " + departamento, "bar",
                 responsaveis, List.of(new SerieGraficoDTO("Tarefas atrasadas", totais)), false);
+=======
+                "Tarefas atrasadas por responsável — " + departamento, "bar",
+                responsaveis, List.of(new SerieGraficoDTO("Tarefas atrasadas", totais)));
+>>>>>>> d7f41a2f7ee04ff86c43972e609226b3fc0f6bb5
 
         return new PainelAtrasosDTO(departamento, grafico, tarefas);
     }

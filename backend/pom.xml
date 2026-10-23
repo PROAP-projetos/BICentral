@@ -22,7 +22,7 @@
         <java.version>17</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <lombok.version>1.18.38</lombok.version>
+        <lombok.version>1.18.42</lombok.version>
     </properties>
 
     <dependencyManagement>
@@ -53,10 +53,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -113,6 +109,13 @@
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
             <version>5.2.3</version>
+        </dependency>
+
+        <!-- Gráficos dos relatórios (PDF/DOCX) renderizados como PNG no próprio backend, sem navegador. -->
+        <dependency>
+            <groupId>org.jfree</groupId>
+            <artifactId>jfreechart</artifactId>
+            <version>1.5.5</version>
         </dependency>
 
         <dependency>
@@ -186,6 +189,13 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
+                    <!-- Sem isso, o build falha: tem 2 classes @SpringBootApplication agora
+                         (a normal e a SincronizacaoUftApplication, do modo manual de
+                         sincronização — ver job/SincronizacaoUftApplication.java). O jar
+                         continua abrindo essa (BicentralBackendApplication) por padrão com
+                         "java -jar"; a outra é chamada explicitamente via PropertiesLauncher
+                         (ver sincronizar-uft.ps1). -->
+                    <mainClass>com.bicentral.bicentral_backend.BicentralBackendApplication</mainClass>
                     <excludes>
                         <exclude>
                             <groupId>org.projectlombok</groupId>

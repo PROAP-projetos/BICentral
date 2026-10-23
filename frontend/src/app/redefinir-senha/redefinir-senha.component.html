@@ -1,0 +1,89 @@
+<div class="form-container">
+  <div *ngIf="tokenAusente; else fluxoNormal">
+    <div class="card">
+      <h2>Link inválido</h2>
+      <p class="alert-message">Esse link de redefinição está incompleto ou inválido. Peça um novo.</p>
+      <div class="footer-link">
+        <a routerLink="/esqueci-senha">Pedir novo link</a>
+      </div>
+    </div>
+  </div>
+
+  <ng-template #fluxoNormal>
+    <div *ngIf="!concluido; else sucesso">
+      <form (ngSubmit)="redefinir()">
+        <h2>Escolha uma senha nova</h2>
+
+        <div class="log-wrapper" *ngIf="message">
+          <div class="premium-alert error">
+            <p class="alert-message">{{ message }}</p>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="novaSenha">Nova senha</label>
+          <div class="password-field">
+            <input [type]="mostrarSenha ? 'text' : 'password'" id="novaSenha" [(ngModel)]="novaSenha"
+              name="novaSenha" required (ngModelChange)="atualizarRequisitosSenha()">
+            <button type="button" class="password-toggle" (click)="alternarMostrarSenha()"
+              [attr.aria-label]="mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'"
+              [attr.title]="mostrarSenha ? 'Ocultar senha' : 'Mostrar senha'">
+              <svg *ngIf="!mostrarSenha" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              <svg *ngIf="mostrarSenha" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.6 21.6 0 0 1 5.06-6.06M9.9 4.24A10.4 10.4 0 0 1 12 4c7 0 11 8 11 8a21.6 21.6 0 0 1-3.66 5.16M14.12 14.12a3 3 0 1 1-4.24-4.24"></path>
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+              </svg>
+            </button>
+          </div>
+          <ul class="requisitos-senha" *ngIf="novaSenha">
+            <li [class.ok]="requisitosSenha.tamanho">Mínimo 8 caracteres</li>
+            <li [class.ok]="requisitosSenha.letra">Uma letra</li>
+            <li [class.ok]="requisitosSenha.numero">Um número</li>
+            <li [class.ok]="requisitosSenha.especial">Um caractere especial (ex: @ # $ !)</li>
+          </ul>
+        </div>
+
+        <div class="form-group">
+          <label for="confirmarSenha">Confirmar nova senha</label>
+          <div class="password-field">
+            <input [type]="mostrarConfirmarSenha ? 'text' : 'password'" id="confirmarSenha" [(ngModel)]="confirmarSenha"
+              name="confirmarSenha" required>
+            <button type="button" class="password-toggle" (click)="alternarMostrarConfirmarSenha()"
+              [attr.aria-label]="mostrarConfirmarSenha ? 'Ocultar senha' : 'Mostrar senha'"
+              [attr.title]="mostrarConfirmarSenha ? 'Ocultar senha' : 'Mostrar senha'">
+              <svg *ngIf="!mostrarConfirmarSenha" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              <svg *ngIf="mostrarConfirmarSenha" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.6 21.6 0 0 1 5.06-6.06M9.9 4.24A10.4 10.4 0 0 1 12 4c7 0 11 8 11 8a21.6 21.6 0 0 1-3.66 5.16M14.12 14.12a3 3 0 1 1-4.24-4.24"></path>
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" [disabled]="carregando">
+          {{ carregando ? 'Salvando...' : 'Redefinir senha' }}
+        </button>
+
+        <div class="footer-link">
+          <a routerLink="/login">Voltar para o login</a>
+        </div>
+      </form>
+    </div>
+
+    <ng-template #sucesso>
+      <div class="card">
+        <h2>Senha redefinida!</h2>
+        <p class="alert-message">{{ message }} Redirecionando pro login...</p>
+        <div class="footer-link">
+          <a routerLink="/login">Ir para o login agora</a>
+        </div>
+      </div>
+    </ng-template>
+  </ng-template>
+</div>

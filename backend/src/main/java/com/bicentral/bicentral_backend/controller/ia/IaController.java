@@ -130,8 +130,8 @@ public class IaController {
             return ResponseEntity.ok(Map.of(
                     "fontes", consultaService.listarFontes(equipe.getId()),
                     "modelo", Map.of(
-                            "nome", "Llama 3 (Groq)",
-                            "detalhes", "via API Groq · local-onnx-embedding"),
+                            "nome", "Gemini 2.5 Flash",
+                            "detalhes", "local-onnx-embedding"),
                     "equipe", equipe.getNome()));
         } catch (ResponseStatusException e) {
             return ResponseEntity.status(e.getStatusCode()).body(Map.of("mensagem", e.getReason()));

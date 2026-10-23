@@ -41,7 +41,8 @@
 
       <div class="api-footer">
         <div class="api-meta">
-          <strong>Último Status:</strong> {{ api.ultimoStatus || 'Nunca executado' }}<br>
+          <strong>Último Status:</strong> {{ api.ultimoStatus || 'Nunca executado' }}
+          <span *ngIf="api.ultimaExecucao"> — {{ paraDataUtc(api.ultimaExecucao) | date:'dd/MM/yyyy HH:mm' }}</span><br>
           <span *ngIf="api.ultimaMensagem" [title]="api.ultimaMensagem">
             <em>{{ api.ultimaMensagem.slice(0, 50) }}{{ api.ultimaMensagem.length > 50 ? '...' : '' }}</em>
           </span>

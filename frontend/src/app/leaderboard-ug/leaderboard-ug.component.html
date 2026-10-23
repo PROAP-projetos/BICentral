@@ -1,0 +1,268 @@
+<div class="intelligence-board-container">
+  
+  <!-- CABEÇALHO DO HUB DE INTELIGÊNCIA -->
+  <header class="board-header">
+    <div class="header-main-title">
+      <div class="live-indicator">
+        <span class="live-text">PROIAP · PAINEL DE DESEMPENHO</span>
+      </div>
+      <h2>Painel Geral de Inteligência & Desempenho</h2>
+      <p class="subtitle">Execução do PAT por unidade{{ atualizadoEm ? ' · dados atualizados em ' + atualizadoEm : '' }}</p>
+    </div>
+
+    <div class="header-actions">
+      <!-- SELETOR DE MODO (CARDS FLIP VS ECHARTS) -->
+      <div class="mode-switch">
+        <button 
+          type="button" 
+          class="switch-btn" 
+          [class.active]="modoVisualizacao === 'cards'"
+          (click)="alternarModo('cards')">
+          Cartões
+        </button>
+        <button 
+          type="button" 
+          class="switch-btn" 
+          [class.active]="modoVisualizacao === 'echarts'"
+          (click)="alternarModo('echarts')">
+          Gráfico de barras
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- LINHA DE CARDS KPI (MÉTRICAS EXECUTIVAS GLOBAIS) -->
+  <section class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-icon-wrap kpi-blue">🎯</div>
+      <div class="kpi-details">
+        <span class="kpi-label">Execução Global PAT</span>
+        <div class="kpi-value-row">
+          <span class="kpi-value">{{ percentualGlobal }}%</span>
+        </div>
+        <div class="kpi-progress">
+          <div class="kpi-progress-bar" [style.width.%]="percentualGlobal"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-icon-wrap kpi-purple">🏢</div>
+      <div class="kpi-details">
+        <span class="kpi-label">Unidades Monitoradas</span>
+        <div class="kpi-value-row">
+          <span class="kpi-value">{{ unidadesPrincipais.length }}</span>
+        </div>
+        <span class="kpi-subtext">UGs e câmpus (sem coordenações)</span>
+      </div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-icon-wrap kpi-green">✅</div>
+      <div class="kpi-details">
+        <span class="kpi-label">Ações Concluídas</span>
+        <div class="kpi-value-row">
+          <span class="kpi-value">{{ acoesConcluidasGlobal }}/{{ totalAcoesGlobal }}</span>
+          <span class="kpi-badge positive">{{ percentualAcoesConcluidas }}%</span>
+        </div>
+        <span class="kpi-subtext">Ações únicas do PAT (UGs, câmpus e coordenações)</span>
+      </div>
+    </div>
+
+    <div
+      class="kpi-card"
+      [class.kpi-card-clicavel]="totalUgsEmAtencao > 0"
+      [class.kpi-card-ativo]="painelAtencaoAberto"
+      [attr.role]="totalUgsEmAtencao > 0 ? 'button' : null"
+      [attr.tabindex]="totalUgsEmAtencao > 0 ? 0 : null"
+      [attr.aria-expanded]="totalUgsEmAtencao > 0 ? painelAtencaoAberto : null"
+      (click)="alternarPainelAtencao()"
+      (keydown.enter)="alternarPainelAtencao()"
+      (keydown.space)="$event.preventDefault(); alternarPainelAtencao()">
+      <div class="kpi-icon-wrap" [ngClass]="totalUgsEmAtencao > 0 ? 'kpi-orange' : 'kpi-green'">
+        {{ totalUgsEmAtencao > 0 ? '⚠️' : '🛡️' }}
+      </div>
+      <div class="kpi-details">
+        <span class="kpi-label">Unidades em Atenção</span>
+        <div class="kpi-value-row">
+          <span class="kpi-value">{{ totalUgsEmAtencao }}</span>
+          <span class="kpi-badge" [ngClass]="totalUgsEmAtencao > 0 ? 'warning' : 'positive'">
+            {{ totalUgsEmAtencao > 0 ? 'Atenção' : 'Regular' }}
+          </span>
+        </div>
+        <span class="kpi-subtext" [title]="resumo?.referenciaAtencao ? 'Corte de ' + limiteAtencao + '% (' + resumo?.referenciaAtencao + ')' : ''">{{ totalUgsEmAtencao > 0 ? (painelAtencaoAberto ? 'Clique para fechar a lista' : 'Abaixo de ' + limiteAtencao + '% · ver lista') : 'Todas acima de ' + limiteAtencao + '%' }}</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="atencao-painel" *ngIf="painelAtencaoAberto && totalUgsEmAtencao > 0">
+    <div class="atencao-header">
+      <div>
+        <h3>Unidades em atenção</h3>
+        <span class="section-hint">Execução abaixo de {{ limiteAtencao }}%{{ resumo?.referenciaAtencao ? ' (' + resumo?.referenciaAtencao + ')' : '' }}, da menor para a maior · clique para abrir o diagnóstico no chat</span>
+      </div>
+      <button type="button" class="atencao-fechar" (click)="painelAtencaoAberto = false" aria-label="Fechar lista">✕</button>
+    </div>
+    <div class="atencao-lista">
+      <button type="button" class="atencao-item" *ngFor="let ug of ugsEmAtencao; trackBy: trackByUgId" (click)="clicarUg(ug)" [title]="ug.nome">
+        <div class="atencao-nome">
+          <strong>{{ ug.sigla }}</strong>
+          <span>{{ ug.nome }}</span>
+        </div>
+        <div class="atencao-metricas">
+          <span class="metric-pct" [ngClass]="getClasseCorPct(ug.percentual)">{{ ug.percentual }}%</span>
+          <span class="atencao-acoes">{{ ug.totalAcoes }} ações</span>
+        </div>
+      </button>
+    </div>
+  </section>
+
+  <!-- COCKPIT PRINCIPAL EM 2 COLUNAS (60% LEADERBOARD | 40% LIVE FEED E IA) -->
+  <div class="cockpit-layout">
+
+    <!-- COLUNA 1: LEADERBOARD DE DESEMPENHO (RANKING ANIMADO) -->
+    <section class="cockpit-column leaderboard-column">
+      <div class="section-card-header">
+        <div class="section-title-wrap">
+          <span class="section-badge-icon">🏆</span>
+          <h3>Ranking de Desempenho das Unidades</h3>
+        </div>
+        <span class="section-hint">Clique em uma unidade para abrir diagnóstico no chat</span>
+      </div>
+
+      <div class="filtro-unidades" *ngIf="ugs.length">
+        <button
+          type="button"
+          class="filtro-chip"
+          *ngFor="let f of filtros"
+          [class.active]="filtroAtivo === f.valor"
+          [disabled]="!contagemFiltro(f.valor)"
+          (click)="selecionarFiltro(f.valor)">
+          {{ f.rotulo }} <span class="filtro-contagem">{{ contagemFiltro(f.valor) }}</span>
+        </button>
+      </div>
+
+      <div class="filtro-unidades filtro-campus" *ngIf="filtroAtivo === 'coordenacao'">
+        <button type="button" class="filtro-chip" [class.active]="campusAtivo === 'todos'" (click)="selecionarCampus('todos')">
+          Todos os campi
+        </button>
+        <button
+          type="button"
+          class="filtro-chip"
+          *ngFor="let c of campi; trackBy: trackByCampus"
+          [class.active]="campusAtivo === c.valor"
+          (click)="selecionarCampus(c.valor)">
+          {{ c.rotulo }} <span class="filtro-contagem">{{ c.total }}</span>
+        </button>
+      </div>
+
+      <!-- MODO CARDS COM FLIP ANIMATION -->
+      <div class="ranking-status" *ngIf="carregandoRanking">Carregando as unidades...</div>
+      <div class="ranking-status ranking-status-error" *ngIf="erroRanking">
+        <span>{{ erroRanking }}</span>
+        <button type="button" (click)="carregarRanking()">Tentar novamente</button>
+      </div>
+      <div class="ranking-status" *ngIf="!carregandoRanking && !erroRanking && !ugsExibidas.length">
+        Nenhuma unidade foi encontrada neste grupo.
+      </div>
+
+      <div class="leaderboard-grid" *ngIf="modoVisualizacao === 'cards' && !carregandoRanking && !erroRanking">
+        <div 
+          class="ug-card" 
+          *ngFor="let ug of ugsExibidas; let i = index; trackBy: trackByUgId"
+          [class.rank-top1]="ug.posicao === 1"
+          [class.rank-top2]="ug.posicao === 2"
+          [class.rank-top3]="ug.posicao === 3"
+          [class.subiu-destaque]="ug.destaqueAnimacao"
+          (click)="clicarUg(ug)"
+          title="Clique para conversar com o proIAp sobre {{ ug.sigla }}">
+          
+          <!-- POSIÇÃO / MEDALHA -->
+          <div class="ug-rank-badge">
+            <span class="rank-icon" *ngIf="ug.posicao <= 3">{{ getMedalhaEmoji(ug.posicao) }}</span>
+            <span class="rank-number" *ngIf="ug.posicao > 3">#{{ ug.posicao }}</span>
+          </div>
+
+          <!-- TENDÊNCIA E VARIAÇÃO DE POSIÇÃO -->
+          <div class="ug-trend-indicator">
+            <span class="trend-badge subiu" *ngIf="ug.variacaoPosicao > 0" title="Subiu {{ ug.variacaoPosicao }} posições">
+              ▲ +{{ ug.variacaoPosicao }}
+            </span>
+            <span class="trend-badge caiu" *ngIf="ug.variacaoPosicao < 0" title="Caiu {{ -ug.variacaoPosicao }} posições">
+              ▼ {{ ug.variacaoPosicao }}
+            </span>
+            <span class="trend-badge neutro" *ngIf="ug.variacaoPosicao === 0 && !ug.semComparacao">
+              • 0
+            </span>
+            <span class="trend-badge neutro" *ngIf="ug.semComparacao" title="Sem posição do dia anterior para comparar">
+              —
+            </span>
+          </div>
+
+          <!-- DADOS PRINCIPAIS DA UG -->
+          <div class="ug-info">
+            <div class="ug-title-row">
+              <span class="ug-sigla">{{ ug.sigla }}</span>
+              <span class="ug-nome">{{ ug.nome }}</span>
+            </div>
+
+            <!-- BARRA DE PROGRESSO REATIVA -->
+            <div class="progress-track">
+              <div 
+                class="progress-fill" 
+                [ngClass]="getClasseCorPct(ug.percentual)"
+                [style.width.%]="ug.percentual">
+              </div>
+            </div>
+          </div>
+
+          <!-- MÉTRICAS DE EXECUÇÃO -->
+          <div class="ug-metrics">
+            <div class="metric-pct" [ngClass]="getClasseCorPct(ug.percentual)">
+              {{ ug.percentual }}%
+            </div>
+            <div class="metric-sub">
+              {{ ug.acoesConcluidas }}/{{ ug.totalAcoes }} ações
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- MODO COMPARAÇÃO ECHARTS REALTIME SORT -->
+      <div class="echarts-wrap" [style.height.px]="alturaGrafico" *ngIf="modoVisualizacao === 'echarts' && !carregandoRanking && !erroRanking && ugsExibidas.length">
+        <div echarts [options]="echartsOptions" class="echarts-chart"></div>
+      </div>
+    </section>
+
+    <!-- COLUNA 2: ATIVIDADES RECENTES & SUGESTÕES DA IA -->
+    <aside class="cockpit-column feed-column">
+      
+      <div class="insights-section">
+        <div class="section-card-header">
+          <div class="section-title-wrap">
+            <span class="section-badge-icon">💡</span>
+            <h3>Análises Rápidas com proIAp</h3>
+          </div>
+        </div>
+
+        <div class="insights-grid">
+          <div 
+            class="insight-chip" 
+            *ngFor="let item of insightsSugeridos"
+            (click)="clicarInsight(item)"
+            title="Enviar esta pergunta para o proIAp">
+            <div class="insight-chip-header">
+              <span class="insight-icon">{{ item.icone }}</span>
+              <span class="insight-badge">{{ item.badge }}</span>
+            </div>
+            <span class="insight-title">{{ item.titulo }}</span>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+
+  </div>
+
+</div>

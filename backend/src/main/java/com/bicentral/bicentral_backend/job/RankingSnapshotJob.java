@@ -13,7 +13,19 @@ public class RankingSnapshotJob {
 
     public RankingSnapshotJob(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
+<<<<<<< HEAD
         garantirTabela();
+=======
+        // Best-effort: essa classe é varrida junto com o pacote "job" no modo manual de
+        // sincronização (ver SincronizacaoUftApplication), que às vezes sobe sem banco
+        // disponível de propósito (fase "fetch") — sem o try/catch, essa checagem de tabela
+        // derrubaria o processo inteiro à toa, e essa classe nem participa daquele fluxo.
+        try {
+            garantirTabela();
+        } catch (Exception e) {
+            System.err.println(">>> RANKING SNAPSHOT: não foi possível confirmar/criar a tabela agora: " + e.getMessage());
+        }
+>>>>>>> d7f41a2f7ee04ff86c43972e609226b3fc0f6bb5
     }
 
     private void garantirTabela(){
@@ -36,8 +48,13 @@ public class RankingSnapshotJob {
 
         List<Map<String, Object>> ranking = jdbcTemplate.queryForList("""
                 SELECT departamento, tipo_unidade,
+<<<<<<< HEAD
                        ROUND(AVG(percentual_execucao) * 100, 2) AS media_execucao_pct,
                        COUNT(*) AS qtd_acoes
+=======
+                       ROUND(COALESCE(AVG(percentual_execucao), 0) * 100, 2) AS media_execucao_pct,
+                       COUNT(DISTINCT codigo_acao) AS qtd_acoes
+>>>>>>> d7f41a2f7ee04ff86c43972e609226b3fc0f6bb5
                 FROM pat_execucao_departamento
                 GROUP BY departamento, tipo_unidade
                 """);
@@ -46,7 +63,11 @@ public class RankingSnapshotJob {
             jdbcTemplate.update(
                     """
                             INSERT INTO ranking_pat_snapshots (data_snapshot, departamento, tipo_unidade, media_execucao_pct, qtd_acoes)
+<<<<<<< HEAD
                             VALUES (CURRENT_DATE, ?, ?, ?, ?)
+=======
+                            VALUES ((NOW() AT TIME ZONE 'America/Sao_Paulo')::date, ?, ?, ?, ?)
+>>>>>>> d7f41a2f7ee04ff86c43972e609226b3fc0f6bb5
                             ON CONFLICT (data_snapshot, departamento) DO UPDATE SET
                                 tipo_unidade = EXCLUDED.tipo_unidade,
                                 media_execucao_pct = EXCLUDED.media_execucao_pct,

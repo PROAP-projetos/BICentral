@@ -1,5 +1,9 @@
 package com.bicentral.bicentral_backend.controller.painel;
 
+<<<<<<< HEAD
+=======
+import java.time.LocalDate;
+>>>>>>> d7f41a2f7ee04ff86c43972e609226b3fc0f6bb5
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -12,7 +16,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+<<<<<<< HEAD
 import com.bicentral.bicentral_backend.dto.painel.RankingDepartamentoDTO;
+=======
+import com.bicentral.bicentral_backend.dto.painel.CompartilhamentoDepartamentosDTO;
+import com.bicentral.bicentral_backend.dto.painel.RankingAtualizacaoDTO;
+import com.bicentral.bicentral_backend.dto.painel.RankingDepartamentoDTO;
+import com.bicentral.bicentral_backend.dto.painel.RankingResumoDTO;
+import com.bicentral.bicentral_backend.service.ia.EpocaPat;
+>>>>>>> d7f41a2f7ee04ff86c43972e609226b3fc0f6bb5
 
 @RestController
 @RequestMapping("/api/ranking")
@@ -28,12 +40,22 @@ public class RankingController {
             @RequestParam(required = false) String tipoUnidade) {
 
         String sql = "SELECT departamento, tipo_unidade, " +
+<<<<<<< HEAD
                 "ROUND(AVG(percentual_execucao) * 100, 2) AS media_execucao_pct, " +
                 "COUNT(*) AS qtd_acoes " +
                 "FROM pat_execucao_departamento " +
                 (tipoUnidade != null ? "WHERE tipo_unidade = ? " : "") +
                 "GROUP BY departamento, tipo_unidade " +
                 "ORDER BY media_execucao_pct DESC";
+=======
+                "ROUND(COALESCE(AVG(percentual_execucao), 0) * 100, 2) AS media_execucao_pct, " +
+                "COUNT(DISTINCT codigo_acao) AS qtd_acoes, " +
+                "COUNT(DISTINCT codigo_acao) FILTER (WHERE percentual_execucao >= 1) AS qtd_acoes_concluidas " +
+                "FROM pat_execucao_departamento " +
+                (tipoUnidade != null ? "WHERE tipo_unidade = ? " : "") +
+                "GROUP BY departamento, tipo_unidade " +
+                "ORDER BY media_execucao_pct DESC, departamento";
+>>>>>>> d7f41a2f7ee04ff86c43972e609226b3fc0f6bb5
 
         List<Map<String, Object>> hoje = tipoUnidade != null
                 ? jdbcTemplate.queryForList(sql, tipoUnidade)
@@ -49,6 +71,10 @@ public class RankingController {
                     (String) linha.get("tipo_unidade"),
                     ((Number) linha.get("media_execucao_pct")).doubleValue(),
                     ((Number) linha.get("qtd_acoes")).intValue(),
+<<<<<<< HEAD
+=======
+                    ((Number) linha.get("qtd_acoes_concluidas")).intValue(),
+>>>>>>> d7f41a2f7ee04ff86c43972e609226b3fc0f6bb5
                     i + 1,
                     posicoesAnteriores.get((String) linha.get("departamento"))));
         }
@@ -56,9 +82,78 @@ public class RankingController {
         return ResponseEntity.ok(resultado);
     }
 
+<<<<<<< HEAD
     private Map<String, Integer> buscarPosicoesAnteriores(String tipoUnidade) {
         java.sql.Date dataAnterior = jdbcTemplate.queryForObject(
                 "SELECT MAX(data_snapshot) FROM ranking_pat_snapshots WHERE data_snapshot < CURRENT_DATE",
+=======
+    // Ação compartilhada conta uma vez; só é concluída se todas as unidades que respondem por ela chegaram a 100%.
+    @GetMapping("/resumo")
+    public ResponseEntity<RankingResumoDTO> resumo(@RequestParam(required = false) String tipoUnidade) {
+        String sql = "SELECT COUNT(*) AS total, " +
+                "COUNT(*) FILTER (WHERE menor_execucao >= 1) AS concluidas " +
+                "FROM (SELECT codigo_acao, MIN(COALESCE(percentual_execucao, 0)) AS menor_execucao " +
+                "FROM pat_execucao_departamento WHERE codigo_acao IS NOT NULL " +
+                (tipoUnidade != null ? "AND tipo_unidade = ? " : "") +
+                "GROUP BY codigo_acao) acoes";
+
+        Map<String, Object> linha = tipoUnidade != null
+                ? jdbcTemplate.queryForMap(sql, tipoUnidade)
+                : jdbcTemplate.queryForMap(sql);
+
+        LocalDate hoje = EpocaPat.hoje();
+        return ResponseEntity.ok(new RankingResumoDTO(
+                ((Number) linha.get("total")).intValue(),
+                ((Number) linha.get("concluidas")).intValue(),
+                EpocaPat.limiteAtencaoPct(hoje),
+                EpocaPat.rotuloReferencia(hoje)));
+    }
+
+    @GetMapping("/atualizacao")
+    public ResponseEntity<RankingAtualizacaoDTO> atualizacao() {
+        // pat_dados.atualizado_em é gravado em UTC (ver SincronizacaoPatJob); converte pra Brasília antes de formatar.
+        String atualizadoEm = jdbcTemplate.queryForObject(
+                "SELECT to_char(MAX(atualizado_em) AT TIME ZONE 'UTC' AT TIME ZONE 'America/Sao_Paulo', 'DD/MM/YYYY HH24:MI') FROM pat_dados",
+                String.class);
+        return ResponseEntity.ok(new RankingAtualizacaoDTO(atualizadoEm));
+    }
+
+    private static final int LIMITE_LIGACOES = 80;
+
+    @GetMapping("/compartilhamento")
+    public ResponseEntity<List<CompartilhamentoDepartamentosDTO>> compartilhamento(
+            @RequestParam(required = false) String tipoUnidade) {
+
+        String sql = "SELECT a.departamento AS origem, b.departamento AS destino, " +
+                "COUNT(DISTINCT a.codigo_acao) AS qtd_acoes, " +
+                "ROUND(AVG(ABS(COALESCE(a.percentual_execucao, 0) - COALESCE(b.percentual_execucao, 0))) * 100, 1) AS diferenca_media_pct " +
+                "FROM pat_execucao_departamento a " +
+                "JOIN pat_execucao_departamento b ON a.codigo_acao = b.codigo_acao AND a.departamento < b.departamento " +
+                "WHERE a.codigo_acao IS NOT NULL " +
+                (tipoUnidade != null ? "AND a.tipo_unidade = ? AND b.tipo_unidade = ? " : "") +
+                "GROUP BY a.departamento, b.departamento " +
+                "ORDER BY qtd_acoes DESC, diferenca_media_pct DESC " +
+                "LIMIT " + LIMITE_LIGACOES;
+
+        List<Map<String, Object>> linhas = tipoUnidade != null
+                ? jdbcTemplate.queryForList(sql, tipoUnidade, tipoUnidade)
+                : jdbcTemplate.queryForList(sql);
+
+        List<CompartilhamentoDepartamentosDTO> resultado = new ArrayList<>();
+        for (Map<String, Object> linha : linhas) {
+            resultado.add(new CompartilhamentoDepartamentosDTO(
+                    (String) linha.get("origem"),
+                    (String) linha.get("destino"),
+                    ((Number) linha.get("qtd_acoes")).intValue(),
+                    ((Number) linha.get("diferenca_media_pct")).doubleValue()));
+        }
+        return ResponseEntity.ok(resultado);
+    }
+
+    private Map<String, Integer> buscarPosicoesAnteriores(String tipoUnidade) {
+        java.sql.Date dataAnterior = jdbcTemplate.queryForObject(
+                "SELECT MAX(data_snapshot) FROM ranking_pat_snapshots WHERE data_snapshot < (NOW() AT TIME ZONE 'America/Sao_Paulo')::date",
+>>>>>>> d7f41a2f7ee04ff86c43972e609226b3fc0f6bb5
                 java.sql.Date.class);
 
         if (dataAnterior == null) {
@@ -69,7 +164,11 @@ public class RankingController {
                      "FROM ranking_pat_snapshots " +
                      "WHERE data_snapshot = ? " +
                      (tipoUnidade != null ? "AND tipo_unidade = ? " : "") +
+<<<<<<< HEAD
                      "ORDER BY media_execucao_pct DESC";
+=======
+                     "ORDER BY COALESCE(media_execucao_pct, 0) DESC, departamento";
+>>>>>>> d7f41a2f7ee04ff86c43972e609226b3fc0f6bb5
 
         List<Map<String, Object>> ontem = tipoUnidade != null
                 ? jdbcTemplate.queryForList(sql, dataAnterior, tipoUnidade)

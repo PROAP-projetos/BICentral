@@ -3,39 +3,105 @@ package com.bicentral.bicentral_backend.service.auth;
 import com.bicentral.bicentral_backend.model.Equipe;
 import com.bicentral.bicentral_backend.model.Role;
 import com.bicentral.bicentral_backend.model.Usuario;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.lang.NonNull;
+import org.springframework.web.client.RestClient;
 
-import java.io.UnsupportedEncodingException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Base64;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
-
-
-
-//Envia o email de confirmação para o usuário, CUIDADO, A API É DO BREVO
-
-
+// Envia e-mails transacionais pela API HTTP do Brevo (https://api.brevo.com/v3/smtp/email),
+// não mais por SMTP puro. O Render bloqueia silenciosamente a porta 587 de saída — a conexão
+// nem chega a autenticar, trava no connect() até estourar timeout (ver commit "envio de convite
+// tester quebrou" e o log real: SocketTimeoutException em smtp-relay.brevo.com:587). A API roda
+// em HTTPS (443), porta que nenhum provedor de hospedagem bloqueia.
 @Service
 public class EmailService {
 
-    private static final String FROM_ADDRESS = "bicentraluft@gmail.com";
+    private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
+
+    private static final String FROM_ADDRESS = "bicentraluft@gmail.com"; // precisa estar validado no Brevo
     private static final String SENDER_NAME = "BI Central";
     private static final DateTimeFormatter INVITE_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy 'às' HH:mm");
+    private static final String GUIA_TESTER_PROIAP_RESOURCE = "/documentos/guia-proiap.pdf";
+    private static final String ROBO_PROIAP_RESOURCE = "/email/proiap-robo.gif";
 
-    @Autowired
-    private JavaMailSender mailSender;
+    private final RestClient restClient;
 
-    public void sendVerificationEmail(@NonNull Usuario user, @NonNull String siteURL) throws MessagingException, UnsupportedEncodingException {
+    @Value("${brevo.api.key:}")
+    private String brevoApiKey;
+
+    @Value("${app.backend-base-url:http://localhost:8080}")
+    private String backendBaseUrl;
+
+    @Value("${app.frontend-base-url:http://localhost:4200}")
+    private String frontendBaseUrl;
+
+    public EmailService(RestClient.Builder restClientBuilder) {
+        this.restClient = restClientBuilder
+                .baseUrl("https://api.brevo.com/v3/smtp/email")
+                .build();
+    }
+
+    private void enviarEmail(String toAddress, String toName, String assunto,
+            String htmlContent, String textContent, String replyToEmail, List<Map<String, String>> anexos) {
+        Map<String, String> destinatario = new LinkedHashMap<>();
+        destinatario.put("email", toAddress);
+        if (toName != null) destinatario.put("name", toName);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("sender", Map.of("name", SENDER_NAME, "email", FROM_ADDRESS));
+        body.put("to", List.of(destinatario));
+        body.put("subject", assunto);
+        if (htmlContent != null) body.put("htmlContent", htmlContent);
+        if (textContent != null) body.put("textContent", textContent);
+        if (replyToEmail != null) body.put("replyTo", Map.of("email", replyToEmail));
+        if (anexos != null && !anexos.isEmpty()) body.put("attachment", anexos);
+
+        restClient.post()
+                .header("api-key", brevoApiKey)
+                .header("content-type", "application/json")
+                .header("accept", "application/json")
+                .body(body)
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    // Anexo é "best effort": se o guia não estiver empacotado por algum motivo, o e-mail
+    // ainda sai sem ele em vez de falhar o envio inteiro.
+    private List<Map<String, String>> guiaProiapAnexo() {
+        try (InputStream is = getClass().getResourceAsStream(GUIA_TESTER_PROIAP_RESOURCE)) {
+            if (is == null) {
+                logger.warn("Guia do proIAp não encontrado em {}", GUIA_TESTER_PROIAP_RESOURCE);
+                return List.of();
+            }
+            String base64 = Base64.getEncoder().encodeToString(is.readAllBytes());
+            return List.of(Map.of("name", "Guia do proIAp.pdf", "content", base64));
+        } catch (IOException e) {
+            logger.error("Falha ao ler o guia do proIAp", e);
+            return List.of();
+        }
+    }
+
+    // URL pública de verdade (ver EmailAssetController) — data URI embutido no HTML foi
+    // tentado antes e é bloqueado silenciosamente pela maioria dos clientes de e-mail (Gmail
+    // incluso), aparecendo como imagem quebrada.
+    private String roboProiapUrl() {
+        return backendBaseUrl + ROBO_PROIAP_RESOURCE;
+    }
+
+    public void sendVerificationEmail(Usuario user, String siteURL) {
         String toAddress = Objects.requireNonNull(user.getEmail(), "user email");
-        String fromAddress = FROM_ADDRESS; // Lembre-se: Este email DEVE estar validado no Brevo
-        String senderName = SENDER_NAME;
         String subject = "Verifique seu cadastro";
 
         String content = """
@@ -103,20 +169,20 @@ public class EmailService {
                     <tr>
                         <td style="padding: 20px 0;">
                             <table class="container" align="center" border="0" cellpadding="0" cellspacing="0" width="600" style="width: 100%; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden;">
-                                
+
                                 <tr>
                                     <td class="header" style="padding: 40px; text-align: center; background-color: #f9f9f9; border-bottom: 1px solid #eeeeee;">
                                         <h1 style="margin: 0; color: #333333; font-size: 24px;">BI Central</h1>
                                     </td>
                                 </tr>
-            
+
                                 <tr>
                                     <td class="content" style="padding: 30px 40px;">
                                         <h2 style="color: #333333; font-size: 22px; margin-top: 0;">Olá, [[name]]!</h2>
                                         <p style="font-size: 16px; line-height: 1.6; color: #555555;">
                                             Obrigado por se cadastrar. Por favor, clique no botão abaixo para verificar seu endereço de e-mail e ativar sua conta.
                                         </p>
-                                        
+
                                         <table border="0" cellpadding="0" cellspacing="0" width="100%">
                                             <tr>
                                                 <td align="center" style="padding: 20px 0;">
@@ -126,7 +192,7 @@ public class EmailService {
                                                 </td>
                                             </tr>
                                         </table>
-                                        
+
                                         <p style="font-size: 16px; line-height: 1.6; color: #555555;">
                                             Se você não se cadastrou, por favor, ignore este e-mail.
                                         </p>
@@ -136,7 +202,7 @@ public class EmailService {
                                         </p>
                                     </td>
                                 </tr>
-            
+
                                 <tr>
                                     <td class="footer" style="padding: 30px 40px; text-align: center; font-size: 12px; color: #aaaaaa; border-top: 1px solid #eeeeee;">
                                         &copy; 2025 BI Central. Todos os direitos reservados.
@@ -150,33 +216,18 @@ public class EmailService {
             </html>
             """;
 
-
-        MimeMessage message = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8"); // Habilitar UTF-8
-
-        helper.setFrom(fromAddress, senderName);
-        helper.setTo(toAddress);
-        helper.setSubject(subject);
-
         content = content.replace("[[name]]", Objects.requireNonNull(user.getNomeExibicao(), "username"));
-        String verifyURL = siteURL + "/api/usuarios/verify?code=" + Objects.requireNonNull(user.getVerificationToken(), "verification token");
+        // Apontar direto pra API deixava a pessoa numa tela branca só com o texto "verify_success".
+        String token = Objects.requireNonNull(user.getVerificationToken(), "verification token");
+        String verifyURL = (frontendBaseUrl != null && !frontendBaseUrl.isBlank())
+                ? frontendBaseUrl.replaceAll("/$", "") + "/verificar-email?code=" + token
+                : siteURL + "/api/usuarios/verify?code=" + token;
         content = content.replace("[[URL]]", verifyURL);
 
-        helper.setText(Objects.requireNonNull(content), true); // O 'true' é crucial para interpretar como HTML
-
-        mailSender.send(message);
+        enviarEmail(toAddress, null, subject, content, null, null, null);
     }
 
-    public void sendSupportEmail(
-            @NonNull String nome,
-            @NonNull String email,
-            @NonNull String assunto,
-            @NonNull String mensagem
-    ) throws MessagingException, UnsupportedEncodingException {
-        String fromAddress = FROM_ADDRESS;
-        String senderName = "BI Central - Suporte";
-        String toAddress = FROM_ADDRESS;
-
+    public void sendSupportEmail(String nome, String email, String assunto, String mensagem) {
         String assuntoFinal = "[Suporte BICentral] " + assunto.trim();
         String conteudo = """
                 Novo contato recebido pelo formulário de suporte.
@@ -189,24 +240,10 @@ public class EmailService {
                 %s
                 """.formatted(nome.trim(), email.trim(), assunto.trim(), mensagem.trim());
 
-        MimeMessage message = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
-        helper.setFrom(fromAddress, senderName);
-        helper.setTo(toAddress);
-        helper.setReplyTo(email.trim());
-        helper.setSubject(assuntoFinal);
-        helper.setText(conteudo, false);
-
-        mailSender.send(message);
+        enviarEmail(FROM_ADDRESS, null, assuntoFinal, null, conteudo, email.trim(), null);
     }
 
-    public void sendTeamInviteEmail(
-            @NonNull Equipe equipe,
-            @NonNull String email,
-            @NonNull Role role,
-            @NonNull String inviteUrl,
-            @NonNull LocalDateTime expiraEm
-    ) throws MessagingException, UnsupportedEncodingException {
+    public void sendTeamInviteEmail(Equipe equipe, String email, Role role, String inviteUrl, LocalDateTime expiraEm) {
         String assunto = "Convite para a equipe " + equipe.getNome();
         String expiraEmFormatado = expiraEm.format(INVITE_DATE_FORMATTER);
 
@@ -271,14 +308,348 @@ public class EmailService {
                 </html>
                 """.formatted(equipe.getNome(), email, equipe.getNome(), role.name(), expiraEmFormatado, inviteUrl);
 
-        MimeMessage message = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-        helper.setFrom(FROM_ADDRESS, SENDER_NAME);
-        helper.setTo(email);
-        helper.setSubject(assunto);
-        helper.setText(content, true);
+        enviarEmail(email, null, assunto, content, null, null, null);
+    }
 
-        mailSender.send(message);
+    public void sendTesterAddedEmail(String toAddress, String nome) {
+        String assunto = "Você agora é tester do proIAp";
+        String content = """
+                <!DOCTYPE html>
+                <html lang="pt-BR">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Você agora é tester do proIAp</title>
+                </head>
+                <body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#1a1a1a;">
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%%">
+                        <tr>
+                            <td style="padding:24px 12px;">
+                                <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%%" style="max-width:620px;background:#ffffff;border:1px solid rgba(0,74,128,0.08);border-radius:16px;overflow:hidden;">
+                                    <tr>
+                                        <td style="padding:28px 32px;background:#004a80;color:#ffffff;">
+                                            <div style="font-size:24px;font-weight:700;letter-spacing:0.2px;">BICentral</div>
+                                            <div style="margin-top:8px;font-size:14px;opacity:0.92;">proIAp — agente de IA</div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:22px 32px 0;text-align:center;background:#ffffff;">
+                                            <img src="%s" width="88" height="88" alt="proIAp" style="display:block;margin:0 auto;border:0;outline:none;" />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:32px;">
+                                            <h1 style="margin:0 0 12px;font-size:26px;line-height:1.2;color:#113956;">Olá, %s!</h1>
+                                            <p style="margin:0 0 12px;font-size:16px;line-height:1.65;color:#3b556b;">
+                                                Você foi adicionado(a) como <strong>tester do proIAp</strong>, o agente de IA do BICentral. Ele lê os dados reais da PROAP — PDI, PAT, tarefas e desempenho por departamento — e responde na hora, em texto ou em gráfico.
+                                            </p>
+                                            <p style="margin:0 0 24px;font-size:16px;line-height:1.65;color:#3b556b;">
+                                                É só entrar no BICentral e clicar em "Pergunte ao agente". Anexamos um guia rápido em PDF com o que ele sabe fazer e exemplos de perguntas pra começar.
+                                            </p>
+                                            <table border="0" cellpadding="0" cellspacing="0">
+                                                <tr>
+                                                    <td>
+                                                        <a href="%s" target="_blank" style="display:inline-block;padding:14px 24px;background:#004a80;color:#ffffff;text-decoration:none;font-weight:700;border-radius:10px;">
+                                                            Abrir o proIAp
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:20px 32px;border-top:1px solid #e8eef5;font-size:12px;color:#7b8a97;">
+                                            Se você não esperava este e-mail, ignore-o.
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </body>
+                </html>
+                """.formatted(roboProiapUrl(), nome, frontendBaseUrl + "/agente");
+
+        enviarEmail(toAddress, null, assunto, content, null, null, guiaProiapAnexo());
+    }
+
+    // Assíncrono porque quem chama (UsoIaService.adicionarTester) responde ao admin na hora —
+    // o envio do e-mail não pode segurar a requisição.
+    @Async
+    public void sendTesterAddedEmailAsync(String toAddress, String nome) {
+        try {
+            sendTesterAddedEmail(toAddress, nome);
+        } catch (Exception e) {
+            logger.error("Falha ao enviar e-mail de tester confirmado para {}", toAddress, e);
+        }
+    }
+
+    @Async
+    public void sendConvidadoEmailAsync(String toAddress, String nome, String link) {
+        try {
+            boolean semConta = nome == null;
+            String assunto = "Você foi convidado(a) para o proIAp";
+            String saudacao = semConta ? "Olá!" : "Olá, " + nome + "!";
+            String botao = semConta ? "Criar minha conta" : "Abrir o proIAp";
+            String instrucao = semConta
+                    ? "Para começar, crie sua conta pelo botão abaixo. Este convite é pessoal e só pode ser usado uma vez."
+                    : "É só entrar no BICentral e clicar em \"Pergunte ao agente\".";
+            String content = """
+                    <!DOCTYPE html>
+                    <html lang="pt-BR">
+                    <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Convite proIAp</title></head>
+                    <body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#1a1a1a;">
+                        <table border="0" cellpadding="0" cellspacing="0" width="100%%"><tr><td style="padding:24px 12px;">
+                            <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%%" style="max-width:620px;background:#ffffff;border:1px solid rgba(0,74,128,0.08);border-radius:16px;overflow:hidden;">
+                                <tr><td style="padding:28px 32px;background:#004a80;color:#ffffff;">
+                                    <div style="font-size:24px;font-weight:700;">BICentral</div>
+                                    <div style="margin-top:8px;font-size:14px;opacity:0.92;">Convite para o proIAp</div>
+                                </td></tr>
+                                <tr><td style="padding:32px;">
+                                    <h1 style="margin:0 0 12px;font-size:26px;line-height:1.2;color:#113956;">%s</h1>
+                                    <p style="margin:0 0 12px;font-size:16px;line-height:1.65;color:#3b556b;">
+                                        Você foi convidado(a) para usar o <strong>proIAp</strong>, o agente de IA do BICentral, com acesso aos dados do(s) departamento(s) que você gerencia.
+                                    </p>
+                                    <p style="margin:0 0 24px;font-size:16px;line-height:1.65;color:#3b556b;">%s</p>
+                                    <a href="%s" target="_blank" style="display:inline-block;padding:14px 24px;background:#004a80;color:#ffffff;text-decoration:none;font-weight:700;border-radius:10px;">%s</a>
+                                </td></tr>
+                                <tr><td style="padding:20px 32px;border-top:1px solid #e8eef5;font-size:12px;color:#7b8a97;">Se você não esperava este e-mail, ignore-o.</td></tr>
+                            </table>
+                        </td></tr></table>
+                    </body>
+                    </html>
+                    """.formatted(saudacao, instrucao, link, botao);
+            enviarEmail(toAddress, null, assunto, content, null, null, null);
+        } catch (Exception e) {
+            logger.error("Falha ao enviar e-mail de convidado para {}", toAddress, e);
+        }
+    }
+
+    public void sendVersaoAnuncioEmail(String toAddress, String nome) {
+        String assunto = "proIAp — versão 1.4 já está no ar";
+        String content = """
+                <!DOCTYPE html>
+                <html lang="pt-BR">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>proIAp — versão 1.4</title>
+                </head>
+                <body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#1a1a1a;">
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%%">
+                        <tr>
+                            <td style="padding:24px 12px;">
+                                <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%%" style="max-width:620px;background:#ffffff;border:1px solid rgba(0,74,128,0.08);border-radius:16px;overflow:hidden;">
+                                    <tr>
+                                        <td style="padding:28px 32px;background:#004a80;color:#ffffff;">
+                                            <div style="font-size:24px;font-weight:700;letter-spacing:0.2px;">BICentral</div>
+                                            <div style="margin-top:8px;font-size:14px;opacity:0.92;">proIAp — versão 1.4</div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:22px 32px 0;text-align:center;background:#ffffff;">
+                                            <img src="%s" width="88" height="88" alt="proIAp" style="display:block;margin:0 auto;border:0;outline:none;" />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:32px;">
+                                            <h1 style="margin:0 0 12px;font-size:26px;line-height:1.2;color:#113956;">Olá, %s!</h1>
+                                            <p style="margin:0 0 16px;font-size:16px;line-height:1.65;color:#3b556b;">
+                                                A versão 1.4 do proIAp chegou, com um painel de ranking novo, um agente que sabe em que época do ano estamos e várias correções do que vocês reportaram nos testes. Principais novidades:
+                                            </p>
+                                            <ul style="margin:0 0 20px;padding-left:20px;font-size:15px;line-height:1.8;color:#3b556b;">
+                                                <li><strong>Painel de ranking com dados reais</strong> — acompanhe a execução do PAT por unidade, com filtros por Pró-Reitorias, Câmpus, Superintendências e Coordenações (e, nas coordenações, por câmpus). Dá para ver em cartões ou em gráfico de barras, e o painel mostra a data da última atualização dos dados.</li>
+                                                <li><strong>Mapa de ações compartilhadas</strong> — uma aba nova que mostra quais unidades dividem ações e onde a execução está mais desigual entre elas.</li>
+                                                <li><strong>Do painel para o chat em um clique</strong> — clique numa unidade ou numa das análises rápidas (diagnóstico, maior x menor, ações sem execução, resumo executivo) e o proIAp abre a conversa já com a análise: posição no ranking, percentual geral das ações compartilhadas e uma recomendação no final.</li>
+                                                <li><strong>Agente com noção de época do ano</strong> — o proIAp sabe se o PAT está no começo, no meio ou na reta final e ajusta a cobrança: no primeiro semestre ele pega leve e destaca o que já está adiantado, no meio do ano espera ao menos metade e analisa o que ficou abaixo, e de outubro a dezembro o tom é de alerta.</li>
+                                                <li><strong>Perguntas por grupo e comparações</strong> — pergunte, por exemplo, "como estão as coordenações de Palmas?" ou peça para comparar duas unidades lado a lado.</li>
+                                            </ul>
+                                            <p style="margin:0 0 8px;font-size:16px;line-height:1.65;color:#3b556b;">
+                                                <strong>Correções pontuais</strong>
+                                            </p>
+                                            <ul style="margin:0 0 24px;padding-left:20px;font-size:15px;line-height:1.8;color:#3b556b;">
+                                                <li>O painel não trava mais ao abrir a aba de Coordenações.</li>
+                                                <li>O botão de filtro selecionado não perde mais o texto quando o mouse passa por cima.</li>
+                                                <li>A posição no ranking que o proIAp cita no chat agora bate com a do painel (só unidades gestoras).</li>
+                                                <li>Unidades com nome longo aparecem com o nome curto (CESAU, Ouvidoria, PROJUR, SITAI), e unidades empatadas aparecem juntas em vez de numa ordem que parecia ter significado.</li>
+                                                <li>Convidados só veem as tarefas dos departamentos que gerenciam, e o proIAp avisa de forma direta quando falta permissão.</li>
+                                            </ul>
+                                            <table border="0" cellpadding="0" cellspacing="0">
+                                                <tr>
+                                                    <td>
+                                                        <a href="%s" target="_blank" style="display:inline-block;padding:14px 24px;background:#004a80;color:#ffffff;text-decoration:none;font-weight:700;border-radius:10px;">
+                                                            Testar a versão 1.4
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                            <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#7b8a97;">
+                                                Achou algo estranho? Me conta — é exatamente pra isso que o teste existe. Obrigada por continuar testando 💙
+                                            </p>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:20px 32px;border-top:1px solid #e8eef5;font-size:12px;color:#7b8a97;">
+                                            Você recebeu este e-mail por ser tester do proIAp.
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </body>
+                </html>
+                """.formatted(roboProiapUrl(), nome, frontendBaseUrl + "/agente");
+
+        enviarEmail(toAddress, null, assunto, content, null, null, null);
+    }
+
+    @Async
+    public void sendVersaoAnuncioEmailAsync(String toAddress, String nome) {
+        try {
+            sendVersaoAnuncioEmail(toAddress, nome);
+        } catch (Exception e) {
+            logger.error("Falha ao enviar anúncio de versão para {}", toAddress, e);
+        }
+    }
+
+    // Mesmo motivo do sendTesterAddedEmailAsync acima.
+    @Async
+    public void sendTesterInviteEmailAsync(String toAddress, String cadastroUrl) {
+        try {
+            sendTesterInviteEmail(toAddress, cadastroUrl);
+        } catch (Exception e) {
+            logger.error("Falha ao enviar convite de tester pendente para {}", toAddress, e);
+        }
+    }
+
+    public void sendTesterInviteEmail(String toAddress, String cadastroUrl) {
+        String assunto = "Convite para testar o proIAp";
+        String content = """
+                <!DOCTYPE html>
+                <html lang="pt-BR">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Convite para testar o proIAp</title>
+                </head>
+                <body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#1a1a1a;">
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%%">
+                        <tr>
+                            <td style="padding:24px 12px;">
+                                <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%%" style="max-width:620px;background:#ffffff;border:1px solid rgba(0,74,128,0.08);border-radius:16px;overflow:hidden;">
+                                    <tr>
+                                        <td style="padding:28px 32px;background:#004a80;color:#ffffff;">
+                                            <div style="font-size:24px;font-weight:700;letter-spacing:0.2px;">BICentral</div>
+                                            <div style="margin-top:8px;font-size:14px;opacity:0.92;">proIAp — agente de IA</div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:22px 32px 0;text-align:center;background:#ffffff;">
+                                            <img src="%s" width="88" height="88" alt="proIAp" style="display:block;margin:0 auto;border:0;outline:none;" />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:32px;">
+                                            <div style="display:inline-block;padding:8px 14px;border-radius:999px;background:rgba(0,74,128,0.08);color:#004a80;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;">
+                                                Convite pendente
+                                            </div>
+                                            <h1 style="margin:18px 0 12px;font-size:28px;line-height:1.2;color:#113956;">Você foi convidado(a) para testar o proIAp</h1>
+                                            <p style="margin:0 0 12px;font-size:16px;line-height:1.65;color:#3b556b;">
+                                                O proIAp é o agente de IA do BICentral. Ele lê os dados reais da PROAP — PDI, PAT, tarefas e desempenho por departamento — e responde na hora, em texto ou em gráfico.
+                                            </p>
+                                            <p style="margin:0 0 24px;font-size:16px;line-height:1.65;color:#3b556b;">
+                                                Você ainda não tem uma conta no BICentral com este e-mail. Cadastre-se abaixo e você vira tester automaticamente assim que concluir o cadastro. Anexamos também um guia rápido em PDF com exemplos de perguntas pra você começar.
+                                            </p>
+                                            <table border="0" cellpadding="0" cellspacing="0">
+                                                <tr>
+                                                    <td>
+                                                        <a href="%s" target="_blank" style="display:inline-block;padding:14px 24px;background:#004a80;color:#ffffff;text-decoration:none;font-weight:700;border-radius:10px;">
+                                                            Criar minha conta
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:20px 32px;border-top:1px solid #e8eef5;font-size:12px;color:#7b8a97;">
+                                            Se você não esperava este e-mail, ignore-o.
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </body>
+                </html>
+                """.formatted(roboProiapUrl(), cadastroUrl);
+
+        enviarEmail(toAddress, null, assunto, content, null, null, guiaProiapAnexo());
+    }
+
+    // Assíncrono: o controller responde a mesma mensagem genérica pra e-mail existente ou
+    // não (evita confirmar por timing se aquele e-mail tem conta) — o envio de verdade não
+    // pode segurar essa resposta.
+    @Async
+    public void sendPasswordResetEmailAsync(Usuario user, String resetUrl) {
+        try {
+            sendPasswordResetEmail(user, resetUrl);
+        } catch (Exception e) {
+            logger.error("Falha ao enviar e-mail de redefinição de senha para {}", user.getEmail(), e);
+        }
+    }
+
+    public void sendPasswordResetEmail(Usuario user, String resetUrl) {
+        String toAddress = Objects.requireNonNull(user.getEmail(), "user email");
+        String assunto = "Redefinição de senha — BICentral";
+        String content = """
+                <!DOCTYPE html>
+                <html lang="pt-BR">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Redefinição de senha</title>
+                </head>
+                <body style="margin:0;padding:0;background:#f5f7fa;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#1a1a1a;">
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%%">
+                        <tr>
+                            <td style="padding:24px 12px;">
+                                <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%%" style="max-width:620px;background:#ffffff;border:1px solid rgba(0,74,128,0.08);border-radius:16px;overflow:hidden;">
+                                    <tr>
+                                        <td style="padding:28px 32px;background:#004a80;color:#ffffff;">
+                                            <div style="font-size:24px;font-weight:700;letter-spacing:0.2px;">BICentral</div>
+                                            <div style="margin-top:8px;font-size:14px;opacity:0.92;">Redefinição de senha</div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:32px;">
+                                            <h1 style="margin:0 0 12px;font-size:26px;line-height:1.2;color:#113956;">Olá, %s!</h1>
+                                            <p style="margin:0 0 12px;font-size:16px;line-height:1.65;color:#3b556b;">
+                                                Pediram a redefinição da senha desta conta. Clique no botão abaixo pra escolher uma senha nova. Este link expira em <strong>1 hora</strong>.
+                                            </p>
+                                            <table border="0" cellpadding="0" cellspacing="0">
+                                                <tr>
+                                                    <td>
+                                                        <a href="%s" target="_blank" style="display:inline-block;padding:14px 24px;background:#004a80;color:#ffffff;text-decoration:none;font-weight:700;border-radius:10px;">
+                                                            Redefinir senha
+                                                        </a>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                            <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#7b8a97;">
+                                                Se você não pediu isso, pode ignorar este e-mail — sua senha continua a mesma.
+                                            </p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </body>
+                </html>
+                """.formatted(user.getNomeExibicao(), resetUrl);
+
+        enviarEmail(toAddress, null, assunto, content, null, null, null);
     }
 }
-

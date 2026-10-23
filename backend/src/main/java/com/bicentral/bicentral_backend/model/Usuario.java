@@ -45,6 +45,13 @@ public class Usuario implements UserDetails {
 
     private boolean enabled;
 
+    // Token de "esqueci minha senha" — separado do verificationToken de cima de propósito:
+    // são fluxos com regras diferentes (esse expira rápido, tem que sobreviver a várias
+    // solicitações, e nunca deve mexer no enabled da conta).
+    private String resetPasswordToken;
+
+    private java.time.LocalDateTime resetPasswordExpiraEm;
+
     // --- NOVO: RELACIONAMENTO COM EQUIPES ---
     // mappedBy = "usuario" refere-se ao atributo 'usuario' dentro da classe MembroEquipe
     @OneToMany(mappedBy = "usuario", fetch = FetchType.LAZY)

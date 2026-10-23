@@ -7,13 +7,17 @@ import com.bicentral.bicentral_backend.repository.UsuarioRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -25,6 +29,12 @@ public class UsuarioService {
     private final JwtService jwtService; // Injetando o serviço de Token
     private final TransactionTemplate transactionTemplate;
     private static final Logger logger = LoggerFactory.getLogger(UsuarioService.class);
+    private static final long RESET_TOKEN_VALIDADE_HORAS = 1;
+
+    // Mesmo padrão do ConviteEquipeService.buildInviteUrl — o link de redefinição precisa
+    // abrir uma página do FRONTEND (/redefinir-senha), não do backend.
+    @Value("${app.frontend-base-url:}")
+    private String frontendBaseUrl;
 
     @Autowired
     public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder, 
@@ -36,7 +46,7 @@ public class UsuarioService {
         this.transactionTemplate = transactionTemplate;
     }
 
-    public Usuario cadastrar(Usuario usuarioParaCadastrar, String siteURL) {
+    public Usuario cadastrar(Usuario usuarioParaCadastrar, String siteURL, boolean pularVerificacao) {
         Objects.requireNonNull(siteURL, "siteURL");
 
         String nomeNormalizado = usuarioParaCadastrar.getNome().trim();
@@ -56,8 +66,14 @@ public class UsuarioService {
             usuarioParaCadastrar.setNome(nomeNormalizado);
             usuarioParaCadastrar.setEmail(emailNormalizado);
             usuarioParaCadastrar.setPassword(passwordEncoder.encode(usuarioParaCadastrar.getPassword()));
-            usuarioParaCadastrar.setVerificationToken(UUID.randomUUID().toString());
-            usuarioParaCadastrar.setEnabled(false);
+            if (pularVerificacao) {
+                // Tester convidado por e-mail (ver UsoIaService.emailTesterPendente): já entra
+                // habilitado, sem precisar clicar em link de verificação.
+                usuarioParaCadastrar.setEnabled(true);
+            } else {
+                usuarioParaCadastrar.setVerificationToken(UUID.randomUUID().toString());
+                usuarioParaCadastrar.setEnabled(false);
+            }
 
             try {
                 return usuarioRepository.save(usuarioParaCadastrar);
@@ -81,11 +97,13 @@ public class UsuarioService {
             throw new RuntimeException("Erro ao processar cadastro.");
         }
 
-        try {
-            emailService.sendVerificationEmail(savedUser, siteURL);
-        } catch (Exception e) {
-            logger.error("Falha ao enviar e-mail de verificação", e);
-            throw new RuntimeException("Erro ao enviar e-mail de verificação.");
+        if (!pularVerificacao) {
+            try {
+                emailService.sendVerificationEmail(savedUser, siteURL);
+            } catch (Exception e) {
+                logger.error("Falha ao enviar e-mail de verificação", e);
+                throw new RuntimeException("Erro ao enviar e-mail de verificação.");
+            }
         }
 
         return savedUser;
@@ -105,7 +123,11 @@ public class UsuarioService {
 
     @Transactional
     public String login(String email, String senhaPlana) { // Retorna String (o JWT)
-        Usuario usuario = usuarioRepository.findByEmail(email)
+        // Cadastro sempre salva o e-mail em minúsculo (ver cadastrar()) — sem normalizar aqui
+        // também, um e-mail digitado com maiúscula diferente (ou vindo de autocomplete) não
+        // encontra o usuário e cai no mesmo erro genérico de "senha inválida".
+        String emailNormalizado = email.trim().toLowerCase();
+        Usuario usuario = usuarioRepository.findByEmail(emailNormalizado)
                 .orElseThrow(() -> new AutenticacaoException("Email ou senha inválidos."));
 
         if (passwordEncoder.matches(senhaPlana, usuario.getPassword())) {
@@ -122,5 +144,44 @@ public class UsuarioService {
     public Usuario buscarPorEmail(String email){
         return usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuário não encontrado: " + email));
+    }
+
+    // Não lança erro nem sinaliza de forma diferente se o e-mail não existir — o controller
+    // sempre devolve a mesma mensagem genérica, pra não dar pra descobrir por aqui quais
+    // e-mails têm conta no sistema.
+    @Transactional
+    public void solicitarRedefinicaoSenha(String email, String siteURL) {
+        String emailNormalizado = email.trim().toLowerCase();
+
+        usuarioRepository.findByEmail(emailNormalizado).ifPresent(usuario -> {
+            usuario.setResetPasswordToken(UUID.randomUUID().toString());
+            usuario.setResetPasswordExpiraEm(LocalDateTime.now().plusHours(RESET_TOKEN_VALIDADE_HORAS));
+            usuarioRepository.save(usuario);
+
+            String baseUrl = frontendBaseUrl != null && !frontendBaseUrl.isBlank()
+                    ? frontendBaseUrl.trim()
+                    : siteURL;
+            String resetUrl = baseUrl.replaceAll("/$", "") + "/redefinir-senha?token=" + usuario.getResetPasswordToken();
+            emailService.sendPasswordResetEmailAsync(usuario, resetUrl);
+        });
+    }
+
+    @Transactional
+    public void redefinirSenha(String token, String novaSenha) {
+        if (novaSenha == null || novaSenha.length() < 8) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A senha precisa ter no mínimo 8 caracteres.");
+        }
+
+        Usuario usuario = usuarioRepository.findByResetPasswordToken(token)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Link de redefinição inválido."));
+
+        if (usuario.getResetPasswordExpiraEm() == null || usuario.getResetPasswordExpiraEm().isBefore(LocalDateTime.now())) {
+            throw new ResponseStatusException(HttpStatus.GONE, "Este link de redefinição expirou. Peça um novo.");
+        }
+
+        usuario.setPassword(passwordEncoder.encode(novaSenha));
+        usuario.setResetPasswordToken(null);
+        usuario.setResetPasswordExpiraEm(null);
+        usuarioRepository.save(usuario);
     }
 }

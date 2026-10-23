@@ -5,9 +5,12 @@ import com.bicentral.bicentral_backend.exception.RecursoJaExistenteException;
 import com.bicentral.bicentral_backend.model.Usuario;
 import com.bicentral.bicentral_backend.repository.UsuarioRepository;
 import com.bicentral.bicentral_backend.service.auth.UsuarioService;
+import com.bicentral.bicentral_backend.service.admin.ConvidadoService;
+import com.bicentral.bicentral_backend.service.ia.UsoIaService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,18 +24,63 @@ public class UsuarioController {
 
     private final UsuarioService usuarioService;
     private final UsuarioRepository usuarioRepository;
+    private final UsoIaService usoIaService;
+    private final ConvidadoService convidadoService;
 
-    public UsuarioController(UsuarioService usuarioService, UsuarioRepository usuarioRepository) {
+    // Enquanto o deploy for só pro período de teste, só quem já foi convidado como
+    // tester (ver UsoIaService.emailTesterPendente) consegue completar o cadastro —
+    // ninguém de fora descobre o link e cria conta sozinho. Desliga isso (via env var
+    // no Render, sem precisar mexer em código) quando abrir cadastro pra todo mundo.
+    @Value("${app.cadastro-restrito-a-testers:true}")
+    private boolean cadastroRestritoATesters;
+
+    public UsuarioController(UsuarioService usuarioService, UsuarioRepository usuarioRepository, UsoIaService usoIaService, ConvidadoService convidadoService) {
         this.usuarioService = usuarioService;
         this.usuarioRepository = usuarioRepository;
+        this.usoIaService = usoIaService;
+        this.convidadoService = convidadoService;
+    }
+
+    @GetMapping("/convite/{token}")
+    public ResponseEntity<?> consultarConvite(@PathVariable String token) {
+        return convidadoService.emailDoConvite(token)
+                .<ResponseEntity<?>>map(email -> ResponseEntity.ok(Map.of("email", email)))
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("mensagem", "Convite inválido ou já utilizado. Peça um novo convite ao administrador.")));
     }
 
     @PostMapping("/cadastro")
-    public ResponseEntity<?> cadastrarUsuario(@Valid @RequestBody Usuario usuario, HttpServletRequest request) {
+    public ResponseEntity<?> cadastrarUsuario(@Valid @RequestBody Usuario usuario,
+            @RequestParam(required = false) String convite, HttpServletRequest request) {
         try {
-            usuarioService.cadastrar(usuario, getSiteURL(request));
-            Map<String, String> response = new HashMap<>();
-            response.put("mensagem", "Cadastro realizado com sucesso! Verifique seu e-mail para ativar sua conta.");
+            String emailDoConvite = convite == null ? null : convidadoService.emailDoConvite(convite).orElse(null);
+            if (convite != null && (emailDoConvite == null || !emailDoConvite.equalsIgnoreCase(usuario.getEmail().trim()))) {
+                Map<String, String> invalido = new HashMap<>();
+                invalido.put("mensagem", "Convite inválido ou já utilizado. Peça um novo convite ao administrador.");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(invalido);
+            }
+            boolean viaConvite = emailDoConvite != null;
+
+            // Convite de convidado e de tester pulam a verificação de e-mail: o link só chegou à caixa de quem foi convidado.
+            boolean pularVerificacao = viaConvite || usoIaService.emailTesterPendente(usuario.getEmail());
+
+            if (cadastroRestritoATesters && !pularVerificacao) {
+                Map<String, String> bloqueado = new HashMap<>();
+                bloqueado.put("mensagem", "Cadastro disponível só por convite durante o período de teste do proIAp. Peça pra um admin te adicionar como tester.");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(bloqueado);
+            }
+
+            Usuario cadastrado = usuarioService.cadastrar(usuario, getSiteURL(request), pularVerificacao);
+            usoIaService.promoverPendentesParaTester(cadastrado.getId(), cadastrado.getEmail());
+            if (viaConvite) {
+                convidadoService.consumirConvite(convite, cadastrado.getId());
+            }
+            Map<String, Object> response = new HashMap<>();
+            response.put("mensagem", pularVerificacao
+                    ? "Cadastro realizado! Você já pode entrar."
+                    : "Cadastro realizado com sucesso! Verifique seu e-mail para ativar sua conta.");
+            // Conta já habilitada: o front faz o login em seguida e leva direto pro agente.
+            response.put("acessoDireto", pularVerificacao);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (RecursoJaExistenteException e) {
             Map<String, String> response = new HashMap<>();
@@ -43,6 +91,31 @@ public class UsuarioController {
             response.put("mensagem", "Erro ao processar cadastro. Tente novamente.");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
+    }
+
+    public record EsqueciSenhaRequest(String email) {}
+
+    @PostMapping("/esqueci-senha")
+    public ResponseEntity<?> esqueciSenha(@RequestBody EsqueciSenhaRequest requisicao, HttpServletRequest request) {
+        Map<String, String> response = new HashMap<>();
+        response.put("mensagem", "Se esse e-mail tiver uma conta no BICentral, você vai receber um link de redefinição em instantes.");
+
+        if (requisicao.email() == null || requisicao.email().isBlank()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+
+        usuarioService.solicitarRedefinicaoSenha(requisicao.email(), getSiteURL(request));
+        return ResponseEntity.ok(response);
+    }
+
+    public record RedefinirSenhaRequest(String token, String novaSenha) {}
+
+    @PostMapping("/redefinir-senha")
+    public ResponseEntity<?> redefinirSenha(@RequestBody RedefinirSenhaRequest requisicao) {
+        usuarioService.redefinirSenha(requisicao.token(), requisicao.novaSenha());
+        Map<String, String> response = new HashMap<>();
+        response.put("mensagem", "Senha redefinida com sucesso! Você já pode entrar com a nova senha.");
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/verify")
@@ -64,13 +137,16 @@ public class UsuarioController {
         try {
             String token = usuarioService.login(loginRequest.getEmail(), loginRequest.getPassword());
 
-            Usuario usuario = usuarioRepository.findByEmail(loginRequest.getEmail())
+            Usuario usuario = usuarioRepository.findByEmail(loginRequest.getEmail().trim().toLowerCase())
                     .orElseThrow(() -> new RuntimeException("Erro ao recuperar dados do usuário."));
 
-            Map<String, String> response = new HashMap<>();
+            Map<String, Object> response = new HashMap<>();
             response.put("token", token);
             response.put("username", usuario.getNomeExibicao());
             response.put("id", usuario.getId().toString());
+            // Tester e convidado caem direto no agente em vez da Home após o login (ver LoginComponent).
+            response.put("tester", usoIaService.ehTester(usuario.getId()));
+            response.put("convidado", convidadoService.ehConvidado(usuario.getId()));
             return ResponseEntity.ok(response);
 
         } catch (AutenticacaoException e) {

@@ -10,7 +10,17 @@ import com.bicentral.bicentral_backend.dto.ia.ContextoRAGDTO;
 import com.bicentral.bicentral_backend.dto.ia.IntencaoDTO;
 import com.bicentral.bicentral_backend.dto.ia.RespostaTextualDTO;
 import com.bicentral.bicentral_backend.dto.painel.GraficoSpecDTO;
+<<<<<<< HEAD
+=======
+import com.bicentral.bicentral_backend.dto.painel.PainelRespostaDTO;
+import com.bicentral.bicentral_backend.dto.painel.PainelSpecDTO;
+import com.bicentral.bicentral_backend.dto.painel.SerieGraficoDTO;
+>>>>>>> d7f41a2f7ee04ff86c43972e609226b3fc0f6bb5
 import com.bicentral.bicentral_backend.state.EstadoSessao;
+import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.service.Result;
+import dev.langchain4j.service.tool.ToolExecution;
+import java.util.Map;
 
 @Service
 public class ProiapService {
@@ -19,29 +29,91 @@ public class ProiapService {
     private final EstadoSessao estadoSessao;
     private final EmbeddingService embeddingService;
     private final AgenteConsultaSql agenteConsultaSql;
+    private final UsoIaService usoIaService;
+    private final ChatHistoricoService chatHistoricoService;
+    private final MemoriaUsuarioService memoriaUsuarioService;
+
+    private static final int MAX_SUGESTOES = 3;
+
+    // Prefixo fixo que RelatorioContextoTool devolve quando a geração falha (marcador sem
+    // match, pessoa sem permissão etc.) — sem isso, chips tipo "Quero também em Excel"
+    // apareciam mesmo quando o relatório não foi gerado, sem sentido nenhum pro contexto.
+    private static final String PREFIXO_FALHA_RELATORIO = "Não foi possível gerar esse relatório:";
+
+    private static final Map<String, List<String>> SUGESTOES_POR_FERRAMENTA = Map.ofEntries(
+        Map.entry("ranquearDepartamentosPorExecucaoPAT", List.of(
+            "Alguma dessas ações é compartilhada entre departamentos?",
+            "Quero ver a distribuição de status dessas unidades num gráfico")),
+        Map.entry("compararUnidadesPAT", List.of("Quero o diagnóstico da unidade com menor execução")),
+        Map.entry("acoesSemExecucaoPorUG", List.of("Quero o diagnóstico da UG com mais ações zeradas")),
+        Map.entry("resumoExecutivoPAT", List.of("Quero o diagnóstico da UG com menor execução")),
+        Map.entry("buscarExecucaoPATPorDepartamento", List.of("Quero um relatório completo dessa unidade")),
+        Map.entry("buscarDetalhamentoDesempenhoDepartamento", List.of(
+            "Essas ações têm outros departamentos envolvidos?",
+            "Quero ver a execução média num indicador visual")),
+        Map.entry("rastrearGargaloEmAcaoCompartilhada", List.of("Quero um relatório da unidade mais atrasada")),
+        Map.entry("contarAcoesPorDepartamentoPAT", List.of("Qual o desempenho dessas unidades no PAT?")),
+        Map.entry("buscarMinhasTarefas", List.of(
+            "Quais dessas estão atrasadas?",
+            "Mostra todas as minhas tarefas",
+            "Minhas tarefas estão de acordo com o INEP e o IESGo?")),
+        Map.entry("buscarTarefas", List.of(
+            "Quero um relatório completo dessa unidade",
+            "Essas tarefas estão alinhadas com o INEP e o IESGo?",
+            "E as que estão atrasadas?")),
+        Map.entry("contarAcoesUnicasPAT", List.of("Qual departamento tem mais ações no PAT?")),
+        Map.entry("buscarAcoesPorMarcador", List.of("Quero um relatório completo desse departamento")),
+        Map.entry("contarTarefasPorDepartamento", List.of("Qual departamento tem mais tarefas atrasadas?")),
+        Map.entry("contarTarefasPorAcao", List.of("Quero ver as tarefas dessa ação")),
+        Map.entry("compararTarefasComDiretrizes", List.of(
+            "Quais dessas tarefas estão atrasadas?",
+            "Como deixar mais clara a descrição das tarefas sem evidência?")),
+        Map.entry("salvarPreferenciaUsuario", List.of("O que você lembra sobre mim?")),
+        Map.entry("listarMinhasMemorias", List.of("Quero atualizar uma dessas preferências")),
+        Map.entry("solicitarGeracaoRelatorio", List.of(
+            "Quero também em Excel",
+            "Mostra as tarefas de cada ação",
+            "Quero ver o nome da ação em vez do código")),
+        Map.entry("solicitarRelatorioPessoa", List.of(
+            "Quero também em Excel",
+            "E o relatório do departamento inteiro?"))
+    );
 
     public ProiapService(AgenteProiap agenteProiap, AgenteConsultaSql agenteConsultaSql, EstadoSessao estadoSessao,
-            EmbeddingService embeddingService) {
+            EmbeddingService embeddingService, UsoIaService usoIaService, ChatHistoricoService chatHistoricoService,
+            MemoriaUsuarioService memoriaUsuarioService) {
         this.agenteProiap = agenteProiap;
         this.agenteConsultaSql = agenteConsultaSql;
         this.estadoSessao = estadoSessao;
         this.embeddingService = embeddingService;
+        this.usoIaService = usoIaService;
+        this.chatHistoricoService = chatHistoricoService;
+        this.memoriaUsuarioService = memoriaUsuarioService;
     }
 
+<<<<<<< HEAD
     public Object processarPergunta(String perguntaUsuario, String sessaoId, boolean usuarioEhAdmin) {
+=======
+    public Object processarPergunta(String perguntaUsuario, String sessaoId, boolean usuarioEhAdmin, Long usuarioId) {
 
-        // Limpa qualquer sinal de relatório de uma pergunta anterior antes de processar esta.
+        if (usoIaService.deveBloquear(usuarioId)) {
+            return new RespostaTextualDTO(
+                    "Esse teste atingiu o limite de uso combinado com o time. Muito obrigada por testar! 💙",
+                    null, false, List.of(), null, false);
+        }
+>>>>>>> d7f41a2f7ee04ff86c43972e609226b3fc0f6bb5
+
         estadoSessao.setRelatorioGerado(false);
+        estadoSessao.setMemoriaAtualizada(false);
 
         System.out.println("\n================================");
         System.out.println("NOVA REQUISIÇÃO");
         System.out.println("Pergunta: " + perguntaUsuario);
-        System.out.println("Sessao ID Front: " + sessaoId); // Logando o ID que veio do Angular
+        System.out.println("Sessao ID Front: " + sessaoId);
         System.out.println("Sessao Hash (Estado): " + System.identityHashCode(estadoSessao));
-        System.out.println("Aguardando confirmação: " + estadoSessao.isAguardandoConfirmacaoGrafico());
-        System.out.println("Tem gráfico pendente: " + (estadoSessao.getGraficoPendente() != null));
         System.out.println("================================");
 
+<<<<<<< HEAD
         // ================================================================
         // INTERCEPTA CONFIRMAÇÃO
         // ================================================================
@@ -86,6 +158,8 @@ public class ProiapService {
             estadoSessao.setGraficoPendente(null);
         }
 
+=======
+>>>>>>> d7f41a2f7ee04ff86c43972e609226b3fc0f6bb5
         AnaliseComandoDTO analise = agenteProiap.analisarComando(UUID.randomUUID().toString(), perguntaUsuario);
 
         System.out.println("Intenção detectada: " + analise.intencao());
@@ -108,7 +182,7 @@ public class ProiapService {
         }
 
         Long equipeDaSessao = estadoSessao.getEquipeId() != null ? estadoSessao.getEquipeId() : 1L;
-        String modelo = estadoSessao.getModelo() != null ? estadoSessao.getModelo() : "Llama 3 (Groq)";
+        String modelo = estadoSessao.getModelo() != null ? estadoSessao.getModelo() : "Gemini 2.5 Flash";
         String termoDeBusca = perguntaUsuario;
 
         if (analise.intencao() == IntencaoDTO.GRAFICO) {
@@ -118,9 +192,12 @@ public class ProiapService {
             }
         }
 
+<<<<<<< HEAD
         // ================================================================
         // BUSCA O CONTEXTO E AS FONTES
         // ================================================================
+=======
+>>>>>>> d7f41a2f7ee04ff86c43972e609226b3fc0f6bb5
         ContextoRAGDTO contextoRAG = usuarioEhAdmin
                    ? embeddingService.buscarContextoSemelhante(termoDeBusca, equipeDaSessao, modelo)
                    : new ContextoRAGDTO("", List.of());
@@ -128,6 +205,7 @@ public class ProiapService {
         System.out.println("DEBUG - Termo usado na busca: " + termoDeBusca);
         System.out.println("DEBUG - Fontes encontradas: " + contextoRAG.fontes());
 
+<<<<<<< HEAD
         // ================================================================
         // ROTEAMENTO
         // ================================================================
@@ -145,20 +223,125 @@ public class ProiapService {
         } else if (analise.intencao() == IntencaoDTO.GRAFICO) {
 
             GraficoSpecDTO spec = agenteProiap.gerarGrafico(
+=======
+        String memoryId = (sessaoId != null && !sessaoId.isBlank())
+                ? sessaoId
+                : "sessao-fallback-" + System.identityHashCode(estadoSessao);
+
+        if (analise.intencao() == IntencaoDTO.RESPOSTA) {
+
+            // Memória do usuário (ver MemoriaTool) entra na frente do contexto de RAG.
+            String contextoComMemoria = EpocaPat.blocoParaHoje() + memoriaUsuarioService.montarBlocoMemoria(usuarioId) + contextoRAG.textoContexto();
+
+            Result<String> resultado = agenteConsultaSql.responderComFerramentas(memoryId, perguntaUsuario,
+                    contextoComMemoria);
+            String conteudo = tratarRespostaTruncada(resultado);
+            List<String> sugestoes = montarSugestoes(resultado.toolExecutions(), conteudo);
+            Long interacaoId = usoIaService.registrarUso(usuarioId, sessaoId, perguntaUsuario, conteudo, resultado.tokenUsage());
+
+            chatHistoricoService.salvarUser(sessaoId, usuarioId, perguntaUsuario);
+            chatHistoricoService.salvarBot(sessaoId, usuarioId, conteudo, null, contextoRAG.fontes(), sugestoes, interacaoId);
+            return new RespostaTextualDTO(conteudo, contextoRAG.fontes(), estadoSessao.isRelatorioGerado(), sugestoes, interacaoId, estadoSessao.isMemoriaAtualizada());
+
+        } else if (analise.intencao() == IntencaoDTO.GRAFICO) {
+
+            // Mesma memória do chat, pra resolver referências como "delas".
+            Result<String> dadosResultado = agenteConsultaSql.responderComFerramentas(
+                    memoryId, perguntaUsuario, contextoRAG.textoContexto());
+            String dadosConteudo = tratarRespostaTruncada(dadosResultado);
+            Long interacaoId = usoIaService.registrarUso(usuarioId, sessaoId, perguntaUsuario, dadosConteudo, dadosResultado.tokenUsage());
+
+            PainelSpecDTO spec = agenteProiap.gerarPainel(
+>>>>>>> d7f41a2f7ee04ff86c43972e609226b3fc0f6bb5
                     perguntaUsuario,
-                    contextoRAG.textoContexto(),
-                    estadoSessao.getIndicador(),
+                    dadosConteudo,
+                    estadoSessao.getIndicador() != null ? estadoSessao.getIndicador() : "não definido (deduza do pedido e dos dados)",
                     estadoSessao.getTipoGrafico());
 
-            System.out.println(">>> NOVO GRÁFICO GERADO");
-            System.out.println(">>> SALVANDO COMO PENDENTE");
+            if (!painelTemDados(spec)) {
+                // Sem dado real, não tem painel pra exibir — responde como texto explicando o que faltou.
+                System.out.println(">>> PAINEL SEM DADOS — respondendo como texto");
+                List<String> sugestoesVazio = List.of();
+                chatHistoricoService.salvarUser(sessaoId, usuarioId, perguntaUsuario);
+                chatHistoricoService.salvarBot(sessaoId, usuarioId, spec.mensagemContexto(), null, contextoRAG.fontes(), sugestoesVazio, interacaoId);
+                return new RespostaTextualDTO(spec.mensagemContexto(), contextoRAG.fontes(), false, sugestoesVazio, interacaoId, false);
+            }
 
-            estadoSessao.setGraficoPendente(spec);
-            estadoSessao.setAguardandoConfirmacaoGrafico(true);
+            // Tem dado real — mostra o painel direto, sem etapa de confirmação.
+            System.out.println(">>> NOVO PAINEL GERADO (" + spec.graficos().size() + " gráfico(s))");
 
+<<<<<<< HEAD
             return new RespostaTextualDTO(spec.mensagemContexto(), contextoRAG.fontes(), false);
         }
 
         return new RespostaTextualDTO("Desculpe, não consegui entender a intenção do seu comando.", null, false);
+=======
+            PainelRespostaDTO painelPronto = new PainelRespostaDTO(
+                    spec.skill(),
+                    spec.mensagemContexto(),
+                    spec.titulo(),
+                    spec.graficos(),
+                    false,
+                    interacaoId);
+
+            chatHistoricoService.salvarUser(sessaoId, usuarioId, perguntaUsuario);
+            chatHistoricoService.salvarBot(sessaoId, usuarioId, spec.mensagemContexto(), painelPronto, null, null, interacaoId);
+            return painelPronto;
+        }
+
+        return new RespostaTextualDTO("Desculpe, não consegui entender a intenção do seu comando.", null, false, List.of(), null, false);
+    }
+
+    private static final String AVISO_RESPOSTA_CORTADA =
+            "\n\n⚠️ A resposta foi cortada por ficar muito extensa. Peça uma parte específica (ex: só as atrasadas, só os primeiros 10 itens) para ver o restante.";
+
+    private String tratarRespostaTruncada(Result<String> resultado) {
+        String conteudo = resultado.content();
+        if (resultado.finishReason() != FinishReason.LENGTH) {
+            return conteudo;
+        }
+        System.out.println(">>> AVISO: resposta cortada por limite de tokens (finishReason=LENGTH)");
+        int ultimaQuebra = conteudo.lastIndexOf('\n');
+        String conteudoLimpo = ultimaQuebra > 0 ? conteudo.substring(0, ultimaQuebra) : conteudo;
+        return conteudoLimpo + AVISO_RESPOSTA_CORTADA;
+    }
+
+    /** true se pelo menos um gráfico do painel tem pelo menos um valor real — critério pra decidir se vale a pena oferecer confirmação de exibição, ou se é melhor só avisar que faltou dado. */
+    private boolean painelTemDados(PainelSpecDTO spec) {
+        if (spec.graficos() == null) return false;
+        for (GraficoSpecDTO grafico : spec.graficos()) {
+            if (grafico.series() == null) continue;
+            for (SerieGraficoDTO serie : grafico.series()) {
+                if (serie.valores() != null && !serie.valores().isEmpty()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // Só a última ferramenta do turno conta; sem chips se ela falhou/veio vazia ou se a resposta termina em pergunta.
+    private List<String> montarSugestoes(List<ToolExecution> execucoes, String respostaFinal) {
+        if (execucoes == null || execucoes.isEmpty()) {
+            return List.of();
+        }
+        if (respostaFinal != null && respostaFinal.stripTrailing().endsWith("?")) {
+            return List.of();
+        }
+        ToolExecution ultima = execucoes.get(execucoes.size() - 1);
+        if (resultadoSemDado(ultima.result())) {
+            return List.of();
+        }
+        List<String> candidatas = SUGESTOES_POR_FERRAMENTA.get(ultima.request().name());
+        return candidatas == null ? List.of() : candidatas.stream().limit(MAX_SUGESTOES).toList();
+    }
+
+    private boolean resultadoSemDado(String resultado) {
+        if (resultado == null || resultado.isBlank()) return true;
+        return resultado.startsWith(PREFIXO_FALHA_RELATORIO)
+                || resultado.startsWith("Nenhum")
+                || resultado.startsWith("Não encontr")
+                || resultado.startsWith("SEM PERMISSÃO");
+>>>>>>> d7f41a2f7ee04ff86c43972e609226b3fc0f6bb5
     }
 }

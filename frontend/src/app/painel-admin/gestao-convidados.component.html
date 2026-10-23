@@ -1,0 +1,88 @@
+<header class="page-header">
+  <a class="logo" routerLink="/">BICentral</a>
+  <nav class="nav-links">
+    <a class="nav-link" routerLink="/">Home</a>
+    <a class="nav-link" routerLink="/admin">Painel Admin</a>
+    <a class="nav-link" routerLink="/admin/testers">Testers proIAp</a>
+    <a class="nav-link active" routerLink="/admin/convidados">Convidados</a>
+  </nav>
+</header>
+
+<main class="page">
+  <div *ngIf="mensagem" class="feedback-banner" [ngClass]="tipoMensagem">
+    {{ mensagem }}
+    <button class="btn-close" type="button" (click)="mensagem = ''">x</button>
+  </div>
+
+  <section class="hero">
+    <div class="hero-text">
+      <h1>Convidados</h1>
+      <p class="subtitle">
+        Pessoas de fora da PROAP com acesso ao proIAp. Elas veem o percentual e as ações de todas as unidades,
+        mas só enxergam os responsáveis (pessoas) dos departamentos que gerenciam. Defina os departamentos de
+        cada convidado em Gerentes por departamento, no Painel Admin.
+      </p>
+    </div>
+    <a class="btn btn-primary btn-sm" routerLink="/admin">Definir departamentos</a>
+  </section>
+
+  <div *ngIf="carregando" class="loading-panel">
+    Carregando convidados...
+  </div>
+
+  <section class="card" *ngIf="!carregando">
+    <div class="card-header">
+      <h2>Convidados</h2>
+      <span class="count">{{ convidados.length }} total</span>
+    </div>
+
+    <form class="form-compact" (ngSubmit)="adicionar()">
+      <input
+        type="email"
+        name="emailConvidado"
+        [(ngModel)]="email"
+        placeholder="e-mail da pessoa (não precisa ter conta ainda)"
+        required />
+      <button class="btn btn-primary btn-sm" type="submit" [disabled]="!email.trim() || salvando">
+        Convidar
+      </button>
+    </form>
+
+    <div class="table">
+      <div class="table-row convidado-row table-head">
+        <div>Pessoa</div>
+        <div>Situação</div>
+        <div style="text-align: right;">Ações</div>
+      </div>
+
+      <div class="table-row convidado-row" *ngFor="let c of convidados">
+        <div class="person-cell">
+          <span class="avatar">{{ (c.nome || c.email || '?').toString().slice(0, 1) | uppercase }}</span>
+          <div>
+            <strong>
+              {{ c.nome || (c.pendente ? 'Convite pendente' : ('Usuario ' + c.usuarioId)) }}
+              <span class="role-chip-small pendente" *ngIf="c.pendente">Aguardando cadastro</span>
+            </strong>
+            <span>{{ c.email || 'Sem e-mail encontrado' }}</span>
+          </div>
+        </div>
+
+        <span class="pendente-texto" *ngIf="c.pendente; else ativo">Vira convidado assim que se cadastrar e verificar o e-mail</span>
+        <ng-template #ativo>
+          <span class="ativo-texto">Ativo</span>
+        </ng-template>
+
+        <div class="actions-col">
+          <button class="btn-icon btn-danger-icon" type="button" title="Remover"
+            (click)="remover(c)" [disabled]="salvando">
+            Remover
+          </button>
+        </div>
+      </div>
+
+      <div class="table-row convidado-row" *ngIf="convidados.length === 0">
+        <div class="person-cell"><span>Nenhum convidado ainda.</span></div>
+      </div>
+    </div>
+  </section>
+</main>

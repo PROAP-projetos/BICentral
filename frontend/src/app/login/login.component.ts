@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
+import { salvarSessaoLogin } from '../auth-sessao';
 
 @Component({
   selector: 'app-login',
@@ -15,11 +16,19 @@ export class LoginComponent {
   credentials = { email: '', password: '' };
   message: string | null = null;
   messageType: 'error' | 'success' | 'info' = 'error';
+  mostrarSenha = false;
+  carregando = false;
 
   constructor(private http: HttpClient, private router: Router) { }
 
+  alternarMostrarSenha(): void {
+    this.mostrarSenha = !this.mostrarSenha;
+  }
+
   login() {
+    if (this.carregando) return;
     this.message = null;
+    this.carregando = true;
     console.log('Iniciando tentativa de login...');
     this.http.post('/api/usuarios/login', this.credentials)
       .subscribe({
@@ -27,35 +36,24 @@ export class LoginComponent {
           console.log('Resposta do Backend recebida:', response);
 
           if (response && response.token) {
-            // Limpa apenas resíduos de autenticação anteriores
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-
-            // 1. Salva o token puro (para uso do interceptor)
-            localStorage.setItem('token', response.token);
-
-            // 2. Salva o objeto do usuário (agora incluindo o token para o HomeComponent)
-            localStorage.setItem('user', JSON.stringify({
-              id: response.id,
-              username: response.username,
-              token: response.token
-            }));
-
-            console.log('Dados salvos no localStorage. Redirecionando para a Home...');
+            const destino = salvarSessaoLogin(response);
+            console.log(`Dados salvos no localStorage. Redirecionando para ${destino}...`);
 
             // 3. Força a navegação e verifica se ela ocorreu
-            this.router.navigate(['/']).then(success => {
+            this.router.navigate([destino]).then(success => {
               if (success) {
                 console.log('Navegação concluída com sucesso!');
               } else {
-                console.error('Falha na navegação. Verifique se a rota "/" existe.');
+                console.error(`Falha na navegação. Verifique se a rota "${destino}" existe.`);
               }
             });
           } else {
+            this.carregando = false;
             console.warn('Backend respondeu, mas sem o campo token esperado.');
           }
         },
         error: (error) => {
+          this.carregando = false;
           this.messageType = 'error';
           this.message = this.extractErrorMessage(error);
           console.error('Erro detalhado no login:', error);

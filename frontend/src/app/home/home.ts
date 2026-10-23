@@ -7,6 +7,11 @@ import { switchMap, catchError } from 'rxjs/operators';
 import { FormBuilder, ReactiveFormsModule, Validators, FormGroup } from '@angular/forms';
 import { AdminService } from '../services/admin.service';
 import { EquipeService, Equipe } from '../services/equipe.service';
+<<<<<<< HEAD
+=======
+import { AgentService, PainelIa } from '../services/agent.service';
+import { GraficoIaComponent } from '../grafico-ia/grafico-ia';
+>>>>>>> d7f41a2f7ee04ff86c43972e609226b3fc0f6bb5
 
 // ✅ ajuste o path real do seu projeto
 import { AddPainelComponent } from '../add-painel/add-painel.component';
@@ -46,7 +51,7 @@ interface EquipeMenuItem {
 @Component({
 selector: 'app-home',
 standalone: true,
-imports: [CommonModule, RouterModule, ReactiveFormsModule, AddPainelComponent],
+imports: [CommonModule, RouterModule, ReactiveFormsModule, AddPainelComponent, GraficoIaComponent],
 templateUrl: './home.html',
 styleUrls: ['./home.css']
 })
@@ -58,8 +63,17 @@ equipesMenu: EquipeMenuItem[] = [];
 loading = true;
 error: string | null = null;
 
+// -------------------------
+// Painéis de IA (gerados no chat do proIAp)
+// -------------------------
+paineisIa: PainelIa[] = [];
+loadingPaineisIa = true;
+excluindoPainelIaId: number | null = null;
+confirmandoExclusaoPainelIaId: number | null = null;
+
 isLoggedIn = false;
 isAdminSistema = false;
+mobileNavOpen = false;
 userName: string | null = null;
 currentRole: UserRole = 'VIEWER';
 equipeSelecionada: EquipeSelecionada | null = null;
@@ -77,18 +91,18 @@ private footerSignatureTimer?: number;
 readonly welcomeSlides = [
   {
     badge: 'Bem-vindo ao BICentral',
-    title: 'Seu centro para organizar os painéis da PROAP',
-    text: 'Aqui você centraliza os links dos painéis, mantém tudo em um único lugar e facilita o acesso diário da equipe.'
+    title: 'O hub de BI da PROAP',
+    text: 'Aqui ficam centralizados os painéis de Power BI da PROAP — um só lugar pra toda a equipe acompanhar os indicadores, sem caçar link espalhado.'
   },
   {
-    badge: 'Como funciona',
-    title: 'Cadastre, visualize e atualize sem complicação',
-    text: 'Use o botão "Adicionar Painel", acompanhe a capa gerada automaticamente e edite os painéis sempre que precisar.'
+    badge: 'Conheça o proIAp',
+    title: 'Peça um gráfico, ele aparece aqui do lado',
+    text: 'O proIAp é o agente de IA do BICentral: converse com ele no chat, peça um indicador sobre os dados da PROAP, e o painel gerado fica salvo bem aqui, junto dos painéis de Power BI.'
   },
   {
     badge: 'Comece agora',
-    title: 'Gerencie seus painéis com mais controle',
-    text: 'Monte sua biblioteca de dashboards e mantenha sua rotina de análise mais rápida e organizada dentro do BICentral.'
+    title: 'Tudo o que você precisa, num só lugar',
+    text: 'Adicione os painéis de Power BI da sua equipe e explore o proIAp pelo botão "Pergunte ao agente" — o BICentral organiza os dois pra você.'
   }
 ];
 
@@ -134,7 +148,8 @@ constructor(
     private router: Router,
   private fb: FormBuilder,
   private adminService: AdminService,
-  private equipeService: EquipeService
+  private equipeService: EquipeService,
+  private agentService: AgentService
   ) {
     this.editForm = this.fb.group({
       nome: ['', [Validators.required, Validators.minLength(2)]],
@@ -157,6 +172,7 @@ constructor(
     this.verificarAdminSistema();
     this.carregarEquipesMenu();
     this.loadDashboards();
+    this.carregarPaineisIa();
     this.startPolling();
   }
 
@@ -232,7 +248,9 @@ constructor(
   }
 
   private salvarEquipeSelecionada(equipe: EquipeMenuItem): void {
-    localStorage.setItem(HomeComponent.SELECTED_EQUIPE_KEY, JSON.stringify(equipe));
+    const key = this.getEquipeStorageKey();
+    if (!key) return;
+    localStorage.setItem(key, JSON.stringify(equipe));
   }
 
   carregarEquipesMenu(): void {
@@ -246,6 +264,13 @@ constructor(
         if (this.equipeSelecionada && !this.equipesMenu.some((e) => e.id === this.equipeSelecionada?.id)) {
           this.equipeSelecionada = null;
           this.currentRole = 'VIEWER';
+        }
+
+        // Primeiro login (nunca escolheu equipe) ou a equipe salva não existe mais: entra
+        // direto na primeira em vez de obrigar a pessoa a escolher manualmente toda vez —
+        // quem só faz parte de uma equipe nem precisa saber que esse menu existe.
+        if (!this.equipeSelecionada && this.equipesMenu.length > 0) {
+          this.selecionarEquipeDoMenu(this.equipesMenu[0]);
         }
       },
       error: () => {
@@ -271,13 +296,25 @@ constructor(
       return 'VIEWER';
   }
 
-    private loadEquipeSelecionada(): void {
-      const raw = localStorage.getItem(HomeComponent.SELECTED_EQUIPE_KEY);
-      if (!raw) {
-        this.equipeSelecionada = null;
-        this.currentRole = 'VIEWER';
-        return;
-      }
+  private getEquipeStorageKey(): string | null {
+    const user = this.getUserFromStorage();
+    if (!user?.id) return null;
+    return `${HomeComponent.SELECTED_EQUIPE_KEY}:${user.id}`;
+  }
+
+  private loadEquipeSelecionada(): void {
+    const key = this.getEquipeStorageKey();
+    if (!key) {
+      this.equipeSelecionada = null;
+      this.currentRole = 'VIEWER';
+      return;
+    }
+    const raw = localStorage.getItem(key);
+    if (!raw) {
+      this.equipeSelecionada = null;
+      this.currentRole = 'VIEWER';
+      return;
+    }
 
       try {
         const equipe = JSON.parse(raw) as Partial<EquipeSelecionada>;
@@ -437,6 +474,58 @@ constructor(
 
   onImageError(painel: PainelDTO) {
     painel.carregada = false;
+  }
+
+  // -------------------------
+  // Painéis de IA (gerados no chat do proIAp e salvos por lá)
+  // -------------------------
+  carregarPaineisIa(): void {
+    this.loadingPaineisIa = true;
+    this.agentService.listarPaineisIa().subscribe({
+      next: (paineis) => {
+        this.paineisIa = paineis || [];
+        this.loadingPaineisIa = false;
+      },
+      error: () => {
+        this.paineisIa = [];
+        this.loadingPaineisIa = false;
+      }
+    });
+  }
+
+  pedirConfirmacaoExclusaoPainelIa(id: number, ev?: MouseEvent): void {
+    if (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+    }
+    this.confirmandoExclusaoPainelIaId = id;
+  }
+
+  cancelarExclusaoPainelIa(ev?: MouseEvent): void {
+    if (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+    }
+    this.confirmandoExclusaoPainelIaId = null;
+  }
+
+  confirmarExclusaoPainelIa(id: number, ev?: MouseEvent): void {
+    if (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+    }
+    this.excluindoPainelIaId = id;
+    this.agentService.excluirPainelIa(id).subscribe({
+      next: () => {
+        this.paineisIa = this.paineisIa.filter(p => p.id !== id);
+        this.excluindoPainelIaId = null;
+        this.confirmandoExclusaoPainelIaId = null;
+      },
+      error: () => {
+        this.excluindoPainelIaId = null;
+        this.confirmandoExclusaoPainelIaId = null;
+      }
+    });
   }
 
   // -------------------------
@@ -738,10 +827,16 @@ constructor(
 
   logout(): void {
     this.pararPolling();
+    // A chave de equipe selecionada é por usuário (bicentral_selected_equipe:{id}) justamente
+    // pra sobreviver ao logout — apagar ela aqui fazia a pessoa ter que escolher a equipe de
+    // novo toda vez que logava. Só a chave antiga (sem escopo de usuário) precisa ser limpa.
     localStorage.removeItem('user');
     localStorage.removeItem('token');
+    localStorage.removeItem(HomeComponent.SELECTED_EQUIPE_KEY); // limpeza da chave antiga não escopada
     this.isLoggedIn = false;
     this.userName = null;
+    this.equipeSelecionada = null;
+    this.currentRole = 'VIEWER';
     this.router.navigate(['/login']);
   }
 }

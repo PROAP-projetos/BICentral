@@ -66,3 +66,21 @@
     grid-template-columns: 1fr;
   }
 }
+<<<<<<< HEAD
+=======
+
+@media (max-width: 640px) {
+  /* select (min-width:150px) + .busca-wrap (min-width:220px) juntos não cabem numa
+     tela de celular — empilhando em coluna cada um vira 100% da largura. */
+  form.form-compact {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  form.form-compact select,
+  .busca-wrap {
+    width: 100%;
+    min-width: 0;
+  }
+}
+>>>>>>> d7f41a2f7ee04ff86c43972e609226b3fc0f6bb5

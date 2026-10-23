@@ -1,0 +1,209 @@
+:host{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  margin: 0;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+/* Ver cadastro.component.css para a explicação completa: sem width aqui, o :host flex faz
+   esses containers encolherem pro tamanho do conteúdo em vez de ocupar a tela. :not(.card)
+   é essencial — .card (link inválido / sucesso) também pode ser filho direto, e
+   display:flex nele quebraria o empilhamento vertical dos próprios filhos dele. */
+.form-container,
+.form-container > div:not(.card) {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+form, .card {
+  width: 100%;
+  max-width: 440px;
+  padding: 50px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
+}
+
+h2 {
+  text-align: center;
+  font-size: 1.7rem;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 24px;
+}
+
+.card .alert-message {
+  text-align: center;
+  color: #555;
+  font-size: 1rem;
+  line-height: 1.5;
+  margin: 0 0 24px;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+label {
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 8px;
+}
+
+input[type="text"],
+input[type="password"] {
+  width: 100%;
+  padding: 16px;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(0, 74, 128, 0.25);
+}
+
+.password-field {
+  position: relative;
+}
+
+.password-field input {
+  padding-right: 46px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 4px;
+  width: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #8a95a3;
+  cursor: pointer;
+  transition: color 0.16s ease;
+}
+
+.password-toggle:hover,
+.password-toggle:focus {
+  background: transparent;
+  color: #333;
+}
+
+.requisitos-senha {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+.requisitos-senha li {
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.requisitos-senha li::before {
+  content: "✕ ";
+}
+
+.requisitos-senha li.ok {
+  color: var(--color-success);
+}
+
+.requisitos-senha li.ok::before {
+  content: "✓ ";
+}
+
+.btn {
+  width: 100%;
+  padding: 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease-in-out;
+  color: white;
+  background-color: var(--color-nav-button-bg);
+}
+
+.btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #009f67;
+  transform: translateY(-2px);
+}
+
+.footer-link {
+  text-align: center;
+  margin-top: 8px;
+}
+
+.footer-link a {
+  font-weight: 500;
+  text-decoration: none;
+  color: var(--color-primary);
+}
+
+.footer-link a:hover {
+  text-decoration: underline;
+}
+
+.log-wrapper {
+  margin-top: -4px;
+}
+
+.premium-alert {
+  padding: 14px 16px;
+  background: #fff8f8;
+  border-radius: 10px;
+  border: 1px solid #dfe5ec;
+  border-left: 4px solid var(--color-error);
+}
+
+.premium-alert .alert-message {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--color-text);
+}
+
+@media (max-width: 600px) {
+  :host {
+    padding: 12px;
+  }
+
+  form, .card {
+    padding: 28px 22px;
+  }
+
+  h2 {
+    font-size: 1.4rem;
+  }
+}

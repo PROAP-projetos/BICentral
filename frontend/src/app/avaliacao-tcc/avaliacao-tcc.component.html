@@ -1,0 +1,129 @@
+<header class="page-header">
+  <a class="logo" routerLink="/">BICentral</a>
+  <nav class="nav-links">
+    <a class="nav-link" routerLink="/">Home</a>
+  </nav>
+</header>
+
+<div class="barra-progresso" *ngIf="itens.length">
+  <div class="barra-progresso-conteudo">
+    <span class="barra-titulo">Avaliação do proIAp</span>
+    <span class="barra-contagem">{{ concluidos }} de {{ itens.length }}</span>
+  </div>
+  <div class="trilho" role="progressbar" [attr.aria-valuenow]="concluidos" aria-valuemin="0" [attr.aria-valuemax]="itens.length">
+    <div class="trilho-preenchido" [style.width.%]="progressoPct"></div>
+  </div>
+</div>
+
+<main class="conversa">
+  <div *ngIf="carregando" class="msg agente">
+    <span class="autor">proIAp</span>
+    <div class="balao">Carregando...</div>
+  </div>
+  <div *ngIf="erroCarregar" class="feedback-banner erro">{{ erroCarregar }}</div>
+
+  <div class="msg agente" *ngIf="!carregando && !erroCarregar">
+    <span class="autor">proIAp</span>
+    <div class="balao" *ngIf="itens.length">
+      <p>Oi! Vou responder {{ itens.length }} perguntas que servidores já me fizeram.</p>
+      <p>Depois de cada resposta, compare com a <strong>resposta certa</strong>, tirada direto do banco de dados, e me diga se acertei. Seu progresso fica salvo.</p>
+    </div>
+    <div class="balao" *ngIf="!itens.length">
+      <p>Ainda não há respostas para avaliar.</p>
+    </div>
+  </div>
+
+  <ng-container *ngFor="let item of itens; let n = index; trackBy: trackById">
+  <section class="rodada" *ngIf="item.mostrado" [id]="'msg-' + item.id">
+    <div class="msg usuario">
+      <span class="autor">Pergunta {{ n + 1 }} de {{ itens.length }}</span>
+      <div class="balao">
+        <p>{{ item.perguntaCurta }}</p>
+        <details class="pergunta-completa" *ngIf="item.perguntaLonga">
+          <summary>Ver a pergunta completa</summary>
+          <p>{{ item.pergunta }}</p>
+        </details>
+      </div>
+    </div>
+
+    <div class="msg agente" *ngIf="item.respondido">
+      <span class="autor">proIAp</span>
+      <div class="balao markdown" [innerHTML]="item.respostaHtml"></div>
+    </div>
+
+    <div class="avaliacao" *ngIf="item.respondido" [class.avaliada]="item.salvo">
+      <details class="referencia" [open]="!item.salvo">
+        <summary>Resposta certa (banco de dados)</summary>
+        <div class="markdown" [innerHTML]="item.referenciaHtml"></div>
+      </details>
+
+      <div class="tempo">
+        <p class="rotulo">Sem o proIAp, quanto tempo você levaria para achar isso? <span class="opcional">(opcional)</span></p>
+        <div class="chips">
+          <button type="button" class="chip" *ngFor="let op of opcoesTempo"
+            [class.ativo]="item.tempoManual === op.valor" [attr.aria-pressed]="item.tempoManual === op.valor"
+            [disabled]="item.salvando" (click)="marcarTempo(item, op.valor)">{{ op.rotulo }}</button>
+        </div>
+      </div>
+
+      <div class="veredito">
+        <div class="grupo">
+          <p class="rotulo">A resposta está <strong>certa</strong>? <span class="opcional">(números, nomes e códigos batem)</span></p>
+          <div class="par">
+            <button type="button" class="opcao" [class.sim]="item.correta === true" [attr.aria-pressed]="item.correta === true" [disabled]="item.salvando" (click)="responder(item, 'correta', true)">Certo</button>
+            <button type="button" class="opcao" [class.nao]="item.correta === false" [attr.aria-pressed]="item.correta === false" [disabled]="item.salvando" (click)="responder(item, 'correta', false)">Errado</button>
+          </div>
+        </div>
+        <div class="grupo">
+          <p class="rotulo">Respondeu <strong>tudo</strong> o que foi perguntado?</p>
+          <div class="par">
+            <button type="button" class="opcao" [class.sim]="item.completa === true" [attr.aria-pressed]="item.completa === true" [disabled]="item.salvando" (click)="responder(item, 'completa', true)">Completo</button>
+            <button type="button" class="opcao" [class.nao]="item.completa === false" [attr.aria-pressed]="item.completa === false" [disabled]="item.salvando" (click)="responder(item, 'completa', false)">Incompleto</button>
+          </div>
+        </div>
+      </div>
+      <p class="dica" *ngIf="!item.salvo">{{ dica(item) }}</p>
+
+      <div class="rodape-avaliacao">
+        <span class="status" aria-live="polite">
+          <span *ngIf="item.salvando">Salvando...</span>
+          <span *ngIf="!item.salvando && item.salvo" class="status-ok">Salva</span>
+          <span *ngIf="item.erro" class="status-erro">{{ item.erro }}</span>
+        </span>
+        <button type="button" class="link-comentario" *ngIf="!item.mostrarComentario" (click)="item.mostrarComentario = true">Comentar (opcional)</button>
+        <button type="button" class="btn btn-primary btn-sm" *ngIf="podeIrParaProxima(item)" (click)="proxima()">Próxima pergunta →</button>
+      </div>
+      <label class="comentario" *ngIf="item.mostrarComentario" [for]="'comentario-' + item.id">
+        <span>Comentário (opcional)</span>
+        <textarea [id]="'comentario-' + item.id" rows="2" [(ngModel)]="item.comentario" (blur)="salvarComentario(item)" placeholder="Ex.: o percentual está certo, mas faltou citar o empate."></textarea>
+      </label>
+    </div>
+  </section>
+  </ng-container>
+
+  <div class="msg agente" *ngIf="digitando" aria-live="polite">
+    <span class="autor">proIAp</span>
+    <div class="balao digitando" aria-label="proIAp está digitando">
+      <span></span><span></span><span></span>
+    </div>
+  </div>
+
+  <div class="msg agente" id="fim-avaliacao" *ngIf="terminou">
+    <span class="autor">proIAp</span>
+    <div class="balao balao-fim">
+      <p><strong>Pronto, obrigada!</strong> Você avaliou as {{ itens.length }} respostas.</p>
+      <p>Se quiser mudar alguma marcação, é só voltar nela e tocar de novo.</p>
+    </div>
+  </div>
+
+  <section class="card admin" *ngIf="souAdmin">
+    <h2>Só para administradores</h2>
+    <p class="subtitle">Os servidores não veem esta parte.</p>
+    <div class="admin-acoes">
+      <label class="btn btn-sm" for="importar-itens">Importar itens (JSON)</label>
+      <input id="importar-itens" type="file" accept="application/json,.json" (change)="importarArquivo($event)" hidden>
+      <button type="button" class="btn btn-primary btn-sm" (click)="exportarResultado()">Exportar avaliações (CSV)</button>
+    </div>
+    <p class="admin-mensagem" *ngIf="mensagemAdmin">{{ mensagemAdmin }}</p>
+  </section>
+</main>
