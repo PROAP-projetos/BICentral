@@ -39,17 +39,6 @@ public class SincronizacaoTarefasJob {
 
     public SincronizacaoTarefasJob(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
-        // Best-effort, idempotente (ALTER TYPE pro mesmo tipo não faz nada) — a coluna
-        // "departamento" foi criada como VARCHAR(100) em algum momento anterior, mas nomes
-        // reais de departamento da UFT passam disso (ex: nomes de coordenação de pós-graduação
-        // compostos), o que abortava o lote inteiro no INSERT com "value too long". Igual aos
-        // outros "garantir" desta classe, não pode travar o processo se o banco não estiver
-        // acessível agora (ex: fase "fetch" do modo manual de sincronização).
-        try {
-            jdbcTemplate.execute("ALTER TABLE pat_tarefas_todas ALTER COLUMN departamento TYPE TEXT");
-        } catch (Exception e) {
-            System.err.println(">>> JOB TAREFAS: não foi possível ajustar a coluna 'departamento' agora: " + e.getMessage());
-        }
     }
 
     @Scheduled(fixedRate = 24 * 60 * 60 * 1000L, initialDelay = 60 * 1000L)

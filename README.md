@@ -82,3 +82,12 @@ npm start
 
 - O link do Power BI precisa começar com `https://app.powerbi.com/view?r=`.
 - A captura da capa dos painéis roda de forma assíncrona para não travar o cadastro.
+
+## Licença e uso
+
+**Este código não é de uso livre.** O repositório é público para consulta, mas não tem licença de código aberto: copiar, modificar, redistribuir ou usar o código, os prompts ou o agente proIAp em outro projeto exige autorização prévia da UFT. Veja o arquivo [LICENSE](LICENSE).
+
+- **Os dados são públicos.** As informações do PAT e do PDI que o sistema consulta são dados institucionais públicos da UFT e podem ser obtidos nas fontes oficiais da universidade.
+- **O sistema não é.** O código-fonte, o agente proIAp, seus prompts e ferramentas pertencem à Universidade Federal do Tocantins (Lei nº 9.609/1998, art. 4º), com autoria reconhecida da equipe listada acima.
+
+Pedidos de uso: PROAP/UFT.
