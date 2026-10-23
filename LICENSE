@@ -1,17 +1,56 @@
-Copyright (c) 2025-2026 Universidade Federal do Tocantins (UFT)
-Todos os direitos reservados.
+================================================================================
 
-Autoria: Dallyla de Moraes Sousa, Lean de Albuquerque Pereira e Neci Mendes Fialho,
-estagiários da PROAP (Pró-Reitoria de Avaliação e Planejamento) da UFT.
+                    BICentral e proIAp — Termos de Uso do Código
 
-Este repositório é público apenas para consulta. Nenhuma licença de uso é
-concedida: é proibido copiar, modificar, redistribuir, sublicenciar ou usar
-este código-fonte, os prompts ou o agente proIAp, no todo ou em parte, sem
-autorização prévia e por escrito da UFT.
+          Copyright (c) 2025-2026 Universidade Federal do Tocantins (UFT)
+                          Todos os direitos reservados.
 
-Os dados do PAT (Plano Anual de Trabalho) e do PDI (Plano de Desenvolvimento
-Institucional) consultados pelo sistema são dados institucionais públicos e
-não são cobertos por esta restrição. Eles podem ser obtidos nas fontes
-oficiais da UFT.
+================================================================================
 
-Pedidos de autorização: PROAP/UFT.
+
+1. TITULARIDADE
+
+   O código-fonte deste repositório, o agente de inteligência artificial
+   proIAp, seus prompts, ferramentas e demais componentes pertencem à
+   Universidade Federal do Tocantins (UFT), nos termos do art. 4º da
+   Lei nº 9.609/1998 (Lei do Software).
+
+
+2. AUTORIA
+
+   Desenvolvido na PROAP (Pró-Reitoria de Avaliação e Planejamento) da UFT
+   pela equipe de estagiários do curso de Ciência da Computação:
+
+     - Dallyla de Moraes Sousa
+     - Lean de Albuquerque Pereira
+     - Neci Mendes Fialho
+
+   A autoria é reconhecida nos termos do art. 2º, § 1º da Lei nº 9.609/1998.
+
+
+3. USO DO CÓDIGO
+
+   Este repositório é público apenas para consulta. Nenhuma licença de uso
+   é concedida. Sem autorização prévia e por escrito da UFT, é proibido:
+
+     - copiar o código, no todo ou em parte, para outro projeto;
+     - modificar, redistribuir, sublicenciar ou vender o sistema;
+     - reaproveitar os prompts, as ferramentas ou o agente proIAp.
+
+   É permitido ler e estudar o código nesta página e citar o projeto em
+   trabalhos acadêmicos, com a devida referência.
+
+
+4. DADOS
+
+   Os dados do PAT (Plano Anual de Trabalho) e do PDI (Plano de
+   Desenvolvimento Institucional) consultados pelo sistema são dados
+   institucionais públicos da UFT e não são cobertos por esta restrição.
+   Eles podem ser obtidos nas fontes oficiais da universidade.
+
+
+5. CONTATO
+
+   Pedidos de autorização: PROAP/UFT.
+
+================================================================================

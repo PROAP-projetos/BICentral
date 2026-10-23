@@ -8,6 +8,7 @@
 [![Angular](https://img.shields.io/badge/Angular-20-DD0031?logo=angular&logoColor=white)](frontend)
 [![Java](https://img.shields.io/badge/Java-17-007396?logo=openjdk&logoColor=white)](backend)
 [![Postgres](https://img.shields.io/badge/Postgres-Supabase-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com)
+[![Licença](https://img.shields.io/badge/licen%C3%A7a-todos%20os%20direitos%20reservados-B22222)](LICENSE)
 
 </div>
 
@@ -87,10 +88,38 @@ npm start
 
 ## Licença e uso
 
-**Este código não é de uso livre.** O repositório é público para consulta, mas não tem licença de código aberto: copiar, modificar, redistribuir ou usar o código, os prompts ou o agente proIAp em outro projeto exige autorização prévia da UFT. Veja o arquivo [LICENSE](LICENSE).
+> [!IMPORTANT]
+> **Este código não é de uso livre.** O repositório é público para consulta, mas não tem licença de código aberto. Copiar, modificar, redistribuir ou reaproveitar o código, os prompts ou o agente proIAp exige autorização prévia da UFT.
 
-- **Os dados são públicos.** As informações do PAT e do PDI que o sistema consulta são dados institucionais públicos da UFT e podem ser obtidos nas fontes oficiais da universidade.
-- **O sistema não é.** O código-fonte, o agente proIAp, seus prompts e ferramentas pertencem à Universidade Federal do Tocantins (Lei nº 9.609/1998, art. 4º), com autoria reconhecida da equipe listada acima.
+<table>
+<tr>
+<th width="50%">🔓 Dados: públicos</th>
+<th width="50%">🔒 Sistema: protegido</th>
+</tr>
+<tr>
+<td valign="top">
 
-Pedidos de uso: PROAP/UFT.
->>>>>>> d7f41a2f7ee04ff86c43972e609226b3fc0f6bb5
+As informações do **PAT** e do **PDI** consultadas pelo BICentral são dados institucionais públicos da UFT. Elas podem ser obtidas nas fontes oficiais da universidade.
+
+</td>
+<td valign="top">
+
+O **código-fonte**, o **agente proIAp**, seus **prompts** e suas **ferramentas** pertencem à Universidade Federal do Tocantins, conforme a Lei nº 9.609/1998, art. 4º.
+
+</td>
+</tr>
+</table>
+
+| Você pode | Você não pode, sem autorização |
+| --- | --- |
+| ✅ Ler e estudar o código aqui no GitHub | ❌ Copiar o código para outro projeto |
+| ✅ Citar o projeto em trabalhos acadêmicos | ❌ Reaproveitar os prompts ou o agente proIAp |
+| ✅ Usar os dados públicos do PAT e do PDI | ❌ Redistribuir, modificar ou vender o sistema |
+
+**Autoria reconhecida** da equipe de desenvolvimento listada acima, nos termos do art. 2º, § 1º da Lei nº 9.609/1998. Termos completos no arquivo [LICENSE](LICENSE). Pedidos de autorização: PROAP/UFT.
+
+---
+
+<div align="center">
+<sub>© 2025–2026 Universidade Federal do Tocantins · Desenvolvido na PROAP · Todos os direitos reservados</sub>
+</div>
