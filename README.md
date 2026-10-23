@@ -83,8 +83,6 @@ npm start
 
 - O link do Power BI precisa começar com `https://app.powerbi.com/view?r=`.
 - A captura da capa dos painéis roda de forma assíncrona para não travar o cadastro.
-<<<<<<< HEAD
-=======
 
 ## Licença e uso
 
