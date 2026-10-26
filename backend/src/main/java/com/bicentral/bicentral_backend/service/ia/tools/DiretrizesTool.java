@@ -2,11 +2,9 @@ package com.bicentral.bicentral_backend.service.ia.tools;
 
 import com.bicentral.bicentral_backend.service.ia.lgpd.LogSemNome;
 import com.bicentral.bicentral_backend.dto.diretrizes.DiretrizesAcaoDTO;
-import com.bicentral.bicentral_backend.dto.diretrizes.IndicadorInepDTO;
-import com.bicentral.bicentral_backend.dto.diretrizes.ItemIesgoDTO;
-import com.bicentral.bicentral_backend.dto.diretrizes.PraticaIesgoDTO;
 import com.bicentral.bicentral_backend.service.admin.ConvidadoService;
 import com.bicentral.bicentral_backend.service.auth.UsuarioService;
+import com.bicentral.bicentral_backend.service.ia.AlinhamentoDiretrizesService;
 import com.bicentral.bicentral_backend.service.ia.DiretrizesService;
 import com.bicentral.bicentral_backend.state.StatusExecucaoAgente;
 import dev.langchain4j.agent.tool.P;
@@ -15,6 +13,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -62,69 +61,27 @@ public class DiretrizesTool {
                 + ", departamento=" + departamento + ", codigoAcao=" + codigoAcao + ", pagina=" + paginaAtual + ")");
 
         if (!minhas && vazio(responsavel) && vazio(departamento) && vazio(codigoAcao)) {
-            return "Escopo não informado. Pergunte ao usuário de quem são as tarefas a analisar: dele mesmo, de uma pessoa,"
-                    + " de um departamento ou de uma ação.";
+            return "Sem recorte: para o PAT inteiro, use panoramaAlinhamentoDiretrizes sem filtros.";
         }
 
         Long usuarioId = usuarioService.buscarPorEmail(
                 SecurityContextHolder.getContext().getAuthentication().getName()).getId();
 
-        List<Object> params = new ArrayList<>();
-        StringBuilder where = new StringBuilder(" WHERE 1=1 ");
-
-        String escopo;
-        List<String> departamentosVisiveis = null;
+        String nomeMinhas = null;
         if (minhas) {
-            String nome = nomeResponsavelDoUsuario(usuarioId);
-            if (nome == null) {
+            nomeMinhas = nomeResponsavelDoUsuario(usuarioId);
+            if (nomeMinhas == null) {
                 return "O usuário atual ainda não tem um nome de responsável vinculado no sistema. "
                         + "Um administrador precisa cadastrar esse vínculo no painel admin para essa consulta funcionar.";
             }
-            where.append(" AND t.dados_completos->>'Responsável' ILIKE ? ");
-            params.add("%" + nome.trim() + "%");
-            escopo = "tarefas de " + nome;
-        } else {
-            // Mesma regra de buscarTarefas: convidado só vê tarefas dos departamentos que gerencia.
-            departamentosVisiveis = convidadoService.departamentosComPessoasVisiveis(usuarioId);
-            if (departamentosVisiveis != null) {
-                String pedido = vazio(departamento) ? "" : departamento.trim().toLowerCase();
-                boolean pediuOutroSetor = !pedido.isEmpty() && departamentosVisiveis.stream().noneMatch(d -> d.contains(pedido));
-                if (departamentosVisiveis.isEmpty() || pediuOutroSetor) {
-                    return TarefasTool.PREFIXO_SEM_PERMISSAO + " o usuário não tem permissão de acesso às tarefas"
-                            + (pedido.isEmpty() ? "" : " de " + departamento.trim())
-                            + " (convidados só veem as tarefas dos departamentos que gerenciam). Diga isso diretamente na primeira frase.";
-                }
-                where.append(" AND LOWER(t.departamento) IN (")
-                     .append(String.join(",", Collections.nCopies(departamentosVisiveis.size(), "?")))
-                     .append(") ");
-                params.addAll(departamentosVisiveis);
-            }
-            escopo = "tarefas";
         }
-        if (!vazio(responsavel)) {
-            DesambiguacaoResponsavel.Resultado pessoa =
-                    DesambiguacaoResponsavel.resolver(jdbcTemplate, responsavel, departamentosVisiveis);
-            if (pessoa.mensagem() != null) {
-                return pessoa.mensagem();
-            }
-            if (pessoa.nomeExato() == null) {
-                return "Nenhuma tarefa encontrada para " + responsavel.trim() + ".";
-            }
-            where.append(" AND t.dados_completos->>'Responsável' = ? ");
-            params.add(pessoa.nomeExato());
-            escopo += " de " + pessoa.nomeExato();
+        Filtro filtro = montarFiltro(usuarioId, nomeMinhas, responsavel, departamento, codigoAcao);
+        if (filtro.erro() != null) {
+            return filtro.erro();
         }
-        if (!vazio(departamento)) {
-            where.append(" AND t.departamento ILIKE ? ");
-            params.add("%" + departamento.trim() + "%");
-            escopo += " do departamento " + departamento.trim();
-        }
-        if (!vazio(codigoAcao)) {
-            where.append(" AND regexp_replace(substring(t.dados_completos->>'ITEM DO PAT' from '[A-Z]+ [0-9]+(?:\\.[0-9]+)*'),"
-                    + " '^[A-Za-zÀ-ÿ]+\\s*', '') = regexp_replace(?, '^[A-Za-zÀ-ÿ]+\\s*', '') ");
-            params.add(codigoAcao.trim());
-            escopo += " da ação " + codigoAcao.trim();
-        }
+        StringBuilder where = filtro.where();
+        List<Object> params = filtro.params();
+        String escopo = filtro.escopo();
 
         List<Map<String, Object>> tarefas = jdbcTemplate.queryForList("""
             SELECT
@@ -180,29 +137,123 @@ public class DiretrizesTool {
         return sb.toString();
     }
 
+    @Tool("Panorama do alinhamento das tarefas do PAT com as diretrizes INEP e IESGo, a partir da análise já feita tarefa por tarefa e guardada no sistema. Use para o PAT como um todo ('o PAT de forma geral', 'todas as unidades', 'quais diretrizes nenhuma tarefa cobre') e para recortes grandes, como um departamento inteiro ('as tarefas da PROGRAD têm a ver com o INEP?'). Devolve quantas tarefas estão alinhadas, parciais ou sem evidência, a comparação entre departamentos, as diretrizes mais cobertas, as que nenhuma tarefa cobre e as tarefas sem evidência. Filtros opcionais; sem filtro, é o PAT inteiro. Se o panorama ainda não tiver sido gerado, a resposta diz o que fazer.")
+    public String panoramaAlinhamentoDiretrizes(
+            @P(value = "nome ou parte do nome do departamento, opcional", required = false) String departamento,
+            @P(value = "nome ou parte do nome do responsável pelas tarefas, opcional", required = false) String responsavel,
+            @P(value = "código da ação, com ou sem a letra na frente (ex: 'U 1.1.1.1' ou '1.1.1.1'), opcional", required = false) String codigoAcao) {
+
+        statusExecucao.definir("Montando o panorama INEP e IESGo...");
+        System.out.println(">>> TOOL CHAMADA: panoramaAlinhamentoDiretrizes(departamento=" + departamento
+                + ", responsavel=" + LogSemNome.campo(responsavel) + ", codigoAcao=" + codigoAcao + ")");
+
+        Long usuarioId = usuarioService.buscarPorEmail(
+                SecurityContextHolder.getContext().getAuthentication().getName()).getId();
+        Filtro filtro = montarFiltro(usuarioId, null, responsavel, departamento, codigoAcao);
+        if (filtro.erro() != null) {
+            return filtro.erro();
+        }
+
+        List<Object> params = new ArrayList<>();
+        params.add(diretrizesService.versao());
+        params.addAll(filtro.params());
+        // Análise de outra versão da base ou de texto alterado depois conta como não analisada.
+        List<PanoramaAlinhamento.Linha> linhas = jdbcTemplate.query("""
+            SELECT t.id, t.departamento, %s AS codigo_acao,
+                   t.dados_completos->>'TÍTULO DA TAREFA' AS titulo,
+                   CASE WHEN a.versao_base = ? AND a.hash_texto = %s THEN a.situacao END AS situacao,
+                   a.diretrizes, a.justificativa, a.analisado_em
+            FROM pat_tarefas t
+            LEFT JOIN alinhamento_tarefa a ON a.tarefa_id = t.id
+            """.formatted(AlinhamentoDiretrizesService.SQL_CODIGO_ACAO, AlinhamentoDiretrizesService.SQL_HASH_TEXTO)
+                + filtro.where() + " ORDER BY t.departamento, codigo_acao, t.id",
+                (rs, i) -> new PanoramaAlinhamento.Linha(rs.getLong("id"), rs.getString("departamento"),
+                        rs.getString("codigo_acao"), rs.getString("titulo"), rs.getString("situacao"),
+                        rs.getString("diretrizes"), rs.getString("justificativa"),
+                        rs.getObject("analisado_em", OffsetDateTime.class)),
+                params.toArray());
+
+        if (linhas.isEmpty()) {
+            return "Nenhuma tarefa encontrada para o escopo pedido (" + filtro.escopo() + ").";
+        }
+        String escopo = filtro.escopo().equals("tarefas") ? "PAT inteiro" : filtro.escopo();
+        System.out.println(">>> TOOL RESULTADO: panorama com " + linhas.size() + " tarefa(s)");
+        return PanoramaAlinhamento.montar(escopo, linhas, diretrizesService);
+    }
+
+    /** {@code erro} preenchido = devolver ao agente em vez de consultar. */
+    private record Filtro(StringBuilder where, List<Object> params, String escopo, String erro) {
+        static Filtro falha(String erro) {
+            return new Filtro(null, null, null, erro);
+        }
+    }
+
+    /** {@code nomeMinhas} preenchido = tarefas do próprio usuário (sem filtro de convidado, são dele). */
+    private Filtro montarFiltro(Long usuarioId, String nomeMinhas, String responsavel, String departamento, String codigoAcao) {
+        List<Object> params = new ArrayList<>();
+        StringBuilder where = new StringBuilder(" WHERE 1=1 ");
+
+        String escopo;
+        List<String> departamentosVisiveis = null;
+        if (nomeMinhas != null) {
+            where.append(" AND t.dados_completos->>'Responsável' ILIKE ? ");
+            params.add("%" + nomeMinhas.trim() + "%");
+            escopo = "tarefas de " + nomeMinhas;
+        } else {
+            // Mesma regra de buscarTarefas: convidado só vê tarefas dos departamentos que gerencia.
+            departamentosVisiveis = convidadoService.departamentosComPessoasVisiveis(usuarioId);
+            if (departamentosVisiveis != null) {
+                String pedido = vazio(departamento) ? "" : departamento.trim().toLowerCase();
+                boolean pediuOutroSetor = !pedido.isEmpty() && departamentosVisiveis.stream().noneMatch(d -> d.contains(pedido));
+                if (departamentosVisiveis.isEmpty() || pediuOutroSetor) {
+                    return Filtro.falha(TarefasTool.PREFIXO_SEM_PERMISSAO + " o usuário não tem permissão de acesso às tarefas"
+                            + (pedido.isEmpty() ? "" : " de " + departamento.trim())
+                            + " (convidados só veem as tarefas dos departamentos que gerenciam). Diga isso diretamente na primeira frase.");
+                }
+                where.append(" AND LOWER(t.departamento) IN (")
+                     .append(String.join(",", Collections.nCopies(departamentosVisiveis.size(), "?")))
+                     .append(") ");
+                params.addAll(departamentosVisiveis);
+            }
+            escopo = departamentosVisiveis != null && vazio(departamento) ? "tarefas dos seus departamentos" : "tarefas";
+        }
+        if (!vazio(responsavel)) {
+            DesambiguacaoResponsavel.Resultado pessoa =
+                    DesambiguacaoResponsavel.resolver(jdbcTemplate, responsavel, departamentosVisiveis);
+            if (pessoa.mensagem() != null) {
+                return Filtro.falha(pessoa.mensagem());
+            }
+            if (pessoa.nomeExato() == null) {
+                return Filtro.falha("Nenhuma tarefa encontrada para " + responsavel.trim() + ".");
+            }
+            where.append(" AND t.dados_completos->>'Responsável' = ? ");
+            params.add(pessoa.nomeExato());
+            escopo += " de " + pessoa.nomeExato();
+        }
+        if (!vazio(departamento)) {
+            where.append(" AND t.departamento ILIKE ? ");
+            params.add("%" + departamento.trim() + "%");
+            escopo += " do departamento " + departamento.trim();
+        }
+        if (!vazio(codigoAcao)) {
+            where.append(" AND regexp_replace(substring(t.dados_completos->>'ITEM DO PAT' from '[A-Z]+ [0-9]+(?:\\.[0-9]+)*'),"
+                    + " '^[A-Za-zÀ-ÿ]+\\s*', '') = regexp_replace(?, '^[A-Za-zÀ-ÿ]+\\s*', '') ");
+            params.add(codigoAcao.trim());
+            escopo += " da ação " + codigoAcao.trim();
+        }
+        return new Filtro(where, params, escopo, null);
+    }
+
     private void anexarAcao(StringBuilder sb, String codigo, List<Map<String, Object>> tarefas, boolean mostrarPessoa) {
         Optional<DiretrizesAcaoDTO> encontrada = diretrizesService.buscar(codigo);
         sb.append("### Ação ").append(codigo.isEmpty() ? "(sem código)" : codigo);
         encontrada.ifPresent(a -> sb.append(" — ").append(a.acao()));
         sb.append("\n");
 
-        if (encontrada.isEmpty() || (vazio(encontrada.get().inep()) && vazio(encontrada.get().iesgo()))) {
+        if (encontrada.isEmpty() || !DiretrizesService.temDiretrizes(encontrada.get())) {
             sb.append("Sem diretrizes INEP/IESGo cadastradas na base para esta ação: não dá para avaliar o alinhamento.\n");
         } else {
-            DiretrizesAcaoDTO acao = encontrada.get();
-            sb.append("INEP: ").append(vazio(acao.inep()) ? "nenhum" : acao.inep()).append("\n");
-            for (IndicadorInepDTO indicador : listaOuVazia(acao.inepDetalhes())) {
-                sb.append("- ").append(indicador.codigo()).append(" ").append(indicador.indicador())
-                  .append(": ").append(indicador.criterio()).append("\n");
-            }
-            sb.append("IESGo: ").append(vazio(acao.iesgo()) ? "nenhum" : acao.iesgo()).append("\n");
-            for (PraticaIesgoDTO pratica : listaOuVazia(acao.iesgoDetalhes())) {
-                sb.append("- ").append(pratica.codigo()).append(":");
-                for (ItemIesgoDTO item : listaOuVazia(pratica.itens())) {
-                    sb.append(" (").append(item.item()).append(") ").append(item.texto());
-                }
-                sb.append("\n");
-            }
+            sb.append(DiretrizesService.descrever(encontrada.get()));
         }
 
         sb.append("Tarefas (").append(tarefas.size()).append("):\n");
@@ -247,10 +298,6 @@ public class DiretrizesTool {
         } catch (NumberFormatException e) {
             return Integer.MAX_VALUE;
         }
-    }
-
-    private static <T> List<T> listaOuVazia(List<T> lista) {
-        return lista == null ? List.of() : lista;
     }
 
     private static boolean vazio(String texto) {

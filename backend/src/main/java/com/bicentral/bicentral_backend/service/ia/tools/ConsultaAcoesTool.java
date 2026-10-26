@@ -641,7 +641,7 @@ public class ConsultaAcoesTool {
                 + (posicao != null ? posicao.replace(" Cite exatamente esta posição; não calcule outra.", "") : "Fora do ranking de UGs.") + "\n";
     }
 
-    @Tool("Lista as UGs com mais ações SEM NENHUMA EXECUÇÃO (0%) no PAT (ano corrente), com o total de ações de cada uma, quantas estão zeradas, o percentual de zeradas e quantas dessas zeradas são ações compartilhadas com outras unidades. Use para perguntas como 'quais unidades têm mais ações paradas/zeradas/sem execução'. Cite os números exatamente como vierem.")
+    @Tool("Lista as UGs com mais ações SEM NENHUMA EXECUÇÃO (0%) no PAT (ano corrente), com o total de ações de cada uma, quantas estão zeradas, o percentual de zeradas e quantas dessas zeradas são ações compartilhadas com outras unidades. Use para perguntas como 'quais unidades têm mais ações paradas/zeradas/sem execução'. Para ações sem TAREFA cadastrada, use acoesSemTarefa. Cite os números exatamente como vierem.")
     public String acoesSemExecucaoPorUG(
             @P(value = "quantas UGs listar, padrão 10", required = false) Integer limite) {
         int qtd = (limite == null || limite <= 0) ? 10 : Math.min(limite, 50);
@@ -687,6 +687,114 @@ public class ConsultaAcoesTool {
               .append(" |\n");
         }
         return sb.toString();
+    }
+
+    static final int MAX_ACOES_SEM_TAREFA_LISTADAS = 40;
+    static final int MAX_DEPARTAMENTOS_SEM_TAREFA = 15;
+
+    @Tool("Lista as ações do PAT (ano corrente) que NÃO TÊM NENHUMA TAREFA cadastrada. Com departamento: todas as ações dele sem tarefa, com código, título e percentual. Sem departamento: o total no PAT e os departamentos com mais ações sem tarefa. Use para perguntas como 'tem alguma ação da PROTIC sem tarefa?', 'quais ações estão sem tarefa', 'que unidades têm mais ações sem tarefa'. Cite os números exatamente como vierem.")
+    public String acoesSemTarefa(
+            @P(value = "nome ou parte do nome do departamento, opcional; sem ele, é o PAT inteiro", required = false) String departamento,
+            @P(value = "'UG' para só Unidades Gestoras, 'UA' para só Unidades Acadêmicas, null para todas", required = false) String tipoUnidade) {
+        boolean geral = departamento == null || departamento.isBlank();
+        boolean filtrarTipo = tipoUnidade != null && (tipoUnidade.equalsIgnoreCase("UA") || tipoUnidade.equalsIgnoreCase("UG"));
+        statusExecucao.definir(geral ? "Levantando as ações sem tarefa..." : "Levantando as ações sem tarefa de " + departamento + "...");
+        System.out.println(">>> TOOL CHAMADA: acoesSemTarefa(departamento=" + departamento + ", tipoUnidade=" + tipoUnidade + ")");
+
+        // "Tem Tarefa" vem pronto da UFT por atribuição (ação × departamento) e bate com pat_tarefas.
+        StringBuilder filtro = new StringBuilder();
+        List<Object> lista = new ArrayList<>();
+        if (!geral) {
+            filtro.append(" AND p.departamento ILIKE ? ");
+            lista.add("%" + departamento.trim() + "%");
+        }
+        if (filtrarTipo) {
+            filtro.append(" AND tu.tipo_unidade = ? ");
+            lista.add(tipoUnidade.toUpperCase());
+        }
+        Object[] params = lista.toArray();
+        List<Map<String, Object>> porDepartamento = jdbcTemplate.queryForList("""
+            SELECT p.departamento, tu.tipo_unidade,
+                   COUNT(*) AS total,
+                   COUNT(*) FILTER (WHERE p.dados_completos->>'Tem Tarefa' = 'Não') AS sem_tarefa
+            FROM pat_dados p
+            LEFT JOIN (SELECT DISTINCT departamento, tipo_unidade FROM pat_execucao_departamento) tu
+              ON tu.departamento = p.departamento
+            WHERE 1=1
+            """ + filtro + """
+            GROUP BY p.departamento, tu.tipo_unidade
+            ORDER BY sem_tarefa DESC, p.departamento
+            """, params);
+        if (porDepartamento.isEmpty()) {
+            return "Nenhuma ação de PAT encontrada" + (geral ? "" : " para o departamento '" + departamento + "'") + ".";
+        }
+        int total = porDepartamento.stream().mapToInt(l -> ((Number) l.get("total")).intValue()).sum();
+        int semTarefa = porDepartamento.stream().mapToInt(l -> ((Number) l.get("sem_tarefa")).intValue()).sum();
+        System.out.println(">>> TOOL RESULTADO: " + semTarefa + " de " + total + " atribuição(ões) sem tarefa");
+
+        StringBuilder sb = new StringBuilder();
+        if (geral) {
+            long departamentosComFalta = porDepartamento.stream().filter(l -> ((Number) l.get("sem_tarefa")).intValue() > 0).count();
+            sb.append(filtrarTipo ? "PAT, só " + tipoUnidade.toUpperCase() : "PAT inteiro").append(": ").append(semTarefa)
+              .append(" de ").append(total)
+              .append(" atribuições de ação estão sem nenhuma tarefa (uma ação compartilhada conta uma vez para cada departamento), em ")
+              .append(departamentosComFalta).append(" departamento(s). Os que têm mais:\n\n")
+              .append(filtrarTipo ? "| Departamento | Ações | Sem tarefa | % sem tarefa |\n|---|---|---|---|\n"
+                                  : "| Departamento | Tipo | Ações | Sem tarefa | % sem tarefa |\n|---|---|---|---|---|\n");
+            for (Map<String, Object> l : porDepartamento.subList(0, Math.min(MAX_DEPARTAMENTOS_SEM_TAREFA, porDepartamento.size()))) {
+                int t = ((Number) l.get("total")).intValue();
+                int s = ((Number) l.get("sem_tarefa")).intValue();
+                if (s == 0) break;
+                sb.append("| ").append(l.get("departamento")).append(" | ");
+                if (!filtrarTipo) {
+                    sb.append(l.get("tipo_unidade") == null ? "-" : l.get("tipo_unidade")).append(" | ");
+                }
+                sb.append(t).append(" | ").append(s)
+                  .append(" | ").append(formatarPercentualEnxuto(Math.round(s * 1000.0 / t) / 10.0)).append("% |\n");
+            }
+            sb.append("\nOfereça listar as ações sem tarefa de um departamento");
+            if (!filtrarTipo) {
+                sb.append(" ou ver só as UGs");
+            }
+            sb.append(".");
+            return sb.toString();
+        }
+
+        if (semTarefa == 0) {
+            return "Todas as " + total + " ações de " + nomesDepartamentos(porDepartamento) + " têm pelo menos uma tarefa cadastrada.";
+        }
+        List<Map<String, Object>> acoes = jdbcTemplate.queryForList("""
+            SELECT p.departamento,
+                   substring(p.dados_completos->>'Título' from '[A-Z]+ [0-9]+(?:\\.[0-9]+)*') AS codigo_acao,
+                   p.dados_completos->>'Título' AS titulo_acao,
+                   NULLIF(replace(p.dados_completos->>'%', ',', '.'), '')::numeric AS percentual
+            FROM pat_dados p
+            WHERE p.dados_completos->>'Tem Tarefa' = 'Não' AND p.departamento ILIKE ?
+            ORDER BY p.departamento, codigo_acao
+            """, "%" + departamento.trim() + "%");
+
+        boolean variosDepartamentos = porDepartamento.size() > 1;
+        sb.append(nomesDepartamentos(porDepartamento)).append(": ").append(semTarefa).append(" de ").append(total)
+          .append(" ações sem nenhuma tarefa cadastrada.\n\n")
+          .append(variosDepartamentos ? "| Departamento | Ação | % |\n|---|---|---|\n" : "| Ação | % |\n|---|---|\n");
+        for (Map<String, Object> a : acoes.subList(0, Math.min(MAX_ACOES_SEM_TAREFA_LISTADAS, acoes.size()))) {
+            sb.append("| ");
+            if (variosDepartamentos) {
+                sb.append(a.get("departamento")).append(" | ");
+            }
+            sb.append(truncarTitulo((String) a.get("titulo_acao")))
+              .append(" | ").append(a.get("percentual") == null ? "0" : formatarPercentualEnxuto(a.get("percentual"))).append("% |\n");
+        }
+        if (acoes.size() > MAX_ACOES_SEM_TAREFA_LISTADAS) {
+            sb.append("\n(e mais ").append(acoes.size() - MAX_ACOES_SEM_TAREFA_LISTADAS).append(" ação(ões) sem tarefa)\n");
+        }
+        return sb.toString();
+    }
+
+    private static String nomesDepartamentos(List<Map<String, Object>> porDepartamento) {
+        return porDepartamento.size() == 1
+                ? String.valueOf(porDepartamento.get(0).get("departamento"))
+                : porDepartamento.size() + " departamentos";
     }
 
     // Mesma regra do painel de ranking (só UG, desempate pelo nome): evita o agente contar coordenações e divergir da tela.

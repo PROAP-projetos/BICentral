@@ -1,6 +1,9 @@
 package com.bicentral.bicentral_backend.service.ia;
 
 import com.bicentral.bicentral_backend.dto.diretrizes.DiretrizesAcaoDTO;
+import com.bicentral.bicentral_backend.dto.diretrizes.IndicadorInepDTO;
+import com.bicentral.bicentral_backend.dto.diretrizes.ItemIesgoDTO;
+import com.bicentral.bicentral_backend.dto.diretrizes.PraticaIesgoDTO;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -10,9 +13,11 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Diretrizes INEP e IESGo de cada ação do PDI, lidas de resources/diretrizes/acoes-diretrizes.json
@@ -53,6 +58,49 @@ public class DiretrizesService {
 
     public String versao() {
         return versao;
+    }
+
+    public static boolean temDiretrizes(DiretrizesAcaoDTO acao) {
+        return acao != null && !(vazio(acao.inep()) && vazio(acao.iesgo()));
+    }
+
+    /** Códigos no formato que a análise cita: "INEP 1.2", "IESGo 2132". */
+    public static Set<String> codigos(DiretrizesAcaoDTO acao) {
+        Set<String> codigos = new LinkedHashSet<>();
+        for (IndicadorInepDTO indicador : listaOuVazia(acao.inepDetalhes())) {
+            codigos.add("INEP " + indicador.codigo());
+        }
+        for (PraticaIesgoDTO pratica : listaOuVazia(acao.iesgoDetalhes())) {
+            codigos.add("IESGo " + pratica.codigo());
+        }
+        return codigos;
+    }
+
+    /** Diretrizes da ação com o critério de cada indicador e os itens de cada prática, para a IA comparar. */
+    public static String descrever(DiretrizesAcaoDTO acao) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("INEP: ").append(vazio(acao.inep()) ? "nenhum" : acao.inep()).append("\n");
+        for (IndicadorInepDTO indicador : listaOuVazia(acao.inepDetalhes())) {
+            sb.append("- ").append(indicador.codigo()).append(" ").append(indicador.indicador())
+              .append(": ").append(indicador.criterio()).append("\n");
+        }
+        sb.append("IESGo: ").append(vazio(acao.iesgo()) ? "nenhum" : acao.iesgo()).append("\n");
+        for (PraticaIesgoDTO pratica : listaOuVazia(acao.iesgoDetalhes())) {
+            sb.append("- ").append(pratica.codigo()).append(":");
+            for (ItemIesgoDTO item : listaOuVazia(pratica.itens())) {
+                sb.append(" (").append(item.item()).append(") ").append(item.texto());
+            }
+            sb.append("\n");
+        }
+        return sb.toString();
+    }
+
+    private static <T> List<T> listaOuVazia(List<T> lista) {
+        return lista == null ? List.of() : lista;
+    }
+
+    private static boolean vazio(String texto) {
+        return texto == null || texto.isBlank();
     }
 
     public int totalAcoes() {

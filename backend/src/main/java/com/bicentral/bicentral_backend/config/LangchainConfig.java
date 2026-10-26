@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import com.bicentral.bicentral_backend.service.ia.AgenteAlinhamento;
 import com.bicentral.bicentral_backend.service.ia.AgenteConsultaSql;
 import com.bicentral.bicentral_backend.service.ia.AgenteProiap;
 import com.bicentral.bicentral_backend.service.ia.AgenteRelatorio;
@@ -60,6 +61,14 @@ public class LangchainConfig {
     public AgenteRelatorio agenteRelatorio(@Qualifier("openaiLunaModel") ChatLanguageModel geminiModel) {
         return AiServices.builder(AgenteRelatorio.class)
                 .chatLanguageModel(geminiModel)
+                .build();
+    }
+
+    // Terra, o mesmo modelo da análise ao vivo no chat: os vereditos gravados ficam coerentes com ela.
+    @Bean
+    public AgenteAlinhamento agenteAlinhamento(@Qualifier("openaiTerraModel") ChatLanguageModel chatLanguageModel) {
+        return AiServices.builder(AgenteAlinhamento.class)
+                .chatLanguageModel(chatLanguageModel)
                 .build();
     }
 
