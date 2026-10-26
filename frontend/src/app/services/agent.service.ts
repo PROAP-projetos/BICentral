@@ -208,6 +208,14 @@ export class AgentService {
     return this.http.get<PainelIa[]>(url, { withCredentials: true });
   }
 
+  consultarTermoUso(): Observable<{ versao: string; aceito: boolean }> {
+    return this.http.get<{ versao: string; aceito: boolean }>('/api/termo-uso', { withCredentials: true });
+  }
+
+  aceitarTermoUso(): Observable<{ versao: string; aceito: boolean }> {
+    return this.http.post<{ versao: string; aceito: boolean }>('/api/termo-uso/aceite', {}, { withCredentials: true });
+  }
+
   consultarUsoIa(): Observable<UsoIa> {
     const url = '/api/uso-ia';
     return this.http.get<UsoIa>(url, { withCredentials: true });

@@ -1,5 +1,6 @@
 package com.bicentral.bicentral_backend.service.ia.tools;
 
+import com.bicentral.bicentral_backend.service.ia.lgpd.LogSemNome;
 import com.bicentral.bicentral_backend.service.admin.ConvidadoService;
 import com.bicentral.bicentral_backend.service.auth.UsuarioService;
 import com.bicentral.bicentral_backend.state.StatusExecucaoAgente;
@@ -87,7 +88,7 @@ public class TarefasTool {
             LIMIT ?
             """, "%" + nomeResponsavel.trim() + "%", qtd);
 
-        System.out.println(">>> TOOL RESULTADO: " + tarefas.size() + " tarefa(s) de " + totalTarefas + " para " + nomeResponsavel);
+        System.out.println(">>> TOOL RESULTADO: " + tarefas.size() + " tarefa(s) de " + totalTarefas + " do usuário logado");
 
         if (tarefas.isEmpty()) {
             return "Nenhuma tarefa encontrada para " + nomeResponsavel + " no PAT atual.";
@@ -148,7 +149,7 @@ public class TarefasTool {
         boolean ordenarPorPercentual = "percentual".equalsIgnoreCase(ordenarPor);
         boolean ordenarPorAcao = "acao".equalsIgnoreCase(ordenarPor) || "ação".equalsIgnoreCase(ordenarPor) || "codigo".equalsIgnoreCase(ordenarPor) || "código".equalsIgnoreCase(ordenarPor);
         statusExecucao.definir(montarStatusBusca(departamento, responsavel, status));
-        System.out.println(">>> TOOL CHAMADA: buscarTarefas(departamento=" + departamento + ", codigoAcao=" + codigoAcao + ", tituloAcao=" + tituloAcao + ", responsavel=" + responsavel
+        System.out.println(">>> TOOL CHAMADA: buscarTarefas(departamento=" + departamento + ", codigoAcao=" + codigoAcao + ", tituloAcao=" + tituloAcao + ", responsavel=" + LogSemNome.campo(responsavel)
             + ", palavraChave=" + palavraChave + ", status=" + status + ", ordenarPor=" + ordenarPor + ", limite=" + qtd + ")");
 
         String emailLogado = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -186,8 +187,16 @@ public class TarefasTool {
             params.add("%" + tituloAcao.trim() + "%");
         }
         if (responsavel != null && !responsavel.isBlank()) {
-            where.append(" AND b.responsavel ILIKE ? ");
-            params.add("%" + responsavel.trim() + "%");
+            DesambiguacaoResponsavel.Resultado pessoa =
+                    DesambiguacaoResponsavel.resolver(jdbcTemplate, responsavel, departamentosVisiveis);
+            if (pessoa.mensagem() != null) {
+                return pessoa.mensagem();
+            }
+            if (pessoa.nomeExato() == null) {
+                return "Nenhuma tarefa encontrada com esses filtros.";
+            }
+            where.append(" AND b.responsavel = ? ");
+            params.add(pessoa.nomeExato());
         }
         if (palavraChave != null && !palavraChave.isBlank()) {
             where.append(" AND b.titulo_tarefa ILIKE ? ");

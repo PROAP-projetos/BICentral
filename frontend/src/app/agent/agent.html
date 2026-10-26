@@ -549,7 +549,7 @@
             </svg>
           </button>
         </div>
-        <p class="disclaimer">O proIAp pode cometer erros. Verifique as informações importantes no sistema.</p>
+        <p class="disclaimer">O proIAp pode cometer erros. Não informe CPF nem dados sensíveis. <button type="button" class="link-termo" (click)="termoUsoAberto = true">Termo de uso</button></p>
 
         <!-- Barra de uso do teste com o time — estimativa, a trava de verdade é o limite da OpenAI -->
         <div class="uso-ia-barra" *ngIf="usoIa && usoIa.souTester" [title]="'Estimativa — a trava real é o limite configurado na OpenAI'">
@@ -619,6 +619,7 @@
       <div class="confirm-card" (click)="$event.stopPropagation()">
         <h3>Link de compartilhamento</h3>
         <p>Qualquer pessoa com esse link consegue ver essa conversa, mesmo sem conta no BICentral.</p>
+        <p class="compartilhar-aviso-dados">A conversa pode conter nomes de servidores e dados de tarefas. Compartilhe só com quem pode ver essas informações.</p>
         <div class="compartilhar-link-row">
           <input type="text" [value]="linkCompartilhado" readonly (click)="selecionarTudo($event)" />
           <button type="button" class="btn-copiar-link" (click)="copiarLinkCompartilhado()">
@@ -630,6 +631,11 @@
         </div>
       </div>
     </div>
+
+    <!-- Termo de uso: bloqueia até o aceite; depois abre pelo link do rodapé -->
+    <app-termo-uso-ia *ngIf="termoUsoAberto" [exigirAceite]="termoUsoPendente" [versao]="termoUsoVersao"
+      [salvando]="termoUsoSalvando" [erro]="termoUsoErro"
+      (aceito)="aceitarTermoUso()" (recusado)="recusarTermoUso()" (fechado)="termoUsoAberto = false"></app-termo-uso-ia>
 
   </main>
 </div>

@@ -1,5 +1,6 @@
 package com.bicentral.bicentral_backend.service.ia;
 
+import com.bicentral.bicentral_backend.service.ia.lgpd.LogSemNome;
 import com.bicentral.bicentral_backend.service.admin.ConvidadoService;
 import org.apache.poi.xwpf.usermodel.*;
 import org.apache.poi.ss.usermodel.Cell;
@@ -339,7 +340,7 @@ public class RelatorioService {
                 WHERE id = ?
                 """, urlArquivo, jsonRelatorio, normalizarFormato(formato), id);
 
-            System.out.println(">>> RELATORIO concluído id=" + id + ", url=" + urlArquivo);
+            System.out.println(">>> RELATORIO concluído id=" + id);
 
         } catch (Exception e) {
             System.err.println(">>> RELATORIO ERRO id=" + id + ": " + e.getMessage());
@@ -424,7 +425,7 @@ public class RelatorioService {
 
         Long idExistente = buscarRelatorioEmProcessamentoRecente(usuarioId, nomeResolvido, "PESSOA", formatoFinal, chaveOpcoes);
         if (idExistente != null) {
-            System.out.println(">>> RELATORIO PESSOA reaproveitado (já em processamento): id=" + idExistente + ", pessoa=" + nomeResolvido);
+            System.out.println(">>> RELATORIO PESSOA reaproveitado (já em processamento): id=" + idExistente + ", pessoa=" + LogSemNome.campo(nomeResolvido));
             return idExistente;
         }
 
@@ -434,7 +435,7 @@ public class RelatorioService {
             RETURNING id
             """, Long.class, usuarioId, nomeResolvido, formatoFinal, chaveOpcoes);
 
-        System.out.println(">>> RELATORIO PESSOA solicitado: id=" + id + ", pessoa=" + nomeResolvido + ", formato=" + formatoFinal);
+        System.out.println(">>> RELATORIO PESSOA solicitado: id=" + id + ", pessoa=" + LogSemNome.campo(nomeResolvido) + ", formato=" + formatoFinal);
         self.processarRelatorioPessoaAsync(id, nomeResolvido, formatoFinal);
         return id;
     }
@@ -535,7 +536,7 @@ public class RelatorioService {
                 WHERE id = ?
                 """, urlArquivo, jsonRelatorio, normalizarFormato(formato), id);
 
-            System.out.println(">>> RELATORIO PESSOA concluído id=" + id + ", url=" + urlArquivo);
+            System.out.println(">>> RELATORIO PESSOA concluído id=" + id);
 
         } catch (Exception e) {
             System.err.println(">>> RELATORIO PESSOA ERRO id=" + id + ": " + e.getMessage());

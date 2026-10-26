@@ -89,6 +89,11 @@ class TarefasToolPermissaoTest {
         when(convidadoService.departamentosComPessoasVisiveis(CONVIDADO)).thenReturn(null);
         when(jdbc.queryForMap(anyString(), any(Object[].class))).thenReturn(Map.of(
                 "total", 69L, "concluidas", 40L, "em_andamento", 25L, "atrasadas", 4L, "zeradas", 12L, "media", new java.math.BigDecimal("72.50")));
+        // Desambiguação do responsável: uma pessoa só com esse nome; a listagem de tarefas vem vazia.
+        when(jdbc.queryForList(anyString(), any(Object[].class))).thenAnswer(inv ->
+                ((String) inv.getArgument(0)).contains("string_agg(DISTINCT departamento")
+                        ? java.util.List.of(Map.of("responsavel", "Idelma Teste", "departamentos", "PROAP", "tarefas", 69L))
+                        : java.util.List.of());
 
         String resposta = tool.buscarTarefas(null, null, null, "Idelma", null, null, null, null);
 

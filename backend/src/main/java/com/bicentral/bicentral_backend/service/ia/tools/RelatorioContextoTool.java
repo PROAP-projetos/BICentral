@@ -1,5 +1,6 @@
 package com.bicentral.bicentral_backend.service.ia.tools;
 
+import com.bicentral.bicentral_backend.service.ia.lgpd.LogSemNome;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -80,7 +81,7 @@ public class RelatorioContextoTool {
             @P(value = "'DOCX', 'PDF' ou 'XLSX'/'EXCEL' — formato SOMENTE se o usuário pedir um. Se ele não falou de formato, deixe null e NÃO cite formato na resposta.", required = false) String formato) {
 
         statusExecucao.definir("Solicitando o relatório" + (nomePessoa == null || nomePessoa.isBlank() ? "..." : " de " + nomePessoa + "..."));
-        System.out.println(">>> TOOL CHAMADA: solicitarRelatorioPessoa(nomePessoa=" + nomePessoa + ", formato=" + formato + ")");
+        System.out.println(">>> TOOL CHAMADA: solicitarRelatorioPessoa(nomePessoa=" + LogSemNome.campo(nomePessoa) + ", formato=" + formato + ")");
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         var usuario = usuarioService.buscarPorEmail(email);

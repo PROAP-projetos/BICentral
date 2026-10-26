@@ -1,0 +1,160 @@
+<div class="termo-overlay" (click)="fecharPeloFundo()">
+  <div class="termo-card" role="dialog" aria-modal="true" aria-labelledby="termo-titulo" (click)="$event.stopPropagation()">
+
+    <header class="termo-header">
+      <p class="termo-instituicao">Universidade Federal do Tocantins · Pró-Reitoria de Avaliação e Planejamento</p>
+      <h2 id="termo-titulo">Termo de Uso e de Tratamento de Dados Pessoais</h2>
+      <p class="termo-sub">proIAp: Assistente de Inteligência Artificial da PROAP</p>
+      <p class="termo-meta">
+        <span *ngIf="versao">Versão {{ versao }}</span>
+        <span *ngIf="versao" class="termo-meta-sep" aria-hidden="true">|</span>
+        <span>Vigente desde {{ vigenteDesde }}</span>
+      </p>
+    </header>
+
+    <div class="termo-corpo">
+      <p class="termo-intro" *ngIf="exigirAceite">
+        Para utilizar o proIAp, leia e aceite as condições abaixo.
+      </p>
+
+      <ol class="termo-clausulas">
+        <li>
+          <h3>Objeto</h3>
+          <p>
+            Este termo regula o uso do proIAp, assistente de inteligência artificial disponibilizado pela PROAP/UFT
+            para consulta aos dados do Plano Anual de Trabalho (PAT) e apoio ao acompanhamento institucional.
+          </p>
+        </li>
+
+        <li>
+          <h3>Controlador e finalidade</h3>
+          <p>
+            A Universidade Federal do Tocantins é a controladora dos dados pessoais tratados no proIAp. O tratamento
+            tem como finalidade exclusiva o acompanhamento e a gestão do PAT, no exercício das competências legais da
+            UFT (Lei nº 13.709/2018, art. 7º, III, e art. 23). Os dados não são utilizados para outra finalidade nem
+            comercializados.
+          </p>
+        </li>
+
+        <li>
+          <h3>Natureza das respostas</h3>
+          <p>
+            As respostas são geradas automaticamente por modelo de inteligência artificial e podem conter
+            imprecisões. Não substituem a consulta aos sistemas oficiais nem a análise do servidor responsável,
+            especialmente para fundamentar decisões administrativas.
+          </p>
+        </li>
+
+        <li>
+          <h3>Dados tratados</h3>
+          <p>
+            São tratados o conteúdo das perguntas, o histórico da conversa, as preferências que o usuário pedir ao
+            assistente para lembrar e os dados institucionais consultados para elaborar a resposta (ações, tarefas,
+            responsáveis e percentuais de execução), limitados ao que o perfil de acesso do usuário permite visualizar.
+          </p>
+        </li>
+
+        <li>
+          <h3>Serviços externos e transferência internacional</h3>
+          <p>
+            Para funcionar, o proIAp utiliza serviços externos que atuam como operadores: o provedor de inteligência
+            artificial que gera as respostas (atualmente, OpenAI) e os serviços de nuvem que hospedam o banco de dados e
+            o servidor da aplicação. Esses serviços podem estar localizados fora do território nacional e recebem
+            apenas o necessário para executar sua função.
+          </p>
+        </li>
+
+        <li class="termo-clausula-destaque">
+          <h3>Pseudonimização de nomes</h3>
+          <p>
+            Antes do envio ao provedor de inteligência artificial, os nomes de pessoas cadastradas no sistema são
+            substituídos por códigos. O provedor não recebe os nomes, e a substituição inversa ocorre exclusivamente no
+            BICentral. Endereços de e-mail e números de CPF informados são removidos antes do envio.
+          </p>
+          <p class="termo-paragrafo">
+            <strong>Parágrafo único.</strong> A medida não alcança nomes de pessoas não cadastradas no sistema nem
+            informações que permitam a identificação indireta de alguém, como a menção a um cargo ocupado por uma
+            única pessoa.
+          </p>
+        </li>
+
+        <li>
+          <h3>Medidas de segurança</h3>
+          <p>
+            O acesso exige autenticação; cada usuário visualiza apenas os dados permitidos ao seu perfil; o banco de
+            dados aplica controle de acesso por registro; os registros técnicos de funcionamento do servidor não
+            armazenam nomes de pessoas; e o aceite deste termo é registrado com data e versão.
+          </p>
+        </li>
+
+        <li>
+          <h3>Responsabilidades do usuário</h3>
+          <p>O usuário responde pelo conteúdo que inserir e compromete-se a:</p>
+          <ul>
+            <li>não inserir CPF, RG, dados bancários, senhas, dados de saúde ou outros dados pessoais sensíveis;</li>
+            <li>não inserir informações sigilosas ou de acesso restrito;</li>
+            <li>utilizar o assistente exclusivamente para fins institucionais;</li>
+            <li>compartilhar conversas por link apenas com quem pode ter acesso aos dados nelas contidos, já que o link pode ser aberto sem login;</li>
+            <li>conferir as informações nos sistemas oficiais antes de utilizá-las em decisões ou documentos.</li>
+          </ul>
+        </li>
+
+        <li>
+          <h3>Registro e guarda</h3>
+          <p>
+            As interações são registradas no BICentral para histórico do usuário, auditoria e aprimoramento do
+            serviço, com acesso restrito à equipe responsável, pelo prazo definido pela UFT.
+          </p>
+        </li>
+
+        <li>
+          <h3>Direitos do titular</h3>
+          <p>
+            O titular pode solicitar confirmação da existência de tratamento, acesso, correção, eliminação de dados
+            desnecessários e informação sobre o compartilhamento, nos termos do art. 18 da Lei nº 13.709/2018. O usuário
+            pode excluir suas conversas do histórico a qualquer momento pelo próprio chat; o registro de auditoria segue
+            o prazo da cláusula anterior.
+          </p>
+        </li>
+
+        <li>
+          <h3>Alterações deste termo</h3>
+          <p>
+            Este termo pode ser atualizado. Sempre que houver nova versão, o uso do proIAp dependerá de novo aceite.
+          </p>
+        </li>
+
+        <li>
+          <h3>Legislação aplicável e contato</h3>
+          <p>
+            O tratamento observa a Lei nº 13.709/2018 (Lei Geral de Proteção de Dados Pessoais). Dúvidas e
+            solicitações de titulares podem ser encaminhadas à PROAP/UFT ou ao encarregado pelo tratamento de
+            dados pessoais da UFT.
+          </p>
+        </li>
+      </ol>
+    </div>
+
+    <footer class="termo-rodape" *ngIf="exigirAceite; else soLeitura">
+      <label class="termo-check">
+        <input type="checkbox" [(ngModel)]="declarouCiencia" [disabled]="salvando" />
+        <span>Declaro que li e compreendi este termo e concordo com as condições de uso do proIAp.</span>
+      </label>
+      <p class="termo-erro" *ngIf="erro" role="alert">{{ erro }}</p>
+      <div class="termo-acoes">
+        <button type="button" class="termo-btn secundario" [disabled]="salvando" (click)="recusado.emit()">Recusar</button>
+        <button type="button" class="termo-btn primario" [disabled]="!declarouCiencia || salvando" (click)="aceito.emit()">
+          {{ salvando ? 'Registrando...' : 'Aceitar e continuar' }}
+        </button>
+      </div>
+    </footer>
+
+    <ng-template #soLeitura>
+      <footer class="termo-rodape">
+        <div class="termo-acoes">
+          <button type="button" class="termo-btn primario" (click)="fechado.emit()">Fechar</button>
+        </div>
+      </footer>
+    </ng-template>
+  </div>
+</div>

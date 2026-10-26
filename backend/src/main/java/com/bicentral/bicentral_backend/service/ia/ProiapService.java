@@ -101,7 +101,7 @@ public class ProiapService {
 
         System.out.println("\n================================");
         System.out.println("NOVA REQUISIÇÃO");
-        System.out.println("Pergunta: " + perguntaUsuario);
+        System.out.println("Pergunta recebida (" + (perguntaUsuario == null ? 0 : perguntaUsuario.length()) + " caracteres)");
         System.out.println("Sessao ID Front: " + sessaoId);
         System.out.println("Sessao Hash (Estado): " + System.identityHashCode(estadoSessao));
         System.out.println("================================");
@@ -142,7 +142,7 @@ public class ProiapService {
                    ? embeddingService.buscarContextoSemelhante(termoDeBusca, equipeDaSessao, modelo)
                    : new ContextoRAGDTO("", List.of());
                    
-        System.out.println("DEBUG - Termo usado na busca: " + termoDeBusca);
+        System.out.println("DEBUG - Termo usado na busca: " + (termoDeBusca == null ? 0 : termoDeBusca.length()) + " caracteres");
         System.out.println("DEBUG - Fontes encontradas: " + contextoRAG.fontes());
 
         String memoryId = (sessaoId != null && !sessaoId.isBlank())

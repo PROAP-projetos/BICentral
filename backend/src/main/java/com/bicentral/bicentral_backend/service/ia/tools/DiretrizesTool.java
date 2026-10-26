@@ -1,5 +1,6 @@
 package com.bicentral.bicentral_backend.service.ia.tools;
 
+import com.bicentral.bicentral_backend.service.ia.lgpd.LogSemNome;
 import com.bicentral.bicentral_backend.dto.diretrizes.DiretrizesAcaoDTO;
 import com.bicentral.bicentral_backend.dto.diretrizes.IndicadorInepDTO;
 import com.bicentral.bicentral_backend.dto.diretrizes.ItemIesgoDTO;
@@ -57,7 +58,7 @@ public class DiretrizesTool {
         boolean minhas = Boolean.TRUE.equals(minhasTarefas);
         int paginaAtual = (pagina == null || pagina < 1) ? 1 : pagina;
         statusExecucao.definir("Comparando tarefas com INEP e IESGo...");
-        System.out.println(">>> TOOL CHAMADA: compararTarefasComDiretrizes(minhas=" + minhas + ", responsavel=" + responsavel
+        System.out.println(">>> TOOL CHAMADA: compararTarefasComDiretrizes(minhas=" + minhas + ", responsavel=" + LogSemNome.campo(responsavel)
                 + ", departamento=" + departamento + ", codigoAcao=" + codigoAcao + ", pagina=" + paginaAtual + ")");
 
         if (!minhas && vazio(responsavel) && vazio(departamento) && vazio(codigoAcao)) {
@@ -72,6 +73,7 @@ public class DiretrizesTool {
         StringBuilder where = new StringBuilder(" WHERE 1=1 ");
 
         String escopo;
+        List<String> departamentosVisiveis = null;
         if (minhas) {
             String nome = nomeResponsavelDoUsuario(usuarioId);
             if (nome == null) {
@@ -83,7 +85,7 @@ public class DiretrizesTool {
             escopo = "tarefas de " + nome;
         } else {
             // Mesma regra de buscarTarefas: convidado só vê tarefas dos departamentos que gerencia.
-            List<String> departamentosVisiveis = convidadoService.departamentosComPessoasVisiveis(usuarioId);
+            departamentosVisiveis = convidadoService.departamentosComPessoasVisiveis(usuarioId);
             if (departamentosVisiveis != null) {
                 String pedido = vazio(departamento) ? "" : departamento.trim().toLowerCase();
                 boolean pediuOutroSetor = !pedido.isEmpty() && departamentosVisiveis.stream().noneMatch(d -> d.contains(pedido));
@@ -100,9 +102,17 @@ public class DiretrizesTool {
             escopo = "tarefas";
         }
         if (!vazio(responsavel)) {
-            where.append(" AND t.dados_completos->>'Responsável' ILIKE ? ");
-            params.add("%" + responsavel.trim() + "%");
-            escopo += " de " + responsavel.trim();
+            DesambiguacaoResponsavel.Resultado pessoa =
+                    DesambiguacaoResponsavel.resolver(jdbcTemplate, responsavel, departamentosVisiveis);
+            if (pessoa.mensagem() != null) {
+                return pessoa.mensagem();
+            }
+            if (pessoa.nomeExato() == null) {
+                return "Nenhuma tarefa encontrada para " + responsavel.trim() + ".";
+            }
+            where.append(" AND t.dados_completos->>'Responsável' = ? ");
+            params.add(pessoa.nomeExato());
+            escopo += " de " + pessoa.nomeExato();
         }
         if (!vazio(departamento)) {
             where.append(" AND t.departamento ILIKE ? ");

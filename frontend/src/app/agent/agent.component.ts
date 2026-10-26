@@ -5,6 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { finalize, interval, Subscription, switchMap } from 'rxjs';
 import { GraficoIaComponent } from '../grafico-ia/grafico-ia';
 import { MapaCompartilhamentoComponent } from '../mapa-compartilhamento/mapa-compartilhamento.component';
+import { TermoUsoIaComponent } from '../termo-uso-ia/termo-uso-ia.component';
 import { LeaderboardUgComponent } from '../leaderboard-ug/leaderboard-ug.component';
 import { AgentService, Notificacao, PainelAtrasos, RelatorioHistoricoItem, TarefasAtrasadasResumo, UsoIa } from '../services/agent.service';
 import { AdminService } from '../services/admin.service';
@@ -23,7 +24,7 @@ interface ChatSession {
 @Component({
   selector: 'app-agent',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, GraficoIaComponent, SafeUrlPipe, LeaderboardUgComponent, MapaCompartilhamentoComponent],
+  imports: [CommonModule, FormsModule, RouterLink, GraficoIaComponent, SafeUrlPipe, LeaderboardUgComponent, MapaCompartilhamentoComponent, TermoUsoIaComponent],
   templateUrl: './agent.html',
   styleUrls: ['./agent.css']
 })
@@ -50,6 +51,12 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   painelAtivo: 'chat' | 'ranking' | 'compartilhadas' = 'chat';
   avisoApiVisivel = localStorage.getItem(AgentComponent.AVISO_API_DISPENSADO_KEY) !== '1';
   avisoTesterVisivel = localStorage.getItem(AgentComponent.AVISO_TESTER_DISPENSADO_KEY) !== '1';
+  // Bloqueado até a consulta do aceite voltar; o backend também recusa perguntas sem aceite.
+  termoUsoPendente = true;
+  termoUsoAberto = false;
+  termoUsoVersao = '';
+  termoUsoSalvando = false;
+  termoUsoErro = '';
   versaoAgente = AgentComponent.VERSAO_AGENTE;
   houveAtualizacao = false;
   houveAtualizacaoVisivel = false;
@@ -143,7 +150,43 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
     localStorage.setItem(AgentComponent.VERSAO_VISTA_KEY, AgentComponent.VERSAO_AGENTE);
   }
 
+  private carregarTermoUso() {
+    this.agentService.consultarTermoUso().subscribe({
+      next: (r) => {
+        this.termoUsoVersao = r.versao;
+        this.termoUsoPendente = !r.aceito;
+        this.termoUsoAberto = !r.aceito;
+      },
+      error: () => {
+        this.termoUsoPendente = true;
+        this.termoUsoAberto = true;
+      }
+    });
+  }
+
+  aceitarTermoUso() {
+    this.termoUsoSalvando = true;
+    this.termoUsoErro = '';
+    this.agentService.aceitarTermoUso().subscribe({
+      next: (r) => {
+        this.termoUsoVersao = r.versao;
+        this.termoUsoSalvando = false;
+        this.termoUsoPendente = false;
+        this.termoUsoAberto = false;
+      },
+      error: () => {
+        this.termoUsoSalvando = false;
+        this.termoUsoErro = 'Não foi possível registrar o aceite agora. Tente novamente em instantes.';
+      }
+    });
+  }
+
+  recusarTermoUso() {
+    this.router.navigate(['/']);
+  }
+
   ngOnInit() {
+    this.carregarTermoUso();
     this.gerarMensagemBoasVindas();
     this.carregarSessoes();
   }
@@ -619,6 +662,10 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
   send() {
     const text = (this.input || '').trim();
     if (!text) return;
+    if (this.termoUsoPendente) {
+      this.termoUsoAberto = true;
+      return;
+    }
     if (this.carregando) {
       if (this.gerandoEmOutraConversa) this.erro = 'Aguarde a resposta da outra conversa terminar para enviar.';
       return;
@@ -722,6 +769,12 @@ export class AgentComponent implements OnInit, AfterViewInit, AfterViewChecked, 
 
           this.acordandoServidor = false;
           this.carregando = false;
+          if (err?.status === 403) {
+            // Termo de uso não aceito (ou versão nova publicada com o chat aberto).
+            this.termoUsoPendente = true;
+            this.termoUsoAberto = true;
+            return;
+          }
           const mensagem = err?.error?.mensagem || 'Não foi possível consultar o agente agora.';
           sessao.messages.push({ from: 'bot', text: mensagem });
           if (this.sessaoAtual === sessao) {

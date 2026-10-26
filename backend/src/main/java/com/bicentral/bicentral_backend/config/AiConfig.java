@@ -1,5 +1,7 @@
 package com.bicentral.bicentral_backend.config;
 
+import com.bicentral.bicentral_backend.service.ia.lgpd.DicionarioPessoas;
+import com.bicentral.bicentral_backend.service.ia.lgpd.ModeloPseudonimizado;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -39,6 +41,13 @@ public class AiConfig {
 
     @Value("${openai.api.key:}")
     private String openaiApiKey;
+
+    @Value("${proiap.lgpd.pseudonimizar:true}")
+    private boolean pseudonimizarNomes;
+
+    // Só para conferência local: imprime no console tudo o que sai para o provedor. Nunca ligar em produção.
+    @Value("${proiap.lgpd.logar-envio:false}")
+    private boolean logarEnvioLgpd;
 
     @Value("${ollama.base.url:http://localhost:11434}")
     private String ollamaBaseUrl;
@@ -91,27 +100,36 @@ public class AiConfig {
 
     @Bean("openaiLunaModel")
     @Primary
-    public ChatLanguageModel openaiLunaModel() {
-        return OpenAiChatModel.builder()
+    public ChatLanguageModel openaiLunaModel(DicionarioPessoas dicionarioPessoas) {
+        return protegerNomes(OpenAiChatModel.builder()
                 .apiKey(openaiApiKey)
                 .modelName("gpt-5.6-luna")
                 .maxCompletionTokens(MAX_TOKENS_RESPOSTA)
                 .defaultRequestParameters(OpenAiChatRequestParameters.builder()
                         .reasoningEffort("none")
                         .build())
-                .build();
+                .build(), dicionarioPessoas);
     }
 
     @Bean("openaiTerraModel")
-    public ChatLanguageModel openaiTerraModel() {
-        return OpenAiChatModel.builder()
+    public ChatLanguageModel openaiTerraModel(DicionarioPessoas dicionarioPessoas) {
+        return protegerNomes(OpenAiChatModel.builder()
                 .apiKey(openaiApiKey)
                 .modelName("gpt-5.6-terra")
                 .maxCompletionTokens(MAX_TOKENS_RESPOSTA)
                 .defaultRequestParameters(OpenAiChatRequestParameters.builder()
                         .reasoningEffort("none")
                         .build())
-                .build();
+                .build(), dicionarioPessoas);
+    }
+
+    // A chave desliga o filtro sem deploy, se ele atrapalhar alguma resposta.
+    private ChatLanguageModel protegerNomes(ChatLanguageModel modelo, DicionarioPessoas dicionarioPessoas) {
+        if (!pseudonimizarNomes) {
+            System.out.println(">>> LGPD: pseudonimização DESLIGADA (proiap.lgpd.pseudonimizar=false).");
+            return modelo;
+        }
+        return new ModeloPseudonimizado(modelo, dicionarioPessoas::pseudonimizador, logarEnvioLgpd);
     }
 
     // @Lazy: só é criado (e só exige GEMINI_API_KEY de verdade) se algum @Qualifier("geminiModel")

@@ -1107,6 +1107,16 @@
   white-space: nowrap;
 }
 .disclaimer { font-size: 0.75rem; color: var(--text-secondary); text-align: center; margin-top: 12px; }
+.link-termo {
+  font: inherit;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--logo-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
 .chart-message {
   margin-top: 16px;
   display: flex;
@@ -2022,6 +2032,15 @@
 
 .btn-confirm.excluir:hover {
   background: #dc2626;
+}
+
+.confirm-card p.compartilhar-aviso-dados {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-left: 3px solid #f59e0b;
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--text-primary);
 }
 
 .compartilhar-link-row {

@@ -34,6 +34,7 @@ import com.bicentral.bicentral_backend.service.admin.ConvidadoService;
 import com.bicentral.bicentral_backend.service.auth.UsuarioService;
 import com.bicentral.bicentral_backend.service.ia.ChatHistoricoService;
 import com.bicentral.bicentral_backend.service.ia.ProiapService;
+import com.bicentral.bicentral_backend.service.ia.TermoUsoService;
 import com.bicentral.bicentral_backend.service.notificacao.NotificacaoService;
 
 
@@ -61,11 +62,13 @@ public class ProiapController {
     private final AdminService adminService;
     private final ChatHistoricoService chatHistoricoService;
     private final ConvidadoService convidadoService;
+    private final TermoUsoService termoUsoService;
 
     public ProiapController(ProiapService proiapService, EstadoSessao estadoSessao, StatusExecucaoAgente statusExecucao,
         NotificacaoService notificacaoService, UsuarioService usuarioService, AdminService adminService,
-        ChatHistoricoService chatHistoricoService, ConvidadoService convidadoService) {
+        ChatHistoricoService chatHistoricoService, ConvidadoService convidadoService, TermoUsoService termoUsoService) {
         this.convidadoService = convidadoService;
+        this.termoUsoService = termoUsoService;
         this.proiapService = proiapService;
         this.estadoSessao = estadoSessao;
         this.statusExecucao = statusExecucao;
@@ -88,6 +91,11 @@ public class ProiapController {
 
         Usuario usuario = usuarioService.buscarPorEmail(userDetails.getUsername());
         boolean usuarioEhAdmin = adminService.isAdmin(usuario.getId());
+
+        // A tela já bloqueia o chat sem o aceite; esta trava cobre chamadas diretas à API.
+        if (!termoUsoService.aceitouVersaoAtual(usuario.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "É preciso aceitar o termo de uso para usar o proIAp.");
+        }
 
         if (requisicao.modelo() != null) {
             estadoSessao.setModelo(requisicao.modelo());
