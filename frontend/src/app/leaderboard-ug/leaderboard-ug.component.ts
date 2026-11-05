@@ -10,6 +10,7 @@ export interface UgRankingItem {
   id: string;
   sigla: string;
   nome: string;
+  tipoUnidade: 'UA' | 'UG' | null;
   posicao: number;
   posicaoAnterior: number;
   percentual: number;
@@ -54,7 +55,7 @@ export class LeaderboardUgComponent implements OnInit, OnDestroy {
   ugsExibidas: UgRankingItem[] = [];
   filtroAtivo: FiltroUnidade = 'todos';
   readonly filtros: { valor: FiltroUnidade; rotulo: string }[] = [
-    { valor: 'todos', rotulo: 'Todas, exceto coordenações' },
+    { valor: 'todos', rotulo: 'Unidades gestoras' },
     { valor: 'pro-reitoria', rotulo: 'Pró-Reitorias' },
     { valor: 'campus', rotulo: 'Câmpus' },
     { valor: 'superintendencia', rotulo: 'Superintendências' },
@@ -82,8 +83,10 @@ export class LeaderboardUgComponent implements OnInit, OnDestroy {
     this.carregarRanking();
   }
 
+  // Usa a classificação UG do banco (departamento_tipo), não o nome: setores como Ouvidoria,
+  // PROJUR e CPA não começam com "Coordena" mas não são unidades gestoras.
   get unidadesPrincipais(): UgRankingItem[] {
-    return this.ugs.filter(u => this.categoria(u.nome) !== 'coordenacao');
+    return this.ugs.filter(u => u.tipoUnidade === 'UG');
   }
 
   ngOnDestroy(): void {
@@ -115,7 +118,7 @@ export class LeaderboardUgComponent implements OnInit, OnDestroy {
     return this.resumo?.limiteAtencaoPct ?? 60;
   }
 
-  // Mesma base do KPI (sem coordenações), independente do filtro do ranking, pra lista bater com o número do card.
+  // Mesma base do KPI (só UGs), independente do filtro do ranking, pra lista bater com o número do card.
   get ugsEmAtencao(): UgRankingItem[] {
     return this.unidadesPrincipais
       .filter(u => u.percentual < this.limiteAtencao)
@@ -173,6 +176,7 @@ export class LeaderboardUgComponent implements OnInit, OnDestroy {
       id: item.departamento,
       sigla: extrairSigla(item.departamento),
       nome: item.departamento,
+      tipoUnidade: item.tipoUnidade,
       posicao: item.posicaoAtual,
       posicaoAnterior,
       percentual,
@@ -190,12 +194,12 @@ export class LeaderboardUgComponent implements OnInit, OnDestroy {
 
 
   contagemFiltro(filtro: FiltroUnidade): number {
-    return filtro === 'todos' ? this.unidadesPrincipais.length : this.ugs.filter(u => this.categoria(u.nome) === filtro).length;
+    return filtro === 'todos' ? this.unidadesPrincipais.length : this.ugs.filter(u => this.categoria(u) === filtro).length;
   }
 
   private calcularCampi(): { valor: string; rotulo: string; total: number }[] {
     const contagem = new Map<string, number>();
-    this.ugs.filter(u => this.categoria(u.nome) === 'coordenacao').forEach(u => {
+    this.ugs.filter(u => this.categoria(u) === 'coordenacao').forEach(u => {
       const campus = campusDaCoordenacao(u.nome);
       contagem.set(campus, (contagem.get(campus) ?? 0) + 1);
     });
@@ -223,7 +227,7 @@ export class LeaderboardUgComponent implements OnInit, OnDestroy {
     this.campi = this.calcularCampi();
     let grupo = this.filtroAtivo === 'todos'
       ? this.unidadesPrincipais
-      : this.ugs.filter(u => this.categoria(u.nome) === this.filtroAtivo);
+      : this.ugs.filter(u => this.categoria(u) === this.filtroAtivo);
     if (this.filtroAtivo === 'coordenacao' && this.campusAtivo !== 'todos') {
       grupo = grupo.filter(u => campusDaCoordenacao(u.nome) === this.campusAtivo);
     }
@@ -290,13 +294,15 @@ export class LeaderboardUgComponent implements OnInit, OnDestroy {
   }
 
   // O endpoint não devolve categoria: o grupo vem do prefixo do nome do departamento.
-  private categoria(nome: string): Exclude<FiltroUnidade, 'todos'> {
-    const n = nome.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  // "Outros" é só para quem não é UG; UGs sem prefixo conhecido (Gabinete, AUDIN, Rádio e TV,
+  // Prefeitura) ficam sem categoria e aparecem apenas no filtro de unidades gestoras.
+  private categoria(u: UgRankingItem): Exclude<FiltroUnidade, 'todos'> | null {
+    const n = u.nome.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
     if (n.startsWith('campus')) return 'campus';
     if (n.startsWith('pro-reitoria')) return 'pro-reitoria';
     if (n.startsWith('superintendencia')) return 'superintendencia';
     if (n.startsWith('coordena')) return 'coordenacao';
-    return 'outros';
+    return u.tipoUnidade === 'UG' ? null : 'outros';
   }
 
   alternarModo(modo: 'cards' | 'echarts'): void {

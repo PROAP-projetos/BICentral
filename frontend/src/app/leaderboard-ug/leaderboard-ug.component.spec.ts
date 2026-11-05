@@ -68,7 +68,8 @@ describe('LeaderboardUgComponent', () => {
       { ...base, departamento: 'Campus Universitário de Palmas - CUP', mediaExecucaoPct: 80, posicaoAtual: 2, posicaoAnterior: 3 },
       { ...base, departamento: 'Gabinete do Reitor', mediaExecucaoPct: 70, posicaoAtual: 3, posicaoAnterior: 2 },
       { ...base, departamento: 'Campus Universitário de Gurupi - CAUG', mediaExecucaoPct: 60, posicaoAtual: 4, posicaoAnterior: 4 },
-      { ...base, tipoUnidade: 'UA' as const, departamento: 'Coordenação do curso de Pedagogia - CUP', mediaExecucaoPct: 50, posicaoAtual: 5, posicaoAnterior: 5 }
+      { ...base, tipoUnidade: 'UA' as const, departamento: 'Coordenação do curso de Pedagogia - CUP', mediaExecucaoPct: 50, posicaoAtual: 5, posicaoAnterior: 5 },
+      { ...base, tipoUnidade: 'UA' as const, departamento: 'Procuradoria Jurídica - PROJUR - GAB', mediaExecucaoPct: 40, posicaoAtual: 6, posicaoAnterior: 6 }
     ]));
     fixture.detectChanges();
 
@@ -88,9 +89,14 @@ describe('LeaderboardUgComponent', () => {
     component.selecionarFiltro('coordenacao');
     expect(component.ugsExibidas.map(u => u.posicao)).toEqual([1]);
 
+    // Gabinete é UG sem prefixo conhecido: fica só em 'todos'; 'outros' é só para quem não é UG.
+    component.selecionarFiltro('outros');
+    expect(component.ugsExibidas.map(u => u.nome)).toEqual(['Procuradoria Jurídica - PROJUR - GAB']);
+
     component.selecionarFiltro('todos');
     expect(component.ugsExibidas.length).toBe(4);
     expect(component.ugsExibidas.some(u => u.nome.startsWith('Coordenação'))).toBeFalse();
+    expect(component.ugsExibidas.some(u => u.nome.includes('PROJUR'))).toBeFalse();
   });
 
   it('mostra o nome completo do departamento no tooltip do gráfico de barras', () => {
